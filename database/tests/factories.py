@@ -1,9 +1,11 @@
 import factory
+from factory.django import DjangoModelFactory
 
 from database.user_models import Researcher
 
 
-class ResearcherFactory(factory.DjangoModelFactory):
+# noinspection HardcodedPassword
+class ResearcherFactory(DjangoModelFactory):
     class Meta:
         model = Researcher
 
