@@ -11,6 +11,10 @@ from config.study_constants import OBJECT_ID_ALLOWED_CHARS
 class ObjectIdError(Exception): pass
 
 
+def _generate_objectid_string():
+    return ''.join(random_choice(OBJECT_ID_ALLOWED_CHARS) for _ in range(24))
+
+
 class JSONTextField(models.TextField):
     """
     A TextField for holding JSON-serialized data. This is only different from models.TextField
@@ -33,7 +37,7 @@ class UtilityModel(models.Model):
         """
 
         for _ in range(10):
-            object_id = ''.join(random_choice(OBJECT_ID_ALLOWED_CHARS) for _ in range(24))
+            object_id = _generate_objectid_string()
             if not cls.objects.filter(**{field_name: object_id}).exists():
                 break
         else:
