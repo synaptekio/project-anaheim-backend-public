@@ -403,3 +403,65 @@ class InterventionDate(TimestampedModel):
 
     class Meta:
         unique_together = ('participant', 'intervention',)
+
+
+class ParticipantMessageScheduleType:
+    absolute = "absolute"
+    asap = "asap"
+    # relative = "relative"  # Relative to InterventionDate
+    
+    @classmethod
+    def choices(cls):
+        return [(choice, choice.title()) for choice in cls.values()]
+    
+    @classmethod
+    def values(cls):
+        return [cls.absolute, cls.asap]  #, cls.relative]
+
+
+class ParticipantMessageStatus:
+    error = "error"
+    scheduled = "scheduled"
+    sent = "sent"
+    
+    @classmethod
+    def choices(cls):
+        return [(choice, choice.title()) for choice in cls.values()]
+    
+    @classmethod
+    def values(cls):
+        return [cls.error, cls.scheduled, cls.sent]
+
+
+class ParticipantMessage(TimestampedModel):
+    """
+    Model for scheduling messages to be sent to a Participant
+    """
+    message = models.TextField()
+    participant = models.ForeignKey(Participant, on_delete=models.CASCADE, related_name="participant_messages")
+    schedule_type = models.TextField(choices=ParticipantMessageScheduleType.choices())
+    
+    scheduled_send_datetime = models.DateTimeField(blank=True, null=True)
+    # intervention = models.ForeignKey(Intervention, blank=True, null=True, on_delete=models.PROTECT, related_name="participant_messages")
+    # timedelta_after_intervention = models.DurationField(blank=True, null=True)
+    
+    datetime_sent = models.DateTimeField(blank=True, null=True)
+    status = models.TextField(choices=ParticipantMessageStatus.choices(), default=ParticipantMessageStatus.scheduled)
+    
+    # def clean(self):
+    #     if not self.schedule_type:
+    #         pass
+    #     elif self.schedule_type == ParticipantMessageScheduleType.relative:
+    #         self._validate_fields_as_required(["intervention", "timedelta_after_intervention"])
+    #     elif self.schedule_type in [ParticipantMessageScheduleType.absolute, ParticipantMessageScheduleType.asap]:
+    #         self._validate_fields_as_required(["scheduled_send_datetime"])
+    #     else:
+    #         raise NotImplementedError()
+    #
+    # def _validate_fields_as_required(self, field_names: List[str]):
+    #     errors = {}
+    #     for field_name in field_names:
+    #         if getattr(self, field_name) in EMPTY_VALUES:
+    #             errors[field_name] = ValidationError(self._meta.fields[field_name].error_messages["null"], code="null")
+    #     if errors:
+    #         raise ValidationError(errors)
