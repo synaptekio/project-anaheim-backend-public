@@ -140,9 +140,10 @@ def authenticate_researcher_study_access(some_function):
         # Get values first from kwargs, then from the POST request
         survey_id = kwargs.get('survey_id', request.values.get('survey_id', None))
         study_id = kwargs.get('study_id', request.values.get('study_id', None))
+        study_object_id = kwargs.get('study_object_id', request.values.get('study_object_id', None))
 
         # Check proper syntax usage.
-        if not survey_id and not study_id:
+        if not survey_id and (not study_id and not study_object_id):
             raise ArgumentMissingException()
 
         # We want the survey_id check to execute first if both args are supplied, surveys are
@@ -158,10 +159,18 @@ def authenticate_researcher_study_access(some_function):
             study_id = studies.values_list('pk', flat=True).get()
 
         # assert that such a study exists
-        if not Study.objects.filter(pk=study_id).exists():
-            return abort(404)
+        study_query = Study.objects.all()
+        if study_id:
+            study_query = study_query.filter(pk=study_id)
+        else:
+            study_query = study_query.filter(object_id=study_object_id)
+        
+        try:
+            study = study_query.get()
+        except Study.DoesNotExist:
+            abort(404)
 
-        study_relation = StudyRelation.objects.filter(study_id=study_id, researcher=researcher)
+        study_relation = StudyRelation.objects.filter(study=study, researcher=researcher)
 
         # always allow site admins
         # currently we allow all study relations.

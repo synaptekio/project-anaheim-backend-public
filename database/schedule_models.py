@@ -1,6 +1,8 @@
 from datetime import date, datetime, time, timedelta, tzinfo
 from typing import List
 
+import pytz
+import uuid
 from dateutil.tz import gettz
 from django.core.validators import MaxValueValidator
 from django.db import models
@@ -396,7 +398,10 @@ class ParticipantMessageScheduleType:
     
     @classmethod
     def choices(cls):
-        return [(choice, choice.title()) for choice in cls.values()]
+        return [
+            (cls.asap, "as soon as possible"),
+            (cls.absolute, "at a specific date/time"),
+        ]
     
     @classmethod
     def values(cls):
@@ -404,6 +409,7 @@ class ParticipantMessageScheduleType:
 
 
 class ParticipantMessageStatus:
+    cancelled = "cancelled"
     error = "error"
     scheduled = "scheduled"
     sent = "sent"
@@ -414,7 +420,7 @@ class ParticipantMessageStatus:
     
     @classmethod
     def values(cls):
-        return [cls.error, cls.scheduled, cls.sent]
+        return [cls.cancelled, cls.error, cls.scheduled, cls.sent]
 
 
 class ParticipantMessage(TimestampedModel):
@@ -424,6 +430,7 @@ class ParticipantMessage(TimestampedModel):
     message = models.TextField()
     participant = models.ForeignKey(Participant, on_delete=models.CASCADE, related_name="participant_messages")
     schedule_type = models.TextField(choices=ParticipantMessageScheduleType.choices())
+    uuid = models.UUIDField(default=uuid.uuid4)
     
     scheduled_send_datetime = models.DateTimeField(blank=True, null=True)
     # intervention = models.ForeignKey(Intervention, blank=True, null=True, on_delete=models.PROTECT, related_name="participant_messages")
@@ -432,6 +439,26 @@ class ParticipantMessage(TimestampedModel):
     datetime_sent = models.DateTimeField(blank=True, null=True)
     status = models.TextField(choices=ParticipantMessageStatus.choices(), default=ParticipantMessageStatus.scheduled)
     
+    @property
+    def datetime_sent_display(self):
+        return self.datetime_sent.strftime(DEV_TIME_FORMAT)
+    
+    def message_as_list(self) -> List[str]:
+        """
+        Returns the message as a list of text where it's split on newline characters. This is to
+        help facilitate safe rendering.
+        """
+        return self.message.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    
+    @property
+    def scheduled_for(self):
+        if self.schedule_type == ParticipantMessageScheduleType.asap:
+            return "ASAP"
+        else:
+            localized_datetime = self.scheduled_send_datetime.astimezone(
+                pytz.timezone(self.participant.study.timezone_name)
+            )
+            return localized_datetime.strftime(DEV_TIME_FORMAT)
     # def clean(self):
     #     if not self.schedule_type:
     #         pass
