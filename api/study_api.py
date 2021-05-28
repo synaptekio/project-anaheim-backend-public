@@ -3,10 +3,10 @@ from flask import Blueprint, flash, redirect, render_template, request
 
 from authentication.admin_authentication import (authenticate_researcher_study_access,
     get_researcher_allowed_studies, researcher_is_an_admin)
+
 from database.schedule_models import Intervention, InterventionDate
 from database.study_models import Study, StudyField
 from database.user_models import Participant, ParticipantFieldValue
-
 
 study_api = Blueprint('study_api', __name__)
 

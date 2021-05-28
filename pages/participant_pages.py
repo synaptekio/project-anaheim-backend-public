@@ -1,16 +1,17 @@
 from datetime import date, datetime
-
 from django.core.paginator import EmptyPage
-from flask import abort, Blueprint, flash, redirect, render_template, request
+from django.db import transaction
+from flask import abort, Blueprint, flash, redirect, render_template, request, url_for
 
 from api.participant_administration import add_fields_and_interventions
 from authentication.admin_authentication import (authenticate_researcher_study_access,
     get_researcher_allowed_studies, researcher_is_an_admin)
 from config.constants import API_DATE_FORMAT
-from database.schedule_models import ArchivedEvent
+from database.schedule_models import ArchivedEvent, ParticipantMessage, ParticipantMessageStatus
 from database.study_models import Study
 from database.user_models import Participant
 from libs.firebase_config import check_firebase_instance
+from libs.forms import ParticipantMessageForm
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 
 
@@ -119,9 +120,17 @@ def render_participant_page(participant: Participant, study: Study):
     latest_notification_attempt = \
         get_notification_details(last_archived_event, study.timezone, survey_names)
 
+    participant_messages = (
+        participant
+            .participant_messages
+            .prefetch_related("participant__study")
+            .order_by("-created_on")
+    )
+
     return render_template(
         'participant.html',
         participant=participant,
+        participant_messages=participant_messages,
         study=study,
         intervention_data=intervention_data,
         field_values=field_data,
@@ -158,3 +167,75 @@ def get_notification_details(archived_event, study_timezone, survey_names):
         notification['status'] = archived_event['status']
 
     return notification
+
+
+@participant_pages.route("/studies/<string:study_object_id>/participants/<string:participant_patient_id>/messages/schedule", methods=["GET", "POST"])
+@authenticate_researcher_study_access
+def schedule_message(study_object_id, participant_patient_id):
+    participant = Participant.get_or_404(
+        patient_id=participant_patient_id,
+        study__object_id=study_object_id,
+    )
+    form = ParticipantMessageForm(request.values or None, participant=participant)
+    if request.method == "GET":
+        return render_schedule_message(form, participant)
+    if not form.is_valid():
+        return render_schedule_message(form, participant)
+    form.save()
+    flash(
+        f"Your message to participant \"{participant.patient_id}\" was successfully scheduled.",
+        "success",
+    )
+    return redirect(
+        url_for(
+            "study_api.edit_participant",
+            participant_id=participant.id,
+            study_id=participant.study_id,
+        )
+    )
+
+
+def render_schedule_message(form, participant):
+    return render_template(
+        "participant_message.html",
+        form=form,
+        participant=participant,
+    )
+
+
+@participant_pages.route("/studies/<string:study_object_id>/messages/<string:participant_message_uuid>/cancel", methods=["POST"])
+@authenticate_researcher_study_access
+def cancel_message(study_object_id, participant_message_uuid):
+    with transaction.atomic():
+        # Lock to prevent message from being sent while we're cancelling (or cancelling while it's
+        # being sent)
+        try:
+            participant_message = ParticipantMessage.objects.select_for_update().get(
+                uuid=participant_message_uuid,
+                participant__study__object_id=study_object_id,
+            )
+        except ParticipantMessage.DoesNotExist:
+            flash("Sorry, could not find the message specified.", "yellow")
+        else:
+            if participant_message.status == ParticipantMessageStatus.sent:
+                flash("Sorry, could not cancel because the message was already sent.", "danger")
+            elif participant_message.status == ParticipantMessageStatus.error:
+                flash(
+                    "Sorry, could not cancel because the message status is \"error\" and it may have "
+                    "already been sent.",
+                    "danger",
+                )
+            elif participant_message.status in ParticipantMessageStatus.scheduled:
+                if participant_message.status == ParticipantMessageStatus.scheduled:
+                    participant_message.status = ParticipantMessageStatus.cancelled
+                    participant_message.save(update_fields=["status"])
+                flash("The message was successfully cancelled.", "success")
+            elif participant_message.status in ParticipantMessageStatus.cancelled:
+                flash("The message was successfully cancelled.", "success")
+    return redirect(
+        url_for(
+            "study_api.edit_participant",
+            participant_id=participant_message.participant.id,
+            study_id=participant_message.participant.study_id,
+        )
+    )

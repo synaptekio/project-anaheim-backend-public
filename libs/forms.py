@@ -7,9 +7,12 @@ from database.schedule_models import ParticipantMessage, ParticipantMessageSched
 
 
 class ParticipantMessageForm(forms.ModelForm):
-    asap = forms.NullBooleanField()
+    schedule_type = forms.ChoiceField(
+        choices=ParticipantMessageScheduleType.choices(),
+        initial=ParticipantMessageScheduleType.asap,
+    )
     date = forms.DateField(required=False)
-    message = forms.CharField(widget=forms.Textarea())
+    message = forms.CharField()
     time = forms.TimeField(required=False)
     
     # intervention = forms.ModelChoiceField(queryset=Intervention.objects.none(), required=False)
@@ -18,6 +21,7 @@ class ParticipantMessageForm(forms.ModelForm):
         model = ParticipantMessage
         fields = [
             "message",
+            "schedule_type",
         ]
     
     def __init__(self, *args, **kwargs):
@@ -32,7 +36,7 @@ class ParticipantMessageForm(forms.ModelForm):
 
     def clean(self):
         for field_name in ["date", "time"]:
-            if self.cleaned_data.get("asap") is True:
+            if self.cleaned_data.get("schedule_type") == ParticipantMessageScheduleType.asap:
                 # If ASAP, we can ignore these fields even if they have errors
                 if field_name in self.errors:
                     del self.errors[field_name]
@@ -44,12 +48,7 @@ class ParticipantMessageForm(forms.ModelForm):
     def save(self, commit=True):
         super().save(commit=False)
         self.instance.participant = self.participant
-        self.instance.schedule_type = (
-            ParticipantMessageScheduleType.asap
-            if self.cleaned_data["asap"]
-            else ParticipantMessageScheduleType.absolute
-        )
-        if not self.cleaned_data["asap"]:
+        if self.cleaned_data["schedule_type"] == ParticipantMessageScheduleType.absolute:
             send_datetime_naive = datetime.datetime.combine(self.cleaned_data["date"], self.cleaned_data["time"])
             send_datetime_utc = (
                 pytz.timezone(self.participant.study.timezone_name)
@@ -57,8 +56,8 @@ class ParticipantMessageForm(forms.ModelForm):
                     .astimezone(pytz.utc)
             )
             self.instance.scheduled_send_datetime = send_datetime_utc
-        
-        self.instance.save(commit=commit)
+        if commit:
+            self.instance.save()
     
     def _validate_field_as_required(self, field_name: str):
         """
