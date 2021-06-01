@@ -37,6 +37,7 @@ def set_fcm_token():
     try:
         p, _ = ParticipantFCMHistory.objects.get_or_create(token=token, participant=participant)
         p.unregistered = None
+        p.failure_count = 0
         p.save()  # retain as save, we want last_updated to mutate
         ParticipantFCMHistory.objects.exclude(token=token).filter(
             participant=participant, unregistered=None
@@ -46,9 +47,6 @@ def set_fcm_token():
         ParticipantFCMHistory.objects.filter(
             participant=participant, unregistered=None
         ).update(unregistered=now, last_updated=now)
-
-    participant.push_notification_unreachable_count = 0
-    participant.save()
 
     return '', 204
 
