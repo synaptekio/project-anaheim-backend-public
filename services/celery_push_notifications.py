@@ -58,7 +58,7 @@ def queue_survey_tasks(now):
     # get: schedule time is in the past for participants that have fcm tokens.
     query = ScheduledEvent.objects.filter(
         # core
-        scheduled_time__lte=now, participant__fcm_tokens__isnull=False,
+        scheduled_time__lte=now, participant__fcm_tokens__isnull=False, participant__fcm_tokens__unregistered=None,
         # safety
         participant__deleted=False, survey__deleted=False,
     ).values_list(
