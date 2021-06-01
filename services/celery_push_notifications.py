@@ -110,7 +110,7 @@ def celery_send_survey_push_notification(participant_id: str, schedule_ids: List
         participant = Participant.objects.get(id=participant_id)
         schedules = participant.scheduled_events.filter(id__in=schedule_ids).prefetch_related('survey')
         reference_schedule = schedules.order_by("scheduled_time").first()
-        survey_object_ids = schedules.values_list('survey__object_id', flat=True)
+        survey_object_ids = schedules.values_list('survey__object_id', flat=True).distinct()
         
         data_kwargs = {
             'sent_time': reference_schedule.scheduled_time.strftime(API_TIME_FORMAT),
