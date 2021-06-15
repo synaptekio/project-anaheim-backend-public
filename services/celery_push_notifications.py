@@ -37,7 +37,7 @@ def create_push_notification_tasks():
 
 
 def queue_message_tasks(now):
-    asap_filter = Q(scheduled_type=ParticipantMessageScheduleType.asap)
+    asap_filter = Q(schedule_type=ParticipantMessageScheduleType.asap)
     absolute_filter = (
         Q(schedule_type=ParticipantMessageScheduleType.absolute)
         & Q(scheduled_send_datetime__lte=now)
@@ -115,7 +115,7 @@ def celery_send_survey_push_notification(participant_id: str, schedule_ids: List
         data_kwargs = {
             'sent_time': reference_schedule.scheduled_time.strftime(API_TIME_FORMAT),
             'type': 'survey',
-            'survey_ids': json.dumps(survey_object_ids),
+            'survey_ids': json.dumps(list(survey_object_ids)),
         }
         display_message = f"You have {'a survey' if len(survey_object_ids) == 1 else 'surveys'} to take."
         
