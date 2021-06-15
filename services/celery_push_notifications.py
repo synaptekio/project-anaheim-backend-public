@@ -138,6 +138,11 @@ def send_push_notification(participant: Participant, data: Dict, display_message
     """
     Send push notification to participant. No exceptions are raised if it completed successfully.
     """
+    if not check_firebase_instance():
+        # Running `check_firebase_instance` is needed to load the configured Firebase instance,
+        # otherwise you get a `ValueError: The default Firebase app does not exist.`
+        print("Firebase is not configured, cannot queue notifications.")
+        return
     participant_fcm_history = participant.fcm_tokens.filter(unregistered=None).last()
     if participant_fcm_history is None:
         raise MissingFCMToken(f"FCM token missing for participant id {participant.id}.")
