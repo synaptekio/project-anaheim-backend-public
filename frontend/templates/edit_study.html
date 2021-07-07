@@ -110,14 +110,15 @@
   <br><br><br>
     <div class="row">
     <h2>Toggle Forest</h2>
+    <p>Forest is currently {% if study.forest_enabled %}enabled{% else %}disabled{% endif %}.</p>
     <form action="/toggle_study_forest_enabled/{{ study.id }}" method="post">
       {% if study.forest_enabled %}
         <div class="col-md-2">
-          <button class="btn btn-success" type="submit">Enable Forest</button>
+          <button class="btn btn-danger" type="submit">Disable Forest</button>
         </div>
       {% else %}
         <div class="col-md-2">
-          <button class="btn btn-danger" type="submit">Disable Forest</button>
+          <button class="btn btn-success" type="submit">Enable Forest</button>
         </div>
       {% endif %}
     </form>

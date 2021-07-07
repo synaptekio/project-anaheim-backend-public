@@ -9,14 +9,13 @@ from django.utils import timezone
 from firebase_admin.messaging import (AndroidConfig, Message, Notification,
                                       send as send_notification, ThirdPartyAuthError,
                                       UnregisteredError)
-from kombu.exceptions import OperationalError
 
 from config.constants import API_TIME_FORMAT, PUSH_NOTIFICATION_SEND_QUEUE, ScheduleTypes
 from database.schedule_models import ArchivedEvent, ScheduledEvent, ParticipantMessage, \
     ParticipantMessageScheduleType, ParticipantMessageStatus
 from database.user_models import Participant
-from libs.celery_control import push_send_celery_app
-from libs.push_notification_config import (check_firebase_instance, set_next_weekly)
+from libs.celery_control import push_send_celery_app, safe_apply_async
+from libs.push_notification_config import check_firebase_instance, set_next_weekly
 from libs.sentry import make_error_sentry, SentryTypes
 
 
@@ -207,16 +206,8 @@ def queue_celery_task(func, *args, **kwargs):
         "retry": False,
     }
     combined_kwargs = {**default_kwargs, **kwargs}
-
-    for i in range(10):
-        try:
-            return func.apply_async(*args, **combined_kwargs)
-        except OperationalError:
-            if i < 3:
-                pass
-            else:
-                raise
-
+    
+    return safe_apply_async(func, *args, **combined_kwargs)
 
 celery_send_survey_push_notification.max_retries = 0  # requires the celerytask function object.
 celery_send_message_push_notification.max_retries = 0  # requires the celerytask function object.

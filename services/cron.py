@@ -9,6 +9,7 @@ from sys import argv
 from cronutils import run_tasks
 from services.celery_data_processing import create_file_processing_tasks
 from services.celery_push_notifications import create_push_notification_tasks
+from services.celery_forest import create_forest_celery_tasks
 
 FIVE_MINUTES = "five_minutes"
 HOURLY = "hourly"
@@ -19,7 +20,7 @@ MONTHLY = "monthly"
 VALID_ARGS = [FIVE_MINUTES, HOURLY, FOUR_HOURLY, DAILY, WEEKLY, MONTHLY]
 
 TASKS = {
-    FIVE_MINUTES: [create_file_processing_tasks, create_push_notification_tasks],
+    FIVE_MINUTES: [create_file_processing_tasks, create_push_notification_tasks, create_forest_celery_tasks],
     HOURLY: [],
     FOUR_HOURLY: [],
     DAILY: [],

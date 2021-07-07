@@ -1,6 +1,5 @@
-from django import forms
-from flask import (abort, Blueprint, flash, Markup, redirect, render_template, request, session,
-    url_for)
+from flask import (Blueprint, flash, Markup, redirect, render_template, request, session,
+                   url_for)
 
 from authentication import admin_authentication
 from authentication.admin_authentication import (authenticate_researcher_login,
@@ -14,7 +13,7 @@ from database.study_models import Study
 from database.user_models import Researcher
 from libs.push_notification_config import check_firebase_instance
 from libs.security import check_password_requirements
-from libs.serilalizers import ApiKeySerializer
+from libs.serializers import ApiKeySerializer
 
 admin_pages = Blueprint('admin_pages', __name__)
 
@@ -81,6 +80,7 @@ def view_study(study_id=None):
         interventions=list(study.interventions.all().values_list("name", flat=True)),
         page_location='study_landing',
         study_id=study_id,
+        is_site_admin=get_session_researcher().site_admin,
         push_notifications_enabled=check_firebase_instance(require_android=True) or
                                    check_firebase_instance(require_ios=True),
     )
@@ -170,15 +170,3 @@ def disable_api_key():
     return redirect("/manage_credentials")
 
 
-@admin_pages.route('/forest_status/<string:study_id>', methods=['GET'])
-@authenticate_researcher_study_access
-def forest_status(study_id=None):
-    study = Study.objects.get(pk=study_id)
-    return redirect('/edit_study/{:d}'.format(study.id))
-
-
-@admin_pages.route('/study_analysis_progress/<string:study_id>', methods=['GET'])
-@authenticate_researcher_study_access
-def study_analysis_progress(study_id=None):
-    study = Study.objects.get(pk=study_id)
-    return redirect('/edit_study/{:d}'.format(study.id))

@@ -2,16 +2,16 @@ import json
 
 from django import forms
 from django.db.models import QuerySet
-from django.forms import ValidationError
 from flask import request
 from flask_cors import cross_origin
 from rest_framework import serializers
 from rest_framework.renderers import JSONRenderer
 
 from api.tableau_api.base import TableauApiView
-from api.tableau_api.constants import (NONSTRING_ERROR_MESSAGE, SERIALIZABLE_FIELD_NAMES,
-    SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
+from api.tableau_api.constants import (SERIALIZABLE_FIELD_NAMES,
+                                       SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
 from database.tableau_api_models import SummaryStatisticDaily
+from libs.utils.form_utils import CommaSeparatedListCharField, CommaSeparatedListChoiceField
 
 
 class SummaryStatisticDailySerializer(serializers.ModelSerializer):
@@ -22,16 +22,19 @@ class SummaryStatisticDailySerializer(serializers.ModelSerializer):
     participant_id = serializers.SlugRelatedField(
         slug_field="patient_id", source="participant", read_only=True
     )
-    study_id = serializers.SlugRelatedField(slug_field="object_id", source="study", read_only=True)
+    study_id = serializers.SerializerMethodField()  # Study object id
 
     def __init__(self, *args, fields=None, **kwargs):
         """ dynamically modify the subset of fields on instantiation """
         super().__init__(*args, **kwargs)
-
+    
         if fields is not None:
             for field_name in set(self.fields) - set(fields):
                 # is this pop valid? the value is a cached property... this needs to be tested.
                 self.fields.pop(field_name)
+
+    def get_study_id(self, obj):
+        return obj.participant.study.object_id
 
 
 class SummaryStatisticDailyStudyView(TableauApiView):
@@ -39,29 +42,30 @@ class SummaryStatisticDailyStudyView(TableauApiView):
     API endpoint for retrieving SummaryStatisticsDaily objects for a study.
     """
 
-    path = "/api/v0/studies/<string:study_id>/summary-statistics/daily"
+    path = "/api/v0/studies/<string:study_object_id>/summary-statistics/daily"
 
     @cross_origin()
-    def get(self, study_id) -> dict:
+    def get(self, study_object_id) -> dict:
         # validate,  assemble data and serialize
         form = ApiQueryForm(data=request.values)
         if not form.is_valid():
             return self._render_errors(form.errors.get_json_data())
 
-        query = form.cleaned_data
-        field_names = query.pop("fields", SERIALIZABLE_FIELD_NAMES)
-        queryset = self._query_database(study_id=study_id, **query)
-        serializer = SummaryStatisticDailySerializer(queryset, many=True, fields=field_names)
+        queryset = self._query_database(study_object_id=study_object_id, **form.cleaned_data)
+        serializer = SummaryStatisticDailySerializer(
+            queryset,
+            fields=form.cleaned_data["fields"],
+            many=True,
+        )
         return JSONRenderer().render(serializer.data)
 
     @staticmethod
-    def _query_database(
-            study_id, end_date=None, start_date=None, limit=None, order_by="date",
-            order_direction="descending", participant_ids=None,
-    ) -> QuerySet:
+    def _query_database(study_object_id, end_date=None, start_date=None, limit=None,
+                        order_by="date", order_direction="descending", participant_ids=None,
+                        **kwargs) -> QuerySet:
         """
         Args:
-            study_id (str): study in which to find data
+            study_object_id (str): study in which to find data
             end_date (optional[date]): last date to include in search
             start_date (optional[date]): first date to include in search
             limit (optional[int]): maximum number of data points to return
@@ -73,7 +77,7 @@ class SummaryStatisticDailyStudyView(TableauApiView):
         """
         if order_direction == "descending":
             order_by = "-" + order_by
-        queryset = SummaryStatisticDaily.objects.filter(study__object_id=study_id)
+        queryset = SummaryStatisticDaily.objects.filter(participant__study__object_id=study_object_id)
         if participant_ids:
             queryset = queryset.filter(participant__patient_id__in=participant_ids)
         if end_date:
@@ -91,50 +95,6 @@ class SummaryStatisticDailyStudyView(TableauApiView):
         for field, field_errs in errors.items():
             messages.extend([err["message"] for err in field_errs])
         return json.dumps({"errors": messages})
-
-
-class CommaSeparatedListFieldMixin:
-    """ A mixin for use with django form fields. This mixin changes the field to accept a comma separated list of
-        inputs that are individually cleaned and validated. Takes one optional parameter, list_validators, which is
-        a list of validators to be applied to the final list of values (the validator parameter still expects a single
-        value as input, and is applied to each value individually) """
-
-    def __init__(self, list_validators=None, *args, **kwargs):
-        if list_validators is None:
-            self.list_validators = []
-        super().__init__(*args, **kwargs)
-
-    def clean(self, value) -> list:
-        if value:
-            if not isinstance(value, str):
-                raise TypeError(NONSTRING_ERROR_MESSAGE)
-            value_list = value.split(",")
-        else:
-            value_list = []
-
-        errors = []
-        cleaned_values = []
-        for v in value_list:
-            try:
-                cleaned_values.append(super(CommaSeparatedListFieldMixin, self).clean(v.strip()))
-            except ValidationError as err:
-                errors.append(err)
-
-        if errors:
-            raise ValidationError(errors)
-        for validator in self.list_validators:
-            validator(cleaned_values)
-
-        return cleaned_values
-
-
-# Mixins must be declared before ApiQueryForm because they are used in a static scope...
-class CommaSeparatedListCharField(CommaSeparatedListFieldMixin, forms.CharField):
-    pass
-
-
-class CommaSeparatedListChoiceField(CommaSeparatedListFieldMixin, forms.ChoiceField):
-    pass
 
 
 class ApiQueryForm(forms.Form):
@@ -179,6 +139,7 @@ class ApiQueryForm(forms.Form):
 
     fields = CommaSeparatedListChoiceField(
         choices=SERIALIZABLE_FIELD_NAMES_DROPDOWN,
+        default=SERIALIZABLE_FIELD_NAMES,
         required=False,
         error_messages={"invalid_choice": "%(value)s is not a valid field"},
     )

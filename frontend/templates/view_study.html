@@ -89,7 +89,44 @@
       <button type="button" class="btn btn-warning add_many_patients_button" data-toggle="modal" data-target="#addManyPatientsModal" title="Enable a number of new participants to enroll in {{ study.name }}: download a file of new Patient IDs and registration passwords">Add many new participants</button>
       {% include 'create_many_patients_modal.html' %}
 
-      <br/><hr><br/>
+      {% if study.forest_enabled %}
+        <div class="row">
+          <h3>Forest</h3>
+
+          {% if is_site_admin %}
+            <p>
+              <b>Create new forest tasks</b>
+              <br>
+              <a class="btn btn-info" href="{{ url_for('forest_pages.create_tasks', study_id=study.id) }}">
+                Create Forest Tasks
+              </a>
+            </p>
+          {% endif %}
+          <p>
+            <b>View a log of recent forest runs on this study</b>
+            <br>
+            <a class="btn btn-info" href="{{ url_for('forest_pages.task_log', study_id=study.id) }}">
+              View Forest Task Log
+            </a>
+          </p>
+          <p>
+            <b>View a summary of what data forest has generated for this study</b>
+            <br>
+            <a class="btn btn-info" href="{{ url_for('forest_pages.analysis_progress', study_id=study.id) }}">
+              View Forest Analysis Progress
+            </a>
+          </p>
+          {% if is_site_admin %}
+            <p>
+              <b>Download Forest Task Log (for all studies)</b>
+              <br>
+              <a class="btn btn-info" href="{{ url_for('forest_pages.download_task_log') }}">
+                Download Forest Task Log
+              </a>
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
 
       <div class="row">
         <h3>Surveys</h3>

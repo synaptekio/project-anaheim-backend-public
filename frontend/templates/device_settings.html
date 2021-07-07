@@ -91,6 +91,17 @@
                     </label>
                 </div>
             </div>
+
+            <div class="form-group">
+                <label for="ambient_audio" class="col-xs-8 control-label">Ambient Audio Recording:</label>
+                <div class="col-xs-4 checkbox checkbox-custom">
+                    <label>
+                        <input name="ambient_audio" id="ambient_audio" type="checkbox" {{ "checked" if settings["ambient_audio"] }} {{ "disabled" if readonly }}/>
+                    </label>
+                </div>
+            </div>
+
+
             <div class="form-group">
                 <label for="reachability" class="col-xs-8 control-label">Reachability:</label>
                 <div class="col-xs-4 checkbox checkbox-custom">

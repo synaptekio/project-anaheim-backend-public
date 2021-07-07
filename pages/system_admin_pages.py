@@ -3,8 +3,7 @@ import plistlib
 from collections import defaultdict
 
 from django.core.exceptions import ValidationError
-from flask import (abort, Blueprint, escape, flash, Markup, redirect, render_template, request,
-    url_for)
+from flask import (abort, Blueprint, escape, flash, Markup, redirect, render_template, request)
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_study_access, get_researcher_allowed_studies,
@@ -13,8 +12,7 @@ from config.constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CRE
     CHECKBOX_TOGGLES, IOS_FIREBASE_CREDENTIALS, ResearcherRole, TIMER_VALUES)
 from database.study_models import Study
 from database.system_models import FileAsText
-from database.tableau_api_models import ForestTracker
-from database.user_models import Participant, Researcher, StudyRelation
+from database.user_models import Researcher, StudyRelation
 from libs.copy_study import copy_existing_study
 from libs.http_utils import checkbox_to_boolean, string_to_int
 from libs.push_notification_config import (get_firebase_credential_errors,
@@ -388,45 +386,6 @@ def device_settings(study_id=None):
     params["consent_sections"] = json.dumps(unflatten_consent_sections(consent_sections))
     study.device_settings.update(**params)
     return redirect('/edit_study/{:d}'.format(study.id))
-
-
-@system_admin_pages.route('/create_forest_tasks/<string:study_id>', methods=['GET', 'POST'])
-@authenticate_admin
-def create_forest_tasks(study_id=None):
-    # Only a SITE admin can queue forest tasks
-    if not get_session_researcher().site_admin:
-        return abort(403)
-    try:
-        study = Study.objects.get(pk=study_id)
-    except Study.DoesNotExist:
-        abort(404)
-
-    if request.method == 'GET':
-        return render_template(
-            "create_forest_tasks.html",
-            study=study.as_unpacked_native_python(),
-            participants=list(study.participants.order_by("patient_id").values_list("patient_id", flat=True)),
-            trees=["GPS", "Acceleration", "Oak, just cause"]  # TODO: reference canonical tree list
-        )
-
-    for participant_id in request.form.getlist("user_ids"):
-        for tree in request.form.getlist("trees"):
-            participant = Participant.objects.get(patient_id=participant_id)
-            t = ForestTracker(
-                participant=participant,
-                forest_tree=tree,
-                start_time=request.form.get("time_start"),
-                end_time=request.form.get("time_end"),
-                status=ForestTracker.QUEUED_STATUS,
-                forest_version="",
-                commit_hash="",
-                metadata="",
-                metadata_hash="",
-            )
-            #TODO: add missing params, add save
-            print(vars(t))
-    return redirect('/create_forest_tasks/{:d}'.format(study.id))
-
 
 
 ########################## FIREBASE CREDENTIALS ENDPOINTS ##################################

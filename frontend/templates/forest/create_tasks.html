@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="/static/css/libraries/bootstrap-datetimepicker.css"  type="text/css"/>
+  <script type="text/javascript" src="../static/javascript/libraries/moment.js"></script>
+  <script type="text/javascript" src="../static/javascript/libraries/transition.js"></script>
+  <script type="text/javascript" src="../static/javascript/libraries/collapse.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css"  type="text/css"/>
+  <script type="text/javascript">
+    $(document).ready(function() {
+    /* Set up Date/Time pickers */
+      $('#start_datepicker').datepicker({
+          format: "yyyy-m-d",
+          startDate: "{{ start_date }}",
+          endDate: "{{ end_date }}"
+      });
+      $('#end_datepicker').datepicker({
+          format: "yyyy-m-d",
+          startDate: "{{ start_date }}",
+          endDate: "{{ end_date }}"
+      });
+    });
+  </script>
+{% endblock %}
+
+{% block title %}Create Forest Tasks{% endblock %}
+
+{% block content %}
+  <h1>Run Forest</h1>
+  <div class="container">
+      <br>
+      <div class="alert alert-info">
+        Warning: The Forest integration is still in beta; running Forest may cause significant data processing costs.
+      </div>
+      <br>
+      <div class="row well">
+      <h3>Queue analysis for {{ study.name }}</h3>
+        <form action="" method="POST">
+          <br>
+
+
+            {# Patient Selector #}
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label for="patient_selector">Patients</label>
+                <select id="patient_selector" ng-model="selectedPatient" name="participant_patient_ids" class="form-control" size=12 multiple>
+                  {% for participant in participants %}
+                    <option>{{ participant }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            {# Trees #}
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label for="tree_selector">Trees</label>
+                {% for tree in trees %}
+                  <div class="checkbox">
+                    <label>
+                      <input name="trees" type="checkbox" value="{{ tree[0] }}"> {{ tree[1] }}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <br>
+
+            {# Time Range #}
+            <div class="row">
+            {# Start date #}
+            <div class="col-sm-4">
+              <div class="form-group">
+                  <label for="start_date">Start Date</label>
+                  <div class="input-group date" data-provide="start_datepicker" id="start_datepicker">
+                    <input type="text" class="form-control" name="date_start" id="start_date">
+                    <div class="input-group-addon">
+                      <span class="glyphicon glyphicon-th"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            {# End date #}
+            <div class="row">
+            <div class="col-sm-4">
+              <div class="form-group">
+                  <label for="end_date">End Date</label>
+                  <div class="input-group date" data-provide="end_datepicker" id="end_datepicker">
+                    <input type="text" class="form-control" name="date_end" id="end_date">
+                    <div class="input-group-addon">
+                      <span class="glyphicon glyphicon-th"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+          <br><br>
+
+          <div class="row">
+            <div class="col-sm-2">
+              <input type="submit" class="btn btn-success" value="Create Forest Tasks" id="forest_task_submit_button" />
+            </div>
+          </div>
+        </form>
+      </div>
+
+    </div>
+
+{% endblock %}
