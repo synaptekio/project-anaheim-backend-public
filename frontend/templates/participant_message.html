@@ -7,12 +7,10 @@
     <h2>Schedule Participant Message</h2>
     <p>Use the form below to schedule a message to be sent to the participant.</p>
     <dl>
-      <dt>Study ID</dt>
-      <dd>{{ participant.study.object_id }}</dd>
-      <dt>Participant Patient ID</dt>
+      <dt>Study:</dt>
+      <dd>{{ participant.study.name }}</dd>
+      <dt>Participant Patient ID:</dt>
       <dd>{{ participant.patient_id }}</dd>
-      <dt>Study Timezone:</dt>
-      <dd>{{ participant.study.timezone_name }}</dd>
     </dl>
     <form action="" method="post">
       {# Todo: once we migrate frontend serving via Django we should use crispy forms #}
@@ -37,7 +35,8 @@
       </div>
       <div class="form-group" ng-cloak ng-if="scheduleType == 'absolute'">
         <div class="help-block">
-          Please specify the date and time (in the study's timezone) to schedule this message for.
+          <p>Please specify the date and time (in the study's timezone) to schedule this message for.</p>
+          <p>Study time zone: {{ participant.study.timezone_name }}</p>
         </div>
         <div class="form-group {{ 'has-error' if 'date' in form.errors }}">
           <label for="date">Date:</label>
