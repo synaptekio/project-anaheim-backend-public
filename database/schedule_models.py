@@ -427,7 +427,7 @@ class ParticipantMessage(TimestampedModel):
     """
     Model for scheduling messages to be sent to a Participant
     """
-    message = models.TextField()
+    message = models.CharField(max_length=3900)
     participant = models.ForeignKey(Participant, on_delete=models.CASCADE, related_name="participant_messages")
     schedule_type = models.TextField(choices=ParticipantMessageScheduleType.choices())
     uuid = models.UUIDField(default=uuid.uuid4)
