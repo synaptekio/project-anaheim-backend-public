@@ -7,7 +7,7 @@ from dateutil.tz import gettz
 from django.core.paginator import Paginator
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.utils.timezone import localtime, make_aware
+from django.utils import timezone
 
 from config.constants import DEV_TIME_FORMAT, ScheduleTypes
 from database.common_models import TimestampedModel
@@ -66,14 +66,14 @@ class RelativeSchedule(TimestampedModel):
     def scheduled_time(self, intervention_date: date, tz: tzinfo) -> datetime:
         # timezone should be determined externally and passed in
 
-        # There is a small difference between applying the timezone via make_aware and
+        # There is a small difference between applying the timezone via timezone.make_aware and
         # via the tzinfo keyword.  Make_aware seems less weird, so we use that one
-        # example order is make_aware and then tzinfo, input was otherwise identical:
+        # example order is timezone.make_aware and then tzinfo, input was otherwise identical:
         # datetime.datetime(2020, 12, 5, 14, 30, tzinfo=<DstTzInfo 'America/New_York' EST-1 day, 19:00:00 STD>)
         # datetime.datetime(2020, 12, 5, 14, 30, tzinfo=<DstTzInfo 'America/New_York' LMT-1 day, 19:04:00 STD>)
 
         # the time of day (hour, minute) are not offsets, they are absolute.
-        return make_aware(
+        return timezone.make_aware(
             datetime.combine(intervention_date, time(self.hour, self.minute)), tz
         )
 
@@ -283,7 +283,7 @@ class ScheduledEvent(TimestampedModel):
                 survey_id = a.survey.object_id
 
             # data points of interest for sending information
-            sched_time = localtime(a.scheduled_time, tz)
+            sched_time = timezone.localtime(a.scheduled_time, tz)
             sched_time_print = datetime.strftime(sched_time, DEV_TIME_FORMAT)
             print(
                 f"  {a.get_schedule_type()} FOR {TxtClr.CYAN}{a.participant.patient_id}{TxtClr.BLACK}"
@@ -369,8 +369,8 @@ class ArchivedEvent(TimestampedModel):
                 survey_id = a.survey.object_id
 
             # data points of interest for sending information
-            sched_time = localtime(a.scheduled_time, tz)
-            sent_time = localtime(a.created_on, tz)
+            sched_time = timezone.localtime(a.scheduled_time, tz)
+            sent_time = timezone.localtime(a.created_on, tz)
             time_diff_minutes = (sent_time - sched_time).total_seconds() / 60
             sched_time_print = datetime.strftime(sched_time, DEV_TIME_FORMAT)
             sent_time_print = datetime.strftime(sent_time, DEV_TIME_FORMAT)
@@ -454,6 +454,7 @@ class ParticipantMessage(TimestampedModel):
     
     datetime_sent = models.DateTimeField(blank=True, null=True)
     status = models.TextField(choices=ParticipantMessageStatus.choices(), default=ParticipantMessageStatus.scheduled)
+    error_message = models.TextField(blank=True, null=True)
     
     @property
     def datetime_sent_display(self):
@@ -475,6 +476,17 @@ class ParticipantMessage(TimestampedModel):
                 pytz.timezone(self.participant.study.timezone_name)
             )
             return localized_datetime.strftime(DEV_TIME_FORMAT)
+
+    def record_successful_send(self):
+        self.status = ParticipantMessageStatus.sent
+        self.datetime_sent = timezone.now()
+        self.save()
+
+    def record_error(self, error_msg):
+        self.status = ParticipantMessageStatus.error
+        self.error_message = error_msg
+        self.save()
+
     # def clean(self):
     #     if not self.schedule_type:
     #         pass
