@@ -90,11 +90,16 @@ def celery_send_message_push_notification(participant_message_id):
             'message': participant_message.message,
             'type': 'message',
         }
-        send_push_notification(
-            participant_message.participant,
-            data_kwargs,
-            participant_message.message,
-        )
+        try:
+            send_push_notification(
+                participant_message.participant,
+                data_kwargs,
+                participant_message.message,
+            )
+            participant_message.record_successful_send()
+        except Exception as e:
+            participant_message.record_error(repr(e))
+            raise
 
 
 @push_send_celery_app.task(queue=PUSH_NOTIFICATION_SEND_QUEUE)
