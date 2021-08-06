@@ -17,6 +17,7 @@
       {# Todo: once we upgrade bootstrap to v4+, we should update this integration #}
       <div class="form-group {{ 'has-error' if 'message' in form.errors }}">
         <label for="message">Message:</label>
+        <p><i>Limited to about 3900 bytes; anything larger won't fit in the Firebase Cloud Messaging push notification data payload.  This is equivalent to 3900 ASCII characters, or fewer if using Unicode.</i></p>
         <textarea class="form-control" name="message" rows="3">{{ form.message.value() or '' }}</textarea>
         {% for error in form.errors.message %}
           <span class="help-block">{{ error }}</span>
