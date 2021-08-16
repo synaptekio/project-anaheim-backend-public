@@ -3,12 +3,33 @@ from datetime import timedelta
 from typing import List
 
 from celery import Celery
+from config.constants import (CELERY_CONFIG_LOCATION, DATA_PROCESSING_CELERY_SERVICE,
+    FOREST_SERVICE, PUSH_NOTIFICATION_SEND_SERVICE)
 from django.utils import timezone
 from kombu.exceptions import OperationalError
 
-from config.constants import (CELERY_CONFIG_LOCATION, DATA_PROCESSING_CELERY_SERVICE,
-    FOREST_SERVICE, PUSH_NOTIFICATION_SEND_SERVICE)
 
+def safe_apply_async(a_task_for_a_celery_queue, *args, **kwargs):
+    """ Enqueuing a new task, for which we use Celery's most flexible `apply_async` function,
+    can fail deep inside amqp/transport.py with an OperationalError. Use this common wrapper to
+    handle that case.
+
+    An "a_task_for_a_celery_queue" is either a "@celery_app.task"-wrapped function' or it is a
+    FalseCeleryApp. FalseCeleryApps implement an apply_async passthrough function that allows us to
+    test "celery code" in the terminal. In the terminal everything is perfectly sequential and easy,
+    without and devs don't need an active celery instance. """
+    for i in range(10):
+        try:
+            return a_task_for_a_celery_queue.apply_async(*args, **kwargs)
+        except OperationalError:
+            # after 4+ years in production this strategy works perfectly.  Cool.
+            if i >= 3:
+                raise
+
+
+#
+# Helper classes
+#
 
 class FalseCeleryAppError(Exception): pass
 class CeleryNotRunningException(Exception): pass
@@ -42,8 +63,12 @@ class FalseCeleryApp:
         return self.an_function(*kwargs["args"])
 
 
-def get_celery_app(service_name: str) -> Celery or FalseCeleryApp:
-    # the location of the celery configuration file is in the folder above the project folder.
+#
+# Connections to Celery (or FalseCeleryApps if Celery is not present)
+#
+
+def instantiate_celery_app_connection(service_name: str) -> Celery or FalseCeleryApp:
+    # the location of the manager_ip credentials file is in the folder above the project folder.
     try:
         with open(CELERY_CONFIG_LOCATION, 'r') as f:
             manager_ip, password = f.read().splitlines()
@@ -61,10 +86,15 @@ def get_celery_app(service_name: str) -> Celery or FalseCeleryApp:
 
 
 # if None then there is no celery app.
-processing_celery_app = get_celery_app(DATA_PROCESSING_CELERY_SERVICE)
-push_send_celery_app = get_celery_app(PUSH_NOTIFICATION_SEND_SERVICE)
-forest_celery_app = get_celery_app(FOREST_SERVICE)
+processing_celery_app = instantiate_celery_app_connection(DATA_PROCESSING_CELERY_SERVICE)
+push_send_celery_app = instantiate_celery_app_connection(PUSH_NOTIFICATION_SEND_SERVICE)
+forest_celery_app = instantiate_celery_app_connection(FOREST_SERVICE)
 
+
+#
+# The remaining functions are helpers for use in a live shell session on a machine running celery.
+# All return a list of ids (can be empty), or None if celery isn't currently running.
+#
 
 def inspect():
     """ Inspect is annoyingly unreliable and has a default 1 second timeout.
@@ -88,23 +118,8 @@ def inspect():
     raise CeleryNotRunningException()
 
 
-def safe_apply_async(task_func: callable, *args, **kwargs):
-    """ Passthrough functions """
-    for i in range(10):
-        try:
-            return task_func.apply_async(*args, **kwargs)
-        except OperationalError:
-            # Enqueuing can fail deep inside amqp/transport.py with an OperationalError. We
-            # wrap it in some retry logic when this occurs.
-            # Dec. 2019 - this code was written in early 2017, it has never failed.
-            if i >= 3:
-                raise
+# TODO: where are these string parameters from? Need to instantiate one for Forest. (Probably)
 
-
-# The following are helper functions for use in a shell session.
-# All return a list of ids (can be empty), or None if celery isn't currently running.
-
-# Notifications...
 def get_notification_scheduled_job_ids() -> List[int] or None:
     return _get_job_ids(inspect().scheduled(), "notifications")
 def get_notification_reserved_job_ids() -> List[int] or None:
@@ -127,8 +142,10 @@ def get_revoked_job_ids():
 
 
 def _get_job_ids(celery_query_dict, celery_app_suffix):
-    """ Data structure looks like this, we just want that args component.
-        Returns list of ids (can be empty), or None if celery isn't currently running.
+    """ This is a utility function for poking live celery apps.
+
+    Data structure looks like this, we just want that args component.
+    Returns list of ids (can be empty), or None if celery isn't currently running.
 
     {'celery@ip-172-31-78-176': [{'id': '12e579ee-c603-4f06-b80c-dd78c330e539',
        'name': 'services.celery_data_processing.queue_user',
