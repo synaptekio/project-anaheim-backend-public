@@ -5,7 +5,7 @@ from flask import abort, Blueprint, flash, redirect, render_template, request
 
 from api.participant_administration import add_fields_and_interventions
 from authentication.admin_authentication import (authenticate_researcher_study_access,
-    get_researcher_allowed_studies, get_session_researcher, researcher_is_an_admin)
+    get_researcher_allowed_studies, researcher_is_an_admin)
 from config.constants import API_DATE_FORMAT
 from database.schedule_models import Intervention, InterventionDate
 from database.study_models import Study, StudyField
@@ -88,15 +88,41 @@ def render_edit_participant(participant: Participant, study: Study):
         for field_id, field_name in study.fields.order_by("field_name").values_list('id', "field_name")
     ]
 
+    notification_attempts_count = participant.archived_events.count()
+    latest_notification_attempt = \
+        get_notification_details(participant.archived_events.order_by('created_on').last(), study.timezone)
+
     return render_template(
         'edit_participant.html',
         participant=participant,
         study=study,
         intervention_data=intervention_data,
         field_values=field_data,
+        notification_attempts_count=notification_attempts_count,
+        latest_notification_attempt=latest_notification_attempt,
         push_notifications_enabled_for_ios=check_firebase_instance(require_ios=True),
         push_notifications_enabled_for_android=check_firebase_instance(require_android=True)
     )
+
+
+def get_notification_details(archived_event, study_timezone):
+    # Maybe there's a less janky way to get timezone name, but I don't know what it is:
+    timezone_short_name = study_timezone.tzname(datetime.now().astimezone(study_timezone))
+
+    def format_datetime(dt):
+        return dt.astimezone(study_timezone).strftime('%A %b %-d, %Y, %-I:%M %p') + " (" + timezone_short_name + ")"
+
+    notification = {}
+    if archived_event is not None:
+        notification['scheduled_time'] = format_datetime(archived_event.scheduled_time)
+        notification['attempted_time'] = format_datetime(archived_event.created_on)
+        notification['survey_name'] =\
+            ("Audio Survey " if archived_event.survey.survey_type == 'audio_survey' else "Survey ") + \
+            archived_event.survey.object_id
+        notification['survey_id'] = archived_event.survey.id
+        notification['status'] = archived_event.status
+
+    return notification
 
 
 @study_api.route('/interventions/<string:study_id>', methods=['GET', 'POST'])

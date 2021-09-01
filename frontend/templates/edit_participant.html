@@ -96,6 +96,35 @@
   </table>
 
   <br><hr><br>
+  <h3>Survey Notifications</h3>
+  <p>Total notifications or attempts: <b>{{ notification_attempts_count }}</b></p>
+  {% if latest_notification_attempt %}
+    <p>Most recent survey notification:</p>
+    <table class="table table-bordered" style="width:auto;">
+      <tr>
+        <td>Scheduled for:</td>
+        <td>{{ latest_notification_attempt.scheduled_time }}</td>
+      </tr>
+      <tr>
+        <td>Sent or attempted on:</td>
+        <td>{{ latest_notification_attempt.attempted_time }}</td>
+      </tr>
+      <tr>
+        <td>Survey:</td>
+        <td>
+          <a href="/edit_survey/{{ latest_notification_attempt.survey_id }}" target="_blank">
+            {{ latest_notification_attempt.survey_name }}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td>Status:</td>
+        <td>{{ latest_notification_attempt.status }}</td>
+      </tr>
+    </table>
+  {% endif %}
+
+  <br><hr><br>
 
   <form action="/view_study/{{ study.id }}/edit_participant/{{ participant.id }}" class="form-horizontal" method="POST">
 
