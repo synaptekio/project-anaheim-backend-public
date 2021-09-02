@@ -1,5 +1,4 @@
 from datetime import date, datetime
-
 from flask import abort, Blueprint, flash, redirect, render_template, request
 
 from api.participant_administration import add_fields_and_interventions
@@ -32,11 +31,14 @@ def notification_history(study_id, participant_id):
         study = participant.study
     except Participant.DoesNotExist:
         return abort(404)
-
+    survey_names = {}
+    for survey in study.surveys.all():
+        survey_name = ("Audio Survey " if survey.survey_type == 'audio_survey' else "Survey ") + survey.object_id
+        survey_names[survey.id] = survey_name
     notification_attempts = []
-    archived_events = ArchivedEvent.objects.filter(participant_id=participant_id).order_by('-created_on')
+    archived_events = ArchivedEvent.get_values_for_notification_history(participant_id)
     for archived_event in archived_events:
-        notification_attempts.append(get_notification_details(archived_event, study.timezone))
+        notification_attempts.append(get_notification_details(archived_event, study.timezone, survey_names))
 
     return render_template('notification_history.html', participant=participant,
                            notification_attempts=notification_attempts, study=study)
@@ -122,7 +124,7 @@ def render_participant_page(participant: Participant, study: Study):
     )
 
 
-def get_notification_details(archived_event, study_timezone):
+def get_notification_details(archived_event, study_timezone, survey_names):
     # Maybe there's a less janky way to get timezone name, but I don't know what it is:
     timezone_short_name = study_timezone.tzname(datetime.now().astimezone(study_timezone))
 
@@ -131,12 +133,10 @@ def get_notification_details(archived_event, study_timezone):
 
     notification = {}
     if archived_event is not None:
-        notification['scheduled_time'] = format_datetime(archived_event.scheduled_time)
-        notification['attempted_time'] = format_datetime(archived_event.created_on)
-        notification['survey_name'] =\
-            ("Audio Survey " if archived_event.survey.survey_type == 'audio_survey' else "Survey ") + \
-            archived_event.survey.object_id
-        notification['survey_id'] = archived_event.survey.id
-        notification['status'] = archived_event.status
+        notification['scheduled_time'] = format_datetime(archived_event['scheduled_time'])
+        notification['attempted_time'] = format_datetime(archived_event['created_on'])
+        notification['survey_name'] = survey_names[archived_event['survey_id']]
+        notification['survey_id'] = archived_event['survey_id']
+        notification['status'] = archived_event['status']
 
     return notification
