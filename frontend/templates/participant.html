@@ -97,7 +97,11 @@
 
   <br><hr><br>
   <h3>Survey Notifications</h3>
-  <p>Total notifications or attempts: <b>{{ notification_attempts_count }}</b></p>
+  <p>
+    Total notifications or attempts: <b>{{ notification_attempts_count }}</b>
+    &nbsp;&nbsp;
+    <a href="">Notification History</a>
+  </p>
   {% if latest_notification_attempt %}
     <p>Most recent survey notification:</p>
     <table class="table table-bordered" style="width:auto;">
@@ -126,7 +130,7 @@
 
   <br><hr><br>
 
-  <form action="/view_study/{{ study.id }}/edit_participant/{{ participant.id }}" class="form-horizontal" method="POST">
+  <form action="/view_study/{{ study.id }}/participant/{{ participant.id }}" class="form-horizontal" method="POST">
 
     {% if push_notifications_enabled_for_ios or push_notifications_enabled_for_android %}
       <h3>Interventions</h3>

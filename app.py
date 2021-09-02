@@ -16,8 +16,8 @@ from authentication.admin_authentication import is_logged_in
 from config.settings import SENTRY_ELASTIC_BEANSTALK_DSN, SENTRY_JAVASCRIPT_DSN
 from libs.security import set_secret_key
 from libs.sentry import normalize_sentry_dsn
-from pages import (admin_pages, data_access_web_form, login_pages, mobile_pages, survey_designer,
-                   system_admin_pages, forest_pages)
+from pages import (admin_pages, data_access_web_form, forest_pages, login_pages, mobile_pages,
+                   participant_pages, survey_designer, system_admin_pages)
 
 # Flask App
 app = Flask(__name__, static_folder="frontend/static")
@@ -47,6 +47,7 @@ app.register_blueprint(other_researcher_apis.other_researcher_apis)
 app.register_blueprint(copy_study_api.copy_study_api)
 app.register_blueprint(dashboard_api.dashboard_api)
 app.register_blueprint(push_notifications_api.push_notifications_api)
+app.register_blueprint(participant_pages.participant_pages)
 SummaryStatisticDailyStudyView.register_urls(app)
 WebDataConnector.register_urls(app)
 

@@ -48,7 +48,7 @@
           <tr>
             <td> {{ participant.created_on.date().isoformat() }} </td>
             <td>
-              <b><a href="/view_study/{{ study.id }}/edit_participant/{{ participant.id }}">{{ participant.patient_id }}</a></b>
+              <b><a href="/view_study/{{ study.id }}/participant/{{ participant.id }}">{{ participant.patient_id }}</a></b>
             </td>
             <td>
               {% if participant.device_id %}
