@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Notification History{% endblock %}
+
+{%  block content %}
+  <div class="title">
+    <h1>Notification history for <a href="/view_study/{{ study.id }}/participant/{{ participant.id }}">{{ participant.patient_id }}</a></h1>
+    <table class="table table-bordered">
+      <tr>
+        <th>Scheduled time</th>
+        <th>Sent or attempted on</th>
+        <th>Survey</th>
+        <th>Status</th>
+      </tr>
+      {% for attempt in notification_attempts %}
+        <tr {% if attempt.status == 'success' %} class="tableRowSuccess" {% else %} class="tableRowError" {% endif %}>
+          <td>{{ attempt.scheduled_time }}</td>
+          <td>{{ attempt.attempted_time }}</td>
+          <td>{{ attempt.survey_name }}</td>
+          <td>{{ attempt.status }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+{% endblock %}

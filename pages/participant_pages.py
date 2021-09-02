@@ -6,6 +6,7 @@ from api.participant_administration import add_fields_and_interventions
 from authentication.admin_authentication import (authenticate_researcher_study_access,
     get_researcher_allowed_studies, researcher_is_an_admin)
 from config.constants import API_DATE_FORMAT
+from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant
 from libs.push_notification_config import (check_firebase_instance,
@@ -21,6 +22,24 @@ def inject_html_params():
         "allowed_studies": get_researcher_allowed_studies(),
         "is_admin": researcher_is_an_admin(),
     }
+
+
+@participant_pages.route('/view_study/<string:study_id>/participant/<string:participant_id>/notification_history', methods=['GET'])
+@authenticate_researcher_study_access
+def notification_history(study_id, participant_id):
+    try:
+        participant = Participant.objects.get(pk=participant_id)
+        study = participant.study
+    except Participant.DoesNotExist:
+        return abort(404)
+
+    notification_attempts = []
+    archived_events = ArchivedEvent.objects.filter(participant_id=participant_id).order_by('-created_on')
+    for archived_event in archived_events:
+        notification_attempts.append(get_notification_details(archived_event, study.timezone))
+
+    return render_template('notification_history.html', participant=participant,
+                           notification_attempts=notification_attempts, study=study)
 
 
 @participant_pages.route('/view_study/<string:study_id>/participant/<string:participant_id>', methods=['GET', 'POST'])
