@@ -117,7 +117,7 @@
           </a>
         </td>
       </tr>
-      <tr>
+      <tr {% if latest_notification_attempt.status == 'success' %} class="tableRowSuccess" {% else %} class="tableRowError" {% endif %}>
         <td>Status:</td>
         <td>{{ latest_notification_attempt.status }}</td>
       </tr>

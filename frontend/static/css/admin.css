@@ -67,3 +67,10 @@ table>tbody>tr>td.viewParticipantTable {
     padding-top: 15px;
     padding-bottom: 15px;
 }
+
+.tableRowSuccess {
+    background-color: #dff0d8;
+}
+.tableRowError {
+    background-color: #f2dede;
+}
