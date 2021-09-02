@@ -31,10 +31,7 @@ def notification_history(study_id, participant_id):
         study = participant.study
     except Participant.DoesNotExist:
         return abort(404)
-    survey_names = {}
-    for survey in study.surveys.all():
-        survey_name = ("Audio Survey " if survey.survey_type == 'audio_survey' else "Survey ") + survey.object_id
-        survey_names[survey.id] = survey_name
+    survey_names = get_survey_names_dict(study)
     notification_attempts = []
     archived_events = ArchivedEvent.get_values_for_notification_history(participant_id)
     for archived_event in archived_events:
@@ -108,8 +105,10 @@ def render_participant_page(participant: Participant, study: Study):
     ]
 
     notification_attempts_count = participant.archived_events.count()
+    survey_names = get_survey_names_dict(study)
+    last_archived_event = ArchivedEvent.get_values_for_notification_history(participant.id, only_most_recent_one=True)
     latest_notification_attempt = \
-        get_notification_details(participant.archived_events.order_by('created_on').last(), study.timezone)
+        get_notification_details(last_archived_event, study.timezone, survey_names)
 
     return render_template(
         'participant.html',
@@ -122,6 +121,14 @@ def render_participant_page(participant: Participant, study: Study):
         push_notifications_enabled_for_ios=check_firebase_instance(require_ios=True),
         push_notifications_enabled_for_android=check_firebase_instance(require_android=True)
     )
+
+
+def get_survey_names_dict(study):
+    survey_names = {}
+    for survey in study.surveys.all():
+        survey_name = ("Audio Survey " if survey.survey_type == 'audio_survey' else "Survey ") + survey.object_id
+        survey_names[survey.id] = survey_name
+    return survey_names
 
 
 def get_notification_details(archived_event, study_timezone, survey_names):

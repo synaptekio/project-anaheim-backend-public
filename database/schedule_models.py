@@ -308,12 +308,16 @@ class ArchivedEvent(TimestampedModel):
         return self.survey_archive.survey
 
     @classmethod
-    def get_values_for_notification_history(cls, participant_id):
-        return cls.objects\
+    def get_values_for_notification_history(cls, participant_id, only_most_recent_one=False):
+        values = cls.objects\
             .filter(participant_id=participant_id)\
             .order_by('-created_on')\
             .annotate(survey_id=models.F('survey_archive__survey'))\
             .values('scheduled_time', 'created_on', 'survey_id', 'status')
+        if only_most_recent_one:
+            return values.first()
+        else:
+            return values
 
     @staticmethod
     @disambiguate_participant_survey
