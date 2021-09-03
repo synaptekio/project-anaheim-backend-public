@@ -151,6 +151,8 @@ def get_notification_details(archived_event, study_timezone, survey_names):
         notification['attempted_time'] = format_datetime(archived_event['created_on'])
         notification['survey_name'] = survey_names[archived_event['survey_id']]
         notification['survey_id'] = archived_event['survey_id']
+        notification['survey_version'] = archived_event['survey_version'].strftime('%Y-%m-%d')
+        notification['schedule_type'] = archived_event['schedule_type']
         notification['status'] = archived_event['status']
 
     return notification

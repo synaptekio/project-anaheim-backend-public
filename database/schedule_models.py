@@ -313,8 +313,9 @@ class ArchivedEvent(TimestampedModel):
         return cls.objects\
             .filter(participant_id=participant_id)\
             .order_by('-created_on')\
-            .annotate(survey_id=models.F('survey_archive__survey'))\
-            .values('scheduled_time', 'created_on', 'survey_id', 'status')
+            .annotate(survey_id=models.F('survey_archive__survey'),
+                      survey_version=models.F('survey_archive__archive_start'))\
+            .values('scheduled_time', 'created_on', 'survey_id', 'survey_version', 'schedule_type', 'status')
 
     @classmethod
     def get_values_for_most_recent_notification(cls, participant_id):
