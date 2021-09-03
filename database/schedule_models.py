@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta, tzinfo
 from typing import List
 
 from dateutil.tz import gettz
+from django.core.paginator import Paginator
 from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils.timezone import localtime, make_aware
@@ -308,16 +309,20 @@ class ArchivedEvent(TimestampedModel):
         return self.survey_archive.survey
 
     @classmethod
-    def get_values_for_notification_history(cls, participant_id, only_most_recent_one=False):
-        values = cls.objects\
+    def get_values_for_notification_history(cls, participant_id):
+        return cls.objects\
             .filter(participant_id=participant_id)\
             .order_by('-created_on')\
             .annotate(survey_id=models.F('survey_archive__survey'))\
             .values('scheduled_time', 'created_on', 'survey_id', 'status')
-        if only_most_recent_one:
-            return values.first()
-        else:
-            return values
+
+    @classmethod
+    def get_values_for_most_recent_notification(cls, participant_id):
+        return cls.get_values_for_notification_history(participant_id).first()
+
+    @classmethod
+    def get_values_for_notification_history_paginated(cls, participant_id, per_page=100):
+        return Paginator(cls.get_values_for_notification_history(participant_id), per_page)
 
     @staticmethod
     @disambiguate_participant_survey

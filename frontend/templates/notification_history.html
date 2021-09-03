@@ -4,6 +4,32 @@
 {%  block content %}
   <div class="title">
     <h1>Notification history for <a href="/view_study/{{ study.id }}/participant/{{ participant.id }}">{{ participant.patient_id }}</a></h1>
+
+    <ul class="pagination">
+      {% set urlbase = "/view_study/" + study.id|string + "/participant/" + participant.id|string + "/notification_history?page=" %}
+      {% if page.has_previous() %}
+        <li><a href="{{ urlbase }}{{ page.previous_page_number() }}">&laquo;</a></li>
+        {% if page.previous_page_number() > 1 %}
+          <li><a href="{{ urlbase }}1">1</a></li>
+          {% if page.previous_page_number() > 2 %}
+            <li class="disabled"><a href="">...</a></li>
+          {% endif %}
+        {% endif %}
+        <li><a href="{{ urlbase }}{{ page.previous_page_number() }}">{{ page.previous_page_number() }}</a></li>
+      {% endif %}
+      <li class="active"><a href="#">{{ page.number }}</a></li>
+      {% if page.has_next() %}
+        <li><a href="{{ urlbase }}{{ page.next_page_number() }}">{{ page.next_page_number() }}</a></li>
+        {% if page.next_page_number() < last_page_number %}
+          {% if page.next_page_number() < last_page_number - 1 %}
+            <li class="disabled"><a href="">...</a></li>
+          {% endif %}
+          <li><a href="{{ urlbase }}{{ last_page_number }}">{{ last_page_number }}</a></li>
+        {% endif %}
+        <li><a href="{{ urlbase }}{{ page.next_page_number() }}">&raquo;</a></li>
+      {% endif %}
+    </ul>
+
     <table class="table table-bordered">
       <tr>
         <th>Scheduled time</th>

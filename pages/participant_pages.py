@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from django.core.paginator import EmptyPage
 from flask import abort, Blueprint, flash, redirect, render_template, request
 
 from api.participant_administration import add_fields_and_interventions
@@ -31,14 +32,20 @@ def notification_history(study_id, participant_id):
         study = participant.study
     except Participant.DoesNotExist:
         return abort(404)
+    page_number = request.args.get('page', 1)
+    per_page = request.args.get('per_page', 100)
     survey_names = get_survey_names_dict(study)
     notification_attempts = []
-    archived_events = ArchivedEvent.get_values_for_notification_history(participant_id)
-    for archived_event in archived_events:
+    archived_events = ArchivedEvent.get_values_for_notification_history_paginated(participant_id, per_page=per_page)
+    try:
+        archived_events_page = archived_events.page(page_number)
+    except EmptyPage:
+        return abort(404)
+    last_page_number = archived_events.page_range.stop - 1
+    for archived_event in archived_events_page:
         notification_attempts.append(get_notification_details(archived_event, study.timezone, survey_names))
-
-    return render_template('notification_history.html', participant=participant,
-                           notification_attempts=notification_attempts, study=study)
+    return render_template('notification_history.html', participant=participant, page=archived_events_page,
+                           notification_attempts=notification_attempts, study=study, last_page_number=last_page_number)
 
 
 @participant_pages.route('/view_study/<string:study_id>/participant/<string:participant_id>', methods=['GET', 'POST'])
@@ -106,7 +113,7 @@ def render_participant_page(participant: Participant, study: Study):
 
     notification_attempts_count = participant.archived_events.count()
     survey_names = get_survey_names_dict(study)
-    last_archived_event = ArchivedEvent.get_values_for_notification_history(participant.id, only_most_recent_one=True)
+    last_archived_event = ArchivedEvent.get_values_for_most_recent_notification(participant.id)
     latest_notification_attempt = \
         get_notification_details(last_archived_event, study.timezone, survey_names)
 
