@@ -27,7 +27,7 @@ def reset_participant_password():
         flash(f'The participant {patient_id} does not exist', 'danger')
         return redirect(f'/view_study/{study_id}/')
 
-    redirect_obj = redirect(f'/view_study/{participant.study_id}/edit_participant/{participant.id}')
+    redirect_obj = redirect(f'/view_study/{participant.study_id}/participant/{participant.id}')
     if participant.study.id != int(study_id):
         flash(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}', 'danger')
         return redirect_obj
@@ -54,7 +54,7 @@ def reset_device():
         flash(f'The participant {patient_id} does not exist', 'danger')
         return redirect(f'/view_study/{study_id}/')
 
-    redirect_obj = redirect(f'/view_study/{participant.study_id}/edit_participant/{participant.id}')
+    redirect_obj = redirect(f'/view_study/{participant.study_id}/participant/{participant.id}')
     if participant.study.id != int(study_id):
         flash(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}', 'danger')
         return redirect_obj
