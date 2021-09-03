@@ -5,7 +5,8 @@
   <div class="title">
     <h1>Notification history for <a href="/view_study/{{ study.id }}/participant/{{ participant.id }}">{{ participant.patient_id }}</a></h1>
 
-    <ul class="pagination">
+    <p><b>Page of results:</b></p>
+    <ul class="pagination" style="margin-top:0px;">
       {% set urlbase = "/view_study/" + study.id|string + "/participant/" + participant.id|string + "/notification_history?page=" %}
       {% if page.has_previous() %}
         <li><a href="{{ urlbase }}{{ page.previous_page_number() }}">&laquo;</a></li>
