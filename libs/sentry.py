@@ -1,4 +1,6 @@
-from cronutils.error_handler import ErrorHandler, ErrorSentry, NullErrorHandler
+from sys import argv
+
+from cronutils.error_handler import ErrorSentry, null_error_handler
 from raven import Client as SentryClient
 from raven.exceptions import InvalidDsn
 from raven.transport import HTTPTransport
@@ -6,6 +8,9 @@ from raven.transport import HTTPTransport
 from config.settings import (SENTRY_DATA_PROCESSING_DSN, SENTRY_ELASTIC_BEANSTALK_DSN,
     SENTRY_JAVASCRIPT_DSN)
 
+
+# when running in a shell we force sentry off and force the use of the null_error_handler
+FORCE_SENTRY_OFF = True if "shell_plus" in argv or "--ipython" in argv or "ipython" in argv else False
 
 class SentryTypes:
     data_processing = "data_processing"
@@ -42,25 +47,24 @@ def make_sentry_client(sentry_type: str, tags=None):
     tags = tags or {}
     tags["sentry_type"] = sentry_type
     return SentryClient(dsn=dsn, tags=tags, transport=HTTPTransport)
-    
 
-def make_error_sentry(sentry_type:str, tags:dict=None, null:bool=False):
+
+def make_error_sentry(sentry_type:str, tags:dict=None):
     """ Creates an ErrorSentry, defaults to error limit 10.
     If the applicable sentry DSN is missing will return an ErrorSentry,
     but if null truthy a NullErrorHandler will be returned instead. """
 
-    dsn = get_dsn_from_string(sentry_type)
+    if FORCE_SENTRY_OFF:
+        return null_error_handler
+
     tags = tags or {}
     tags["sentry_type"] = sentry_type
 
     try:
         return ErrorSentry(
-            dsn,
+            get_dsn_from_string(sentry_type),
             sentry_client_kwargs={'tags': tags, 'transport': HTTPTransport},
             sentry_report_limit=10
         )
     except InvalidDsn:
-        if null:
-            return NullErrorHandler()
-        else:
-            return ErrorHandler()
+            return null_error_handler
