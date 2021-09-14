@@ -1,4 +1,5 @@
 from datetime import date, datetime
+
 from django.core.paginator import EmptyPage
 from flask import abort, Blueprint, flash, redirect, render_template, request
 
@@ -9,8 +10,9 @@ from config.constants import API_DATE_FORMAT
 from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant
-from libs.push_notification_config import (check_firebase_instance,
-    repopulate_all_survey_scheduled_events)
+from libs.firebase_config import check_firebase_instance
+from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
+
 
 participant_pages = Blueprint('participant_pages', __name__)
 
