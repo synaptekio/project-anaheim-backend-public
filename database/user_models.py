@@ -80,11 +80,11 @@ class Participant(AbstractPasswordUser):
     participants in the study, as well as information about the device the participant is using.
     A Participant uses mobile, so their passwords are hashed accordingly.
     """
-    
+
     IOS_API = "IOS"
     ANDROID_API = "ANDROID"
     NULL_OS = ''
-    
+
     OS_TYPE_CHOICES = (
         (IOS_API, IOS_API),
         (ANDROID_API, ANDROID_API),
