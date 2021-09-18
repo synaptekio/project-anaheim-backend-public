@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'timezone_field',
     'rest_framework',
+    # 'static_files',
 ]
 
 SHELL_PLUS = "ipython"
@@ -90,16 +91,21 @@ SHELL_PLUS_PRE_IMPORTS = []
 # Using the default test runner
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
-
 # server settings....
 
 ALLOWED_HOSTS = "*"
 PROJECT_ROOT = "."
 ROOT_URLCONF = "urls"
-# STATIC_ROOT = "/frontend/templates/"
+STATIC_ROOT = "frontend/static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [
-    "frontend/templates/",
-    "frontend/static/",
+    # "frontend/",
+    # "frontend/static/",
+    # "frontend/static/javascript/",
+    # "frontend/static/css/",
+    # "frontend/static/fonts/",
+    # "frontend/static/images/",
+    # "frontend/templates/",
 ]
 
 TEMPLATES = [
