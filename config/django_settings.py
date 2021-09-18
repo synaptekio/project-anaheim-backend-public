@@ -5,6 +5,7 @@ import sys
 from os.path import dirname, join
 
 from config import DB_MODE, DB_MODE_POSTGRES, DB_MODE_SQLITE
+from config import settings
 from config.settings import FLASK_SECRET_KEY
 
 DB_PATH = join(dirname(dirname(__file__)), "private/beiwe_db.sqlite")
@@ -36,6 +37,20 @@ elif DB_MODE == DB_MODE_POSTGRES:
 else:
     from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured("server not running as expected, could not find environment variable DJANGO_DB_ENV")
+
+DEBUG = True
+
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
 
 TIME_ZONE = 'UTC'
 USE_TZ = True
@@ -74,3 +89,28 @@ SHELL_PLUS_PRE_IMPORTS = []
 
 # Using the default test runner
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+
+
+# server settings....
+
+ALLOWED_HOSTS = "*"
+PROJECT_ROOT = "."
+ROOT_URLCONF = "urls"
+# STATIC_ROOT = "/frontend/templates/"
+STATICFILES_DIRS = [
+    "frontend/templates/",
+    "frontend/static/",
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.jinja2.Jinja2',
+        'APP_DIRS': False,
+        'DIRS': [
+            "frontend/templates/",
+        ],
+        'OPTIONS': {
+            'autoescape': True,
+        },
+    },
+]

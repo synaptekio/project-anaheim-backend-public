@@ -1,10 +1,10 @@
 import functools
 from datetime import datetime, timedelta
 from typing import Dict, List
+from django.http.request import HttpRequest
 
 from django.utils import timezone
 from django.utils.timezone import is_naive
-from flask import flash, redirect, request, session
 from werkzeug.exceptions import abort
 
 from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
@@ -34,33 +34,35 @@ def authenticate_researcher_login(some_function):
     return authenticate_and_call
 
 
-def log_in_researcher(username):
+def log_in_researcher(request: HttpRequest, username: str):
     """ populate session for a researcher """
-    session[SESSION_UUID] = generate_easy_alphanumeric_string()
-    session[EXPIRY_NAME] = datetime.now() + timedelta(hours=6)
-    session[SESSION_NAME] = username
+    request.session[SESSION_UUID] = generate_easy_alphanumeric_string()
+    request.session[EXPIRY_NAME] = datetime.now() + timedelta(hours=6)
+    request.session[SESSION_NAME] = username
 
 
-def logout_researcher():
+def logout_researcher(request: HttpRequest):
     """ clear session information for a researcher """
-    if SESSION_UUID in session:
-        del session[SESSION_UUID]
-    if EXPIRY_NAME in session:
-        del session[EXPIRY_NAME]
+    if SESSION_UUID in request.session:
+        del request.session[SESSION_UUID]
+    if EXPIRY_NAME in request.session:
+        del request.session[EXPIRY_NAME]
 
 
-def is_logged_in():
+def is_logged_in(request: HttpRequest):
     """ automatically logs out the researcher if their session is timed out. """
-    if EXPIRY_NAME in session:
-        expiry_datetime = session[EXPIRY_NAME]
+    if EXPIRY_NAME in request.session:
+        expiry_datetime = request.session[EXPIRY_NAME]
         if is_naive(expiry_datetime):
             if expiry_datetime > datetime.now():
-                return SESSION_UUID in session
+                return SESSION_UUID in request.session
         else:
             if expiry_datetime > timezone.now():
-                return SESSION_UUID in session
+                return SESSION_UUID in request.session
 
-    logout_researcher()
+    logout_researcher(request)
+
+
     return False
 
 

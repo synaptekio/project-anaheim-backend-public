@@ -1,20 +1,18 @@
-from flask import (Blueprint, flash, redirect, render_template, request)
+# from django.contrib import messages
+from django.http.request import HttpRequest
+from django.shortcuts import redirect, render, reverse
 
 from authentication import admin_authentication
 from database.user_models import Researcher
 
-login_pages = Blueprint('login_pages', __name__)
 
-
-@login_pages.route('/')
-def render_login_page():
-    if admin_authentication.is_logged_in():
+def render_login_page(request: HttpRequest):
+    if admin_authentication.is_logged_in(request):
         return redirect("/choose_study")
-    return render_template('admin_login.html')
+    return render(request, 'admin_login.html')
 
 
-@login_pages.route("/validate_login", methods=["GET", "POST"])
-def login():
+def login(request: HttpRequest):
     """ Authenticates administrator login, redirects to login page if authentication fails. """
     if request.method == 'POST':
         username = request.values["username"]
@@ -23,6 +21,8 @@ def login():
             admin_authentication.log_in_researcher(username)
             return redirect("/choose_study")
         else:
+            # convert to django messages?
             flash("Incorrect username & password combination; try again.", 'danger')
 
-    return redirect("/")
+    # return redirect("/")
+    return reverse('/validate_login')
