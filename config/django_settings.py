@@ -57,6 +57,7 @@ USE_TZ = True
 
 INSTALLED_APPS = [
     'database.apps.DatabaseConfig',
+    'django.contrib.sessions',
     'django_extensions',
     'timezone_field',
     'rest_framework',
@@ -120,3 +121,9 @@ TEMPLATES = [
         },
     },
 ]
+
+
+# json serializer crashes with module object does not have attribute .dumps
+# or it cannot serialize a datitime object.
+# SESSION_SERIALIZER = "django.core.serializers.json.DjangoJSONEncoder"
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'

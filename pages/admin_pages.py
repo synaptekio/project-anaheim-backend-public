@@ -1,4 +1,5 @@
-from flask import Blueprint, flash, Markup, redirect, render_template, request, session, url_for
+from django.http.request import HttpRequest
+from django.shortcuts import redirect, render
 
 from authentication import admin_authentication
 from authentication.admin_authentication import (authenticate_researcher_login,
@@ -15,13 +16,11 @@ from libs.security import check_password_requirements
 from libs.serializers import ApiKeySerializer
 
 
-admin_pages = Blueprint('admin_pages', __name__)
-
 ####################################################################################################
 ############################################# Basics ###############################################
 ####################################################################################################
 
-@admin_pages.context_processor
+# @admin_pages.context_processor
 def inject_html_params():
     # these variables will be accessible to every template rendering attached to the blueprint
     return {
@@ -30,8 +29,8 @@ def inject_html_params():
     }
 
 
-@admin_pages.route("/logout")
-def logout():
+# @admin_pages.route("/logout")
+def logout(request: HttpRequest):
     admin_authentication.logout_researcher()
     return redirect("/")
 
@@ -40,9 +39,9 @@ def logout():
 ####################################################################################################
 
 
-@admin_pages.route('/choose_study', methods=['GET'])
+# @admin_pages.route('/choose_study', methods=['GET'])
 @authenticate_researcher_login
-def choose_study():
+def choose_study(request: HttpRequest):
     allowed_studies = get_researcher_allowed_studies_as_query_set()
 
     # If the admin is authorized to view exactly 1 study, redirect to that study,
@@ -50,19 +49,19 @@ def choose_study():
     if allowed_studies.count() == 1:
         return redirect('/view_study/{:d}'.format(allowed_studies.values_list('pk', flat=True).get()))
 
-    return render_template(
+    return render(
         'choose_study.html',
         studies=[obj.as_unpacked_native_python() for obj in allowed_studies],
         is_admin=researcher_is_an_admin()
     )
 
 
-@admin_pages.route('/view_study/<string:study_id>', methods=['GET'])
+# @admin_pages.route('/view_study/<string:study_id>', methods=['GET'])
 @authenticate_researcher_study_access
-def view_study(study_id=None):
+def view_study(request: HttpRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
 
-    return render_template(
+    return render(
         'view_study.html',
         study=study,
         audio_survey_ids=study.get_survey_ids_and_object_ids('audio_survey'),
@@ -79,21 +78,21 @@ def view_study(study_id=None):
     )
 
 
-@admin_pages.route('/manage_credentials')
+# @admin_pages.route('/manage_credentials')
 @authenticate_researcher_login
-def manage_credentials():
+def manage_credentials(request: HttpRequest):
     serializer = ApiKeySerializer(ApiKey.objects.filter(researcher=get_session_researcher()), many=True)
-    return render_template(
+    return render(
         'manage_credentials.html',
         is_admin=researcher_is_an_admin(),
         api_keys=sorted(serializer.data, reverse=True, key=lambda x: x['created_on']),
     )
 
 
-@admin_pages.route('/reset_admin_password', methods=['POST'])
+# @admin_pages.route('/reset_admin_password', methods=['POST'])
 @authenticate_researcher_login
-def reset_admin_password():
-    username = session[SESSION_NAME]
+def reset_admin_password(request: HttpRequest):
+    username = request.session[SESSION_NAME]
     current_password = request.values['current_password']
     new_password = request.values['new_password']
     confirm_new_password = request.values['confirm_new_password']
@@ -113,18 +112,18 @@ def reset_admin_password():
     return redirect('/manage_credentials')
 
 
-@admin_pages.route('/reset_download_api_credentials', methods=['POST'])
+# @admin_pages.route('/reset_download_api_credentials', methods=['POST'])
 @authenticate_researcher_login
-def reset_download_api_credentials():
+def reset_download_api_credentials(request: HttpRequest):
     researcher = Researcher.objects.get(username=session[SESSION_NAME])
     access_key, secret_key = researcher.reset_access_credentials()
     flash(Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)), 'warning')
     return redirect("/manage_credentials")
 
 
-@admin_pages.route('/new_api_key', methods=['POST'])
+# @admin_pages.route('/new_api_key', methods=['POST'])
 @authenticate_researcher_login
-def new_api_key():
+def new_api_key(request: HttpRequest):
     form = NewApiKeyForm(request.values)
     if not form.is_valid():
         return redirect(url_for("admin_pages.manage_credentials"))
@@ -141,9 +140,9 @@ def new_api_key():
     return redirect(url_for("admin_pages.manage_credentials"))
 
 
-@admin_pages.route('/disable_api_key', methods=['POST'])
+# @admin_pages.route('/disable_api_key', methods=['POST'])
 @authenticate_researcher_login
-def disable_api_key():
+def disable_api_key(request: HttpRequest):
     form = DisableApiKeyForm(request.values)
     if not form.is_valid():
         return redirect("/manage_credentials")

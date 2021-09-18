@@ -15,10 +15,10 @@ def render_login_page(request: HttpRequest):
 def login(request: HttpRequest):
     """ Authenticates administrator login, redirects to login page if authentication fails. """
     if request.method == 'POST':
-        username = request.values["username"]
-        password = request.values["password"]
-        if Researcher.check_password(username, password):
-            admin_authentication.log_in_researcher(username)
+        username = request.POST.get("username", None)
+        password = request.POST.get("password", None)
+        if username and password and Researcher.check_password(username, password):
+            admin_authentication.log_in_researcher(request, username)
             return redirect("/choose_study")
         else:
             # convert to django messages?
