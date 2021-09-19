@@ -49,7 +49,7 @@ MIDDLEWARE = [
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'middleware.admin_authentication.AdminAuthenticationMiddleware'
+    'middleware.admin_authentication_middleware.AdminAuthenticationMiddleware'
 ]
 
 
@@ -120,8 +120,10 @@ TEMPLATES = [
         'OPTIONS': {
             'autoescape': True,
             'context_processors': [
-                "middleware.admin_authentication.researcher_contexts",
-            ]
+                "middleware.admin_authentication_middleware.researcher_contexts",
+            ],
+        "environment": "config.jinja2.environment"
+
         },
     },
 ]

@@ -2,10 +2,8 @@ import json
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
-from flask import abort, Blueprint, render_template, request
-
 from authentication.admin_authentication import (authenticate_researcher_study_access,
-    get_researcher_allowed_studies, researcher_is_an_admin)
+    get_researcher_allowed_studies)
 from config.constants import (ALL_DATA_STREAMS, API_DATE_FORMAT, COMPLETE_DATA_STREAM_DICT,
     PROCESSED_DATA_STREAM_DICT)
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
@@ -13,13 +11,11 @@ from database.data_access_models import ChunkRegistry, PipelineRegistry
 from database.study_models import Study
 from database.user_models import Participant
 
-dashboard_api = Blueprint('dashboard_api', __name__)
 
 DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be formatted like this: " \
                         f"2010-11-22 ({API_DATE_FORMAT})"
 
 
-@dashboard_api.route("/dashboard/<string:study_id>", methods=["GET"])
 @authenticate_researcher_study_access
 def dashboard_page(study_id):
     """ information for the general dashboard view for a study"""
@@ -32,12 +28,10 @@ def dashboard_page(study_id):
         study_id=study_id,
         data_stream_dict=COMPLETE_DATA_STREAM_DICT,
         allowed_studies=get_researcher_allowed_studies(),
-        is_admin=researcher_is_an_admin(),
         page_location='dashboard_landing',
     )
 
 
-@dashboard_api.route("/dashboard/<string:study_id>/data_stream/<string:data_stream>", methods=["GET", "POST"])
 @authenticate_researcher_study_access
 def get_data_for_dashboard_datastream_display(study_id, data_stream):
     """ Parses information for the data stream dashboard view GET and POST requests left the post
@@ -167,12 +161,10 @@ def get_data_for_dashboard_datastream_display(study_id, data_stream):
         show_color=show_color,
         all_flags_list=all_flags_list,
         allowed_studies=get_researcher_allowed_studies(),
-        is_admin=researcher_is_an_admin(),
         page_location='dashboard_data',
     )
 
 
-@dashboard_api.route("/dashboard/<string:study_id>/patient/<string:patient_id>", methods=["GET"])
 @authenticate_researcher_study_access
 def get_data_for_dashboard_patient_display(study_id, patient_id):
     """ parses data to be displayed for the singular participant dashboard view """
@@ -276,7 +268,6 @@ def get_data_for_dashboard_patient_display(study_id, patient_id):
         last_date_data=last_date_data_entry,
         data_stream_dict=COMPLETE_DATA_STREAM_DICT,
         allowed_studies=get_researcher_allowed_studies(),
-        is_admin=researcher_is_an_admin(),
         page_location='dashboard_patient',
     )
 

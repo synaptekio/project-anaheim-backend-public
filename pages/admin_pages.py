@@ -1,10 +1,9 @@
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
-from middleware.admin_authentication import logout_researcher
+from middleware.admin_authentication_middleware import logout_researcher
 
 from authentication.admin_authentication import (authenticate_researcher_login,
-    authenticate_researcher_study_access, get_researcher_allowed_studies,
-    get_researcher_allowed_studies_as_query_set, SESSION_NAME)
+    authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set, SESSION_NAME)
 from constants.admin_pages import (DisableApiKeyForm, NEW_API_KEY_MESSAGE, NewApiKeyForm,
     RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE)
 from database.security_models import ApiKey
@@ -56,19 +55,22 @@ def view_study(request: HttpRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
 
     return render(
-        'view_study.html',
-        study=study,
-        audio_survey_ids=study.get_survey_ids_and_object_ids('audio_survey'),
-        image_survey_ids=study.get_survey_ids_and_object_ids('image_survey'),
-        tracking_survey_ids=study.get_survey_ids_and_object_ids('tracking_survey'),
-        # these need to be lists because they will be converted to json.
-        study_fields=list(study.fields.all().values_list('field_name', flat=True)),
-        interventions=list(study.interventions.all().values_list("name", flat=True)),
-        page_location='study_landing',
-        study_id=study_id,
-        is_site_admin=request.session_researcher.site_admin,
-        push_notifications_enabled=check_firebase_instance(require_android=True) or
-                                   check_firebase_instance(require_ios=True),
+        request,
+        template_name='view_study.html',
+        context=dict(
+            study=study,
+            audio_survey_ids=study.get_survey_ids_and_object_ids('audio_survey'),
+            image_survey_ids=study.get_survey_ids_and_object_ids('image_survey'),
+            tracking_survey_ids=study.get_survey_ids_and_object_ids('tracking_survey'),
+            # these need to be lists because they will be converted to json.
+            study_fields=list(study.fields.all().values_list('field_name', flat=True)),
+            interventions=list(study.interventions.all().values_list("name", flat=True)),
+            page_location='study_landing',
+            study_id=study_id,
+            is_site_admin=request.session_researcher.site_admin,
+            push_notifications_enabled=check_firebase_instance(require_android=True) or
+                                       check_firebase_instance(require_ios=True),
+        )
     )
 
 

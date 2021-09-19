@@ -46,10 +46,10 @@
 
                 {% if page_location in ['study_landing', 'dashboard_landing', 'dashboard_patient', 'dashboard_data'] %}
                   <li {% if page_location == 'study_landing' %}class="active"{% endif %} role="presentation">
-                    <a href="{{ url_for('admin_pages.view_study', study_id=study_id) }}">View Study</a>
+                    <a href="{{ url('admin_pages.view_study', args=[study_id]) }}">View Study</a>
                   </li>
                   <li {% if page_location == 'dashboard_landing' %}class="active"{% endif %} role="presentation">
-                    <a href="{{ url_for('dashboard_api.dashboard_page', study_id=study_id) }}">Dashboard</a>
+                    <a href="{{ url('dashboard_api.dashboard_page', args=[study_id]) }}">Dashboard</a>
                   </li>
                   {% if page_location == 'dashboard_patient' %}
                     <li class="active" role="presentation"><a href="">{{ patient_id }}</a></li>

@@ -33,8 +33,8 @@ class AdminAuthenticationMiddleware:
             request._cached_contexts = {}
 
         if request.path in EXCLUDED_PATHS:
+            print("surely not\n\n\n")
             return self.get_response(request)
-
 
         username = request.session.get("researcher_username", None)
         if username is None and request.path not in EXCLUDED_PATHS:

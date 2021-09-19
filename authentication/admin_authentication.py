@@ -6,7 +6,7 @@ from django.http.request import HttpRequest
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
-from middleware.admin_authentication import logout_researcher
+from middleware.admin_authentication_middleware import logout_researcher
 from werkzeug.exceptions import abort
 
 from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
@@ -58,7 +58,7 @@ def is_logged_in(request: HttpRequest):
 def assert_admin(study_id: int):
     """ This function will throw a 403 forbidden error and stop execution.  Note that the abort
         directly raises the 403 error, if we don't hit that return True. """
-    session_researcher = get_session_researcher()
+    session_researcher = request.session_researcher
     if not session_researcher.site_admin and not session_researcher.check_study_admin(study_id):
         flash("This user does not have admin privilages on this study.", "danger")
         return abort(403)
@@ -70,7 +70,7 @@ def assert_researcher_under_admin(researcher: Researcher, study=None):
     """ Asserts that the researcher provided is allowed to be edited by the session user.
         If study is provided then the admin test is strictly for that study, otherwise it checks
         for admin status anywhere. """
-    session_researcher = get_session_researcher()
+    session_researcher = request.session_researcher
     if session_researcher.site_admin:
         return
 
@@ -111,15 +111,14 @@ def authenticate_researcher_study_access(some_function):
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
         # Check for regular login requirement
-        if not is_logged_in():
+        request: HttpRequest = args[0]
+
+        if not is_logged_in(request):
             return redirect("/")
 
-        # (returns 400 if there is no researcher)
-        researcher = get_session_researcher()
-
         # Get values first from kwargs, then from the POST request
-        survey_id = kwargs.get('survey_id', request.values.get('survey_id', None))
-        study_id = kwargs.get('study_id', request.values.get('study_id', None))
+        survey_id = kwargs.get('survey_id', request.POST.get('survey_id', None))
+        study_id = kwargs.get('study_id', request.POST.get('study_id', None))
 
         # Check proper syntax usage.
         if not survey_id and not study_id:
@@ -141,6 +140,7 @@ def authenticate_researcher_study_access(some_function):
         if not Study.objects.filter(pk=study_id).exists():
             return abort(404)
 
+        researcher = request.session_researcher
         study_relation = StudyRelation.objects.filter(study_id=study_id, researcher=researcher)
 
         # always allow site admins
@@ -170,7 +170,7 @@ def get_researcher_allowed_studies() -> List[Dict]:
     """
     Return a list of studies which the currently logged-in researcher is authorized to view and edit.
     """
-    session_researcher = get_session_researcher()
+    session_researcher = request.session_researcher
     kwargs = {}
     if not session_researcher.site_admin:
         kwargs = dict(study_relations__researcher=session_researcher)
@@ -200,7 +200,7 @@ def authenticate_admin(some_function):
         if not is_logged_in():
             return redirect("/")
 
-        session_researcher = get_session_researcher()
+        session_researcher = request.session_researcher
         # if researcher is not a site admin assert that they are a study admin somewhere, then test
         # the special case of a the study id, if it is present.
         if not session_researcher.site_admin:
