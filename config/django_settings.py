@@ -120,7 +120,7 @@ TEMPLATES = [
         'OPTIONS': {
             'autoescape': True,
             'context_processors': [
-                "middleware.admin_authentication.allowed_studies",
+                "middleware.admin_authentication.researcher_contexts",
             ]
         },
     },

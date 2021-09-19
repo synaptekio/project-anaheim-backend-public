@@ -19,16 +19,7 @@ from libs.serializers import ApiKeySerializer
 ############################################# Basics ###############################################
 ####################################################################################################
 
-# @admin_pages.context_processor
-def inject_html_params():
-    # these variables will be accessible to every template rendering attached to the blueprint
-    return {
-        "allowed_studies": get_researcher_allowed_studies(),
-        "is_admin": researcher_is_an_admin(),
-    }
 
-
-# @admin_pages.route("/logout")
 def logout_admin(request: HttpRequest):
     """ clear session information for a researcher """
     logout_researcher(request)
