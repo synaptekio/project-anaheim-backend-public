@@ -6,24 +6,21 @@ from django.http.request import HttpRequest
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
+from middleware.admin_authentication import logout_researcher
 from werkzeug.exceptions import abort
 
 from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
+from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs.security import generate_easy_alphanumeric_string
 
 
-SESSION_NAME = "researcher_username"
-EXPIRY_NAME = "expiry"
-SESSION_UUID = "session_uuid"
-STUDY_ADMIN_RESTRICTION = "study_admin_restriction"
-
 ################################################################################
 ############################ Website Functions #################################
 ################################################################################
 
-# need to delete imports?
+# need to delete imports
 def authenticate_researcher_login(some_function):
     """ Decorator for functions (pages) that require a login, redirect to login page on failure. """
     @functools.wraps(some_function)
@@ -41,14 +38,6 @@ def log_in_researcher(request: HttpRequest, username: str):
     request.session[SESSION_UUID] = generate_easy_alphanumeric_string()
     request.session[EXPIRY_NAME] = datetime.now() + timedelta(hours=6)
     request.session[SESSION_NAME] = username
-
-
-def logout_researcher(request: HttpRequest):
-    """ clear session information for a researcher """
-    if SESSION_UUID in request.session:
-        del request.session[SESSION_UUID]
-    if EXPIRY_NAME in request.session:
-        del request.session[EXPIRY_NAME]
 
 
 def is_logged_in(request: HttpRequest):

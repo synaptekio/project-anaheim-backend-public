@@ -1,7 +1,7 @@
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
+from middleware.admin_authentication import logout_researcher
 
-from authentication import admin_authentication
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies,
     get_researcher_allowed_studies_as_query_set, SESSION_NAME)
@@ -29,8 +29,9 @@ def inject_html_params():
 
 
 # @admin_pages.route("/logout")
-def logout(request: HttpRequest):
-    admin_authentication.logout_researcher()
+def logout_admin(request: HttpRequest):
+    """ clear session information for a researcher """
+    logout_researcher(request)
     return redirect("/")
 
 ####################################################################################################
