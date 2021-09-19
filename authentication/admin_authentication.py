@@ -1,8 +1,9 @@
 import functools
 from datetime import datetime, timedelta
 from typing import Dict, List
-from django.http.request import HttpRequest
 
+from django.http.request import HttpRequest
+from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
 from werkzeug.exceptions import abort
@@ -11,6 +12,7 @@ from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs.security import generate_easy_alphanumeric_string
+
 
 SESSION_NAME = "researcher_username"
 EXPIRY_NAME = "expiry"
@@ -21,12 +23,12 @@ STUDY_ADMIN_RESTRICTION = "study_admin_restriction"
 ############################ Website Functions #################################
 ################################################################################
 
-
+# need to delete imports?
 def authenticate_researcher_login(some_function):
     """ Decorator for functions (pages) that require a login, redirect to login page on failure. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        if is_logged_in():
+        if is_logged_in(args[0]):
             return some_function(*args, **kwargs)
         else:
             return redirect("/")
@@ -61,32 +63,10 @@ def is_logged_in(request: HttpRequest):
                 return SESSION_UUID in request.session
 
     logout_researcher(request)
-
-
     return False
 
 
-def get_session_researcher() -> Researcher:
-    """ Get the researcher declared in the session, raise 400 (bad request) if it is missing. """
-    if "researcher_username" not in session:
-        return abort(400)
-
-    # The first thing we do is check if the session researcher has been queried for already
-    try:
-        return request._beiwe_researcher
-    except AttributeError:
-        pass
-
-    # if it hasn't then grab it, cache it, return it
-    try:
-        researcher = Researcher.objects.get(username=session["researcher_username"])
-        setattr(request, "_beiwe_researcher", researcher)
-        return researcher
-    except Researcher.DoesNotExist:
-        return abort(400)
-
-
-def assert_admin(study_id):
+def assert_admin(study_id: int):
     """ This function will throw a 403 forbidden error and stop execution.  Note that the abort
         directly raises the 403 error, if we don't hit that return True. """
     session_researcher = get_session_researcher()
@@ -97,7 +77,7 @@ def assert_admin(study_id):
     return True
 
 
-def assert_researcher_under_admin(researcher, study=None):
+def assert_researcher_under_admin(researcher: Researcher, study=None):
     """ Asserts that the researcher provided is allowed to be edited by the session user.
         If study is provided then the admin test is strictly for that study, otherwise it checks
         for admin status anywhere. """
@@ -188,13 +168,12 @@ def authenticate_researcher_study_access(some_function):
     return authenticate_and_call
 
 
-def get_researcher_allowed_studies_as_query_set():
-    session_researcher = get_session_researcher()
-    if session_researcher.site_admin:
+def get_researcher_allowed_studies_as_query_set(request: HttpRequest):
+    if request.session_researcher.site_admin:
         return Study.get_all_studies_by_name()
 
     return Study.get_all_studies_by_name().filter(
-        id__in=session_researcher.study_relations.values_list("study", flat=True)
+        id__in=request.session_researcher.study_relations.values_list("study", flat=True)
     )
 
 
@@ -252,12 +231,6 @@ def authenticate_admin(some_function):
         return some_function(*args, **kwargs)
 
     return authenticate_and_call
-
-
-def researcher_is_an_admin():
-    """ Returns whether the current session user is a site admin """
-    researcher = get_session_researcher()
-    return researcher.site_admin or researcher.is_study_admin()
 
 
 def forest_enabled(func):

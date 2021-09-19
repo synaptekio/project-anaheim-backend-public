@@ -4,7 +4,7 @@ from flask.templating import render_template
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login, get_researcher_allowed_studies,
-    get_session_researcher, researcher_is_an_admin)
+    researcher_is_an_admin)
 from config.constants import ResearcherRole
 from config.settings import DOMAIN_NAME, DOWNLOADABLE_APK_URL, IS_STAGING
 from database.study_models import Study

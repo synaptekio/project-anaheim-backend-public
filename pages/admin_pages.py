@@ -4,8 +4,7 @@ from django.shortcuts import redirect, render
 from authentication import admin_authentication
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies,
-    get_researcher_allowed_studies_as_query_set, get_session_researcher, researcher_is_an_admin,
-    SESSION_NAME)
+    get_researcher_allowed_studies_as_query_set, SESSION_NAME)
 from constants.admin_pages import (DisableApiKeyForm, NEW_API_KEY_MESSAGE, NewApiKeyForm,
     RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE)
 from database.security_models import ApiKey
@@ -42,7 +41,7 @@ def logout(request: HttpRequest):
 # @admin_pages.route('/choose_study', methods=['GET'])
 @authenticate_researcher_login
 def choose_study(request: HttpRequest):
-    allowed_studies = get_researcher_allowed_studies_as_query_set()
+    allowed_studies = get_researcher_allowed_studies_as_query_set(request)
 
     # If the admin is authorized to view exactly 1 study, redirect to that study,
     # Otherwise, show the "Choose Study" page
@@ -50,9 +49,12 @@ def choose_study(request: HttpRequest):
         return redirect('/view_study/{:d}'.format(allowed_studies.values_list('pk', flat=True).get()))
 
     return render(
+        request,
         'choose_study.html',
-        studies=[obj.as_unpacked_native_python() for obj in allowed_studies],
-        is_admin=researcher_is_an_admin()
+        context=dict(
+            studies=[obj.as_unpacked_native_python() for obj in allowed_studies],
+            is_admin=request.researcher_is_an_admin(),
+        )
     )
 
 
@@ -72,7 +74,7 @@ def view_study(request: HttpRequest, study_id=None):
         interventions=list(study.interventions.all().values_list("name", flat=True)),
         page_location='study_landing',
         study_id=study_id,
-        is_site_admin=get_session_researcher().site_admin,
+        is_site_admin=request.session_researcher.site_admin,
         push_notifications_enabled=check_firebase_instance(require_android=True) or
                                    check_firebase_instance(require_ios=True),
     )
