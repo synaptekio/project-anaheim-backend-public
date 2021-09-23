@@ -1,28 +1,22 @@
 # core libraries
 Django==2.2.24
 firebase-admin==4.5.1
-
-# Lock Flask and related dependencies
-Flask==1.1.2
-Werkzeug==1.0.1
-itsdangerous==1.1.0
 Jinja2==2.11.3
 
 # various extensions
 djangorestframework==3.12.2
 django-extensions==3.1.0
-flask_cors==3.0.10
 
 python-dateutil==2.8.1
-factory-boy==3.2.0
+factory-boy  # version set by listed django compatibiliy
 
 #pycryptodome>=3.9.0
-pycryptodomex==3.9.9
+pycryptodomex==3.9.9  #locked version
 pycrypto
 zstd
 
 # error reporting
-raven[flask]>=6.10.0
+raven==6.10  # raven has been sunset at 6.10
 cronutils>=0.3.0
 
 # server requirement
