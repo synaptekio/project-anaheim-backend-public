@@ -71,7 +71,7 @@
             <p>
               <b>Create new forest tasks</b>
               <br>
-              <a class="btn btn-info" href="{{ url_for('forest_pages.create_tasks', study_id=study.id) }}">
+              <a class="btn btn-info" href="{{ url('forest_pages.create_tasks', study_id=study.id) }}">
                 Create Forest Tasks
               </a>
             </p>
@@ -79,14 +79,14 @@
           <p>
             <b>View a log of recent forest runs on this study</b>
             <br>
-            <a class="btn btn-info" href="{{ url_for('forest_pages.task_log', study_id=study.id) }}">
+            <a class="btn btn-info" href="{{ url('forest_pages.task_log', study_id=study.id) }}">
               View Forest Task Log
             </a>
           </p>
           <p>
             <b>View a summary of what data forest has generated for this study</b>
             <br>
-            <a class="btn btn-info" href="{{ url_for('forest_pages.analysis_progress', study_id=study.id) }}">
+            <a class="btn btn-info" href="{{ url('forest_pages.analysis_progress', study_id=study.id) }}">
               View Forest Analysis Progress
             </a>
           </p>
@@ -94,7 +94,7 @@
             <p>
               <b>Download Forest Task Log (for all studies)</b>
               <br>
-              <a class="btn btn-info" href="{{ url_for('forest_pages.download_task_log') }}">
+              <a class="btn btn-info" href="{{ url('forest_pages.download_task_log') }}">
                 Download Forest Task Log
               </a>
             </p>

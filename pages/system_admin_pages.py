@@ -1,13 +1,14 @@
 import json
 import plistlib
 from collections import defaultdict
+from typing import List
 
 from django.core.exceptions import ValidationError
-from flask import abort, Blueprint, escape, flash, Markup, redirect, render_template, request
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_http_methods
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
-    authenticate_admin, authenticate_researcher_study_access, get_researcher_allowed_studies,
-    get_session_researcher, researcher_is_an_admin)
+    authenticate_admin, authenticate_researcher_study_access)
 from config.constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     CHECKBOX_TOGGLES, IOS_FIREBASE_CREDENTIALS, ResearcherRole, TIMER_VALUES)
 from database.study_models import Study
@@ -16,6 +17,8 @@ from database.user_models import Researcher, StudyRelation
 from libs.copy_study import copy_existing_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
+from libs.internal_types import BeiweHttpRequest
+from libs.push_notification_helpers import get_firebase_credential_errors, update_firebase_instance
 from libs.sentry import make_error_sentry, SentryTypes
 from libs.timezone_dropdown import ALL_TIMEZONES_DROPDOWN
 from pages.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUCCESS_TEXT,
@@ -25,45 +28,36 @@ from pages.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUC
     ALERT_SUCCESS_TEXT)
 
 
-system_admin_pages = Blueprint('system_admin_pages', __name__)
 SITE_ADMIN = "Site Admin"
 
-
-@system_admin_pages.context_processor
-def inject_html_params():
-    # these variables will be accessible to every template rendering attached to the blueprint
-    return {
-        "allowed_studies": get_researcher_allowed_studies(),
-        "is_admin": researcher_is_an_admin(),
-        "session_researcher": get_session_researcher(),
-    }
-
+# TODO: handle all of these
+# from flask import abort, escape, flash, Markup
 
 ####################################################################################################
 ###################################### Helpers #####################################################
 ####################################################################################################
 
-def get_administerable_studies_by_name():
+
+def get_administerable_studies_by_name(request: BeiweHttpRequest):
     """ Site admins see all studies, study admins see only studies they are admins on. """
-    researcher_admin = get_session_researcher()
-    if researcher_admin.site_admin:
+    # researcher_admin = get_session_researcher()
+    if request.session_researcher.site_admin:
         studies = Study.get_all_studies_by_name()
     else:
-        studies = researcher_admin.get_administered_studies_by_name()
+        studies = request.session_researcher.get_administered_studies_by_name()
     return studies
 
 
-def get_administerable_researchers():
+def get_administerable_researchers(request: BeiweHttpRequest):
     """ Site admins see all researchers, study admins see researchers on their studies. """
-    researcher_admin = get_session_researcher()
-    if researcher_admin.site_admin:
+    if request.session_researcher.site_admin:
         relevant_researchers = Researcher.filter_alphabetical()
     else:
-        relevant_researchers = researcher_admin.get_administered_researchers_by_username()
+        relevant_researchers = request.session_researcher.get_administered_researchers_by_username()
     return relevant_researchers
 
 
-def unflatten_consent_sections(consent_sections_dict):
+def unflatten_consent_sections(consent_sections_dict: dict):
     # consent_sections is a flat structure with structure like this:
     # { 'label_ending_in.text': 'text content',  'label_ending_in.more': 'more content' }
     # we need to transform it into a nested structure like this:
@@ -75,16 +69,17 @@ def unflatten_consent_sections(consent_sections_dict):
     return dict(refactored_consent_sections)
 
 
-def get_session_researcher_study_ids():
+def get_session_researcher_study_ids(request: BeiweHttpRequest) -> List[int]:
     """ Returns the appropriate study ids based on whether a user is a study or site admin """
-    session_researcher = get_session_researcher()
-    if session_researcher.site_admin:
+    if request.session_researcher.site_admin:
         return Study.objects.exclude(deleted=True).values_list("id", flat=True)
     else:
-        return session_researcher.study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
+        return request.session_researcher.\
+            study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
 
 
-def validate_android_credentials(credentials):
+
+def validate_android_credentials(credentials: str) -> bool:
     """Ensure basic formatting and field validation for android firebase credential json file uploads
     the credentials argument should contain a decoded string of such a file"""
     try:
@@ -98,7 +93,7 @@ def validate_android_credentials(credentials):
     return True
 
 
-def validate_ios_credentials(credentials):
+def validate_ios_credentials(credentials: str) -> bool:
     """Ensure basic formatting and field validation for ios firebase credential plist file uploads
     the credentials argument should contain a decoded string of such a file"""
     try:
@@ -116,9 +111,9 @@ def validate_ios_credentials(credentials):
 ####################################################################################################
 
 
-@system_admin_pages.route('/manage_researchers', methods=['GET'])
+@require_http_methods(['GET'])
 @authenticate_admin
-def manage_researchers():
+def manage_researchers(request: BeiweHttpRequest):
     # get the study names that each user has access to, but only those that the current admin  also
     # has access to.
     session_ids = get_session_researcher_study_ids()
@@ -130,14 +125,14 @@ def manage_researchers():
         ).values_list('name', flat=True)
         researcher_list.append((researcher.as_unpacked_native_python(), list(allowed_studies)))
 
-    return render_template('manage_researchers.html', admins=researcher_list)
+    return render(request, 'manage_researchers.html', admins=researcher_list)
 
 
-@system_admin_pages.route('/edit_researcher/<string:researcher_pk>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def edit_researcher_page(researcher_pk):
+def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
     # Wow this got complex...
-    session_researcher = get_session_researcher()
+    session_researcher = request.session_researcher
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
 
     # site admins can edit study admins, but not other site admins.
@@ -181,22 +176,22 @@ def edit_researcher_page(researcher_pk):
                 study,
             ))
 
-    return render_template(
+    return render(
+        request,
         'edit_researcher.html',
         edit_researcher=edit_researcher,
         edit_study_info=edit_study_info,
         all_studies=get_administerable_studies_by_name(),  # this is all the studies administerable by the user
         editable_password=editable_password,
-        redirect_url='/edit_researcher/{:s}'.format(researcher_pk),
+        redirect_url=f'/edit_researcher/{researcher_pk}',
         is_self=edit_researcher.id == session_researcher.id,
     )
 
-
-@system_admin_pages.route('/elevate_researcher', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def elevate_researcher_to_study_admin():
-    researcher_pk = request.values.get("researcher_id")
-    study_pk = request.values.get("study_id")
+def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
+    researcher_pk = request.POST.get("researcher_id", None)
+    study_pk = request.POST.get("study_id", None)
     assert_admin(study_pk)
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
     study = Study.objects.get(pk=study_pk)
@@ -206,15 +201,14 @@ def elevate_researcher_to_study_admin():
         .update(relationship=ResearcherRole.study_admin)
 
     return redirect(
-        request.values.get("redirect_url", None) or '/edit_researcher/{:s}'.format(researcher_pk)
+        request.FORM.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
 
-
-@system_admin_pages.route('/demote_researcher', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def demote_study_admin():
-    researcher_pk = request.values.get("researcher_id")
-    study_pk = request.values.get("study_id")
+def demote_study_admin(request: BeiweHttpRequest):
+    researcher_pk = request.POST.get("researcher_id")
+    study_pk = request.POST.get("study_id")
     assert_admin(study_pk)
     # assert_researcher_under_admin() would fail here...
     StudyRelation.objects.filter(
@@ -222,43 +216,41 @@ def demote_study_admin():
         study=Study.objects.get(pk=study_pk),
     ).update(relationship=ResearcherRole.researcher)
     return redirect(
-        request.values.get("redirect_url", None) or '/edit_researcher/{:s}'.format(researcher_pk)
+        request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
 
-
-@system_admin_pages.route('/create_new_researcher', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def create_new_researcher():
+def create_new_researcher(request: BeiweHttpRequest):
     if request.method == 'GET':
-        return render_template('create_new_researcher.html')
+        return render(request, 'create_new_researcher.html')
 
     # Drop any whitespace or special characters from the username
-    username = ''.join(e for e in request.form.get('admin_id', '') if e.isalnum())
-    password = request.form.get('password', '')
+    username = ''.join(e for e in request.POST.get('admin_id', '') if e.isalnum())
+    password = request.POST.get('password', '')
 
     if Researcher.objects.filter(username=username).exists():
         flash(f"There is already a researcher with username {username}", 'danger')
         return redirect('/create_new_researcher')
     else:
         researcher = Researcher.create_with_password(username, password)
-        return redirect('/edit_researcher/{:d}'.format(researcher.pk))
+        return redirect(f'/edit_researcher/{researcher.pk}')
 
 
 """########################### Study Pages ##################################"""
 
-
-@system_admin_pages.route('/manage_studies', methods=['GET'])
+@require_http_methods(['GET'])
 @authenticate_admin
-def manage_studies():
-    return render_template(
-        'manage_studies.html',
-        studies=[study.as_unpacked_native_python() for study in get_administerable_studies_by_name()]
+def manage_studies(request: BeiweHttpRequest):
+    return render(request, 'manage_studies.html',
+        context={"studies": [study.as_unpacked_native_python()
+                             for study in get_administerable_studies_by_name(request)]}
     )
 
 
-@system_admin_pages.route('/edit_study/<string:study_id>', methods=['GET'])
+@require_http_methods(['GET'])
 @authenticate_admin
-def edit_study(study_id=None):
+def edit_study(request, study_id=None):
     # get the data points for display for all researchers in this study
     query = Researcher.filter_alphabetical(study_relations__study_id=study_id).values_list(
         "id", "username", "study_relations__relationship", "site_admin"
@@ -274,32 +266,34 @@ def edit_study(study_id=None):
             site_admin
         ))
 
-    return render_template(
+    return render(
+        request,
         'edit_study.html',
-        study=Study.objects.get(pk=study_id),
-        administerable_researchers=get_administerable_researchers(),
-        listed_researchers=listed_researchers,
-        redirect_url='/edit_study/{:s}'.format(study_id),
-        timezones=ALL_TIMEZONES_DROPDOWN,
+        context=dict(
+            study=Study.objects.get(pk=study_id),
+            administerable_researchers=get_administerable_researchers(request),
+            listed_researchers=listed_researchers,
+            redirect_url='/edit_study/{:s}'.format(study_id),
+            timezones=ALL_TIMEZONES_DROPDOWN,
+        )
     )
 
-
-@system_admin_pages.route('/create_study', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def create_study():
+def create_study(request: BeiweHttpRequest):
     # Only a SITE admin can create new studies.
-    if not get_session_researcher().site_admin:
+    if not request.session_researcher.site_admin:
         return abort(403)
 
     if request.method == 'GET':
         studies = [study.as_unpacked_native_python() for study in Study.get_all_studies_by_name()]
-        return render_template('create_study.html', studies=studies)
+        return render(request, 'create_study.html', studies=studies)
 
-    name = request.form.get('name', '')
-    encryption_key = request.form.get('encryption_key', '')
-    is_test = request.form.get('is_test', "").lower() == 'true'  # 'true' -> True, 'false' -> False
-    duplicate_existing_study = request.form.get('copy_existing_study', None) == 'true'
-    forest_enabled = request.form.get('forest_enabled', "").lower() == 'true'
+    name = request.POST.get('name', '')
+    encryption_key = request.POST.get('encryption_key', '')
+    is_test = request.POST.get('is_test', "").lower() == 'true'  # 'true' -> True, 'false' -> False
+    duplicate_existing_study = request.POST.get('copy_existing_study', None) == 'true'
+    forest_enabled = request.POST.get('forest_enabled', "").lower() == 'true'
 
     if len(name) > 5000:
         with make_error_sentry(SentryTypes.elastic_beanstalk):
@@ -314,10 +308,10 @@ def create_study():
     try:
         new_study = Study.create_with_object_id(name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled)
         if duplicate_existing_study:
-            old_study = Study.objects.get(pk=request.form.get('existing_study_id', None))
+            old_study = Study.objects.get(pk=request.POST.get('existing_study_id', None))
             copy_existing_study(new_study, old_study)
         flash(f'Successfully created study {name}.', 'success')
-        return redirect('/device_settings/{:d}'.format(new_study.pk))
+        return redirect(f'/device_settings/{new_study.pk}')
 
     except ValidationError as ve:
         # display message describing failure based on the validation error (hacky, but works.)
@@ -325,49 +319,48 @@ def create_study():
             flash(f'{field}: {message[0]}', 'danger')
         return redirect('/create_study')
 
-
-@system_admin_pages.route('/toggle_study_forest_enabled/<string:study_id>', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def toggle_study_forest_enabled(study_id=None):
+def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
     # Only a SITE admin can toggle forest on a study
-    if not get_session_researcher().site_admin:
+    if request.session_researcher.site_admin:
         return abort(403)
     study = Study.objects.get(pk=study_id)
     study.forest_enabled = not study.forest_enabled
     study.save()
     if study.forest_enabled:
-        flash("Enabled Forest on '%s'" % study.name, 'success')
+        flash(f"Enabled Forest on '{study.name}'", 'success')
     else:
-        flash("Disabled Forest on '%s'" % study.name, 'success')
-    return redirect('/edit_study/{:s}'.format(study_id))
+        flash(f"Disabled Forest on '{study.name}'", 'success')
+    return redirect(f'/edit_study/{study_id}')
 
 
-
-# TODO: move to api file
-@system_admin_pages.route('/delete_study/<string:study_id>', methods=['POST'])
+# TODO: move to api filemethods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def delete_study(study_id=None):
+def delete_study(request, study_id=None):
     # Site admins and study admins can delete studies.
     assert_admin(study_id)
 
-    if request.form.get('confirmation', 'false') == 'true':
+    if request.POST.get('confirmation', 'false') == 'true':
         study = Study.objects.get(pk=study_id)
         study.deleted = True
         study.save()
-        flash("Deleted study '%s'" % study.name, 'success')
+        flash(f"Deleted study '{study.name}'", 'success')
         return "success"
 
 
-@system_admin_pages.route('/device_settings/<string:study_id>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def device_settings(study_id=None):
+def device_settings(request: BeiweHttpRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
-    researcher = get_session_researcher()
+    researcher = request.session_researcher
     readonly = True if not researcher.check_study_admin(study_id) and not researcher.site_admin else False
 
     # if read only....
     if request.method == 'GET':
-        return render_template(
+        return render(
+            request,
             "device_settings.html",
             study=study.as_unpacked_native_python(),
             settings=study.device_settings.as_unpacked_native_python(),
@@ -377,37 +370,38 @@ def device_settings(study_id=None):
     if readonly:
         abort(403)
 
-    params = {k: v for k, v in request.values.items() if not k.startswith("consent_section")}
-    consent_sections = {k: v for k, v in request.values.items() if k.startswith("consent_section")}
+    params = {k: v for k, v in request.FORM.items() if not k.startswith("consent_section")}
+    consent_sections = {k: v for k, v in request.FORM.items() if k.startswith("consent_section")}
     params = checkbox_to_boolean(CHECKBOX_TOGGLES, params)
     params = string_to_int(TIMER_VALUES, params)
     # the ios consent sections are a json field but the frontend returns something weird,
     # see the documentation in unflatten_consent_sections for details
     params["consent_sections"] = json.dumps(unflatten_consent_sections(consent_sections))
     study.device_settings.update(**params)
-    return redirect('/edit_study/{:d}'.format(study.id))
+    return redirect(f'/edit_study/{study.id}')
 
 
 ########################## FIREBASE CREDENTIALS ENDPOINTS ##################################
 # note: all of the strings passed in the following function (eg: ALERT_DECODE_ERROR_TEXT) are plain strings
 # not intended for use with .format or other potential injection vectors
 
-
-@system_admin_pages.route('/manage_firebase_credentials')
 @authenticate_admin
-def manage_firebase_credentials():
-    return render_template(
+def manage_firebase_credentials(request: BeiweHttpRequest):
+    return render(
+        request,
         'manage_firebase_credentials.html',
-        firebase_credentials_exists=FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).exists(),
-        android_credentials_exists=FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).exists(),
-        ios_credentials_exists=FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).exists(),
+        dict(
+            firebase_credentials_exists=FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).exists(),
+            android_credentials_exists=FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).exists(),
+            ios_credentials_exists=FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).exists(),
+        )
     )
 
 
-@system_admin_pages.route('/upload_backend_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def upload_firebase_cert():
-    uploaded = request.files.get('backend_firebase_cert', None)
+def upload_backend_firebase_cert(request: BeiweHttpRequest):
+    uploaded = request.FILES.get('backend_firebase_cert', None)
 
     if uploaded is None:
         flash(Markup(ALERT_EMPTY_TEXT), 'error')
@@ -440,10 +434,10 @@ def upload_firebase_cert():
     return redirect('/manage_firebase_credentials')
 
 
-@system_admin_pages.route('/upload_android_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
 def upload_android_firebase_cert():
-    uploaded = request.files.get('android_firebase_cert', None)
+    uploaded = request.FILES.get('android_firebase_cert', None)
     try:
         if uploaded is None:
             raise AssertionError("file name missing from upload")
@@ -467,10 +461,10 @@ def upload_android_firebase_cert():
     return redirect('/manage_firebase_credentials')
 
 
-@system_admin_pages.route('/upload_ios_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
 def upload_ios_firebase_cert():
-    uploaded = request.files.get('ios_firebase_cert', None)
+    uploaded = request.FILES.get('ios_firebase_cert', None)
     try:
         if uploaded is None:
             raise AssertionError("file name missing from upload")
@@ -494,7 +488,7 @@ def upload_ios_firebase_cert():
     return redirect('/manage_firebase_credentials')
 
 
-@system_admin_pages.route('/delete_backend_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
 def delete_backend_firebase_cert():
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
@@ -504,17 +498,17 @@ def delete_backend_firebase_cert():
     return redirect('/manage_firebase_credentials')
 
 
-@system_admin_pages.route('/delete_android_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def delete_android_firebase_cert():
+def delete_android_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).delete()
     flash(Markup(ALERT_ANDROID_DELETED_TEXT), 'info')
     return redirect('/manage_firebase_credentials')
 
 
-@system_admin_pages.route('/delete_ios_firebase_cert', methods=['POST'])
+@require_http_methods(['POST'])
 @authenticate_admin
-def delete_ios_firebase_cert():
+def delete_ios_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).delete()
     flash(Markup(ALERT_IOS_DELETED_TEXT), 'info')
     return redirect('/manage_firebase_credentials')

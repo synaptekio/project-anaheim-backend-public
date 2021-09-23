@@ -13,6 +13,7 @@ from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
+from libs.internal_types import BeiweHttpRequest
 from libs.security import generate_easy_alphanumeric_string
 
 
@@ -33,14 +34,14 @@ def authenticate_researcher_login(some_function):
     return authenticate_and_call
 
 
-def log_in_researcher(request: HttpRequest, username: str):
+def log_in_researcher(request: BeiweHttpRequest, username: str):
     """ populate session for a researcher """
     request.session[SESSION_UUID] = generate_easy_alphanumeric_string()
     request.session[EXPIRY_NAME] = datetime.now() + timedelta(hours=6)
     request.session[SESSION_NAME] = username
 
 
-def is_logged_in(request: HttpRequest):
+def is_logged_in(request: BeiweHttpRequest):
     """ automatically logs out the researcher if their session is timed out. """
     if EXPIRY_NAME in request.session:
         expiry_datetime = request.session[EXPIRY_NAME]
@@ -111,7 +112,7 @@ def authenticate_researcher_study_access(some_function):
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
         # Check for regular login requirement
-        request: HttpRequest = args[0]
+        request: BeiweHttpRequest = args[0]
 
         if not is_logged_in(request):
             return redirect("/")
@@ -157,7 +158,7 @@ def authenticate_researcher_study_access(some_function):
     return authenticate_and_call
 
 
-def get_researcher_allowed_studies_as_query_set(request: HttpRequest):
+def get_researcher_allowed_studies_as_query_set(request: BeiweHttpRequest):
     if request.session_researcher.site_admin:
         return Study.get_all_studies_by_name()
 
@@ -166,7 +167,7 @@ def get_researcher_allowed_studies_as_query_set(request: HttpRequest):
     )
 
 
-def get_researcher_allowed_studies() -> List[Dict]:
+def get_researcher_allowed_studies(request: BeiweHttpRequest) -> List[Dict]:
     """
     Return a list of studies which the currently logged-in researcher is authorized to view and edit.
     """
@@ -196,8 +197,14 @@ def authenticate_admin(some_function):
 #    500 error inside the authenticate_researcher_study_access decorator. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
+        request: BeiweHttpRequest = args[0]
+
+        # this is debugging code for the django frontend server port
+        if not isinstance(request, HttpRequest):
+            raise TypeError(f"request was a {type(request)}, expected {HttpRequest}")
+
         # Check for regular login requirement
-        if not is_logged_in():
+        if not is_logged_in(request):
             return redirect("/")
 
         session_researcher = request.session_researcher

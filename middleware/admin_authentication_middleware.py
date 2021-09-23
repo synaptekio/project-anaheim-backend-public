@@ -1,3 +1,5 @@
+from types import FunctionType
+from django.http.response import HttpResponse
 from constants.session_constants import EXPIRY_NAME, SESSION_UUID
 from django.http.request import HttpRequest
 from django.shortcuts import redirect
@@ -18,7 +20,7 @@ def logout_researcher(request: HttpRequest):
 
 
 class AdminAuthenticationMiddleware:
-    def __init__(self, get_response):
+    def __init__(self, get_response: FunctionType):
         # (runs at django start))
         self.get_response = get_response
 
@@ -32,8 +34,8 @@ class AdminAuthenticationMiddleware:
         if not hasattr(request, "_cached_contexts"):
             request._cached_contexts = {}
 
+        # the login page and validate password endpoint are special
         if request.path in EXCLUDED_PATHS:
-            print("surely not\n\n\n")
             return self.get_response(request)
 
         username = request.session.get("researcher_username", None)
@@ -43,19 +45,14 @@ class AdminAuthenticationMiddleware:
 
         try:
             # Cache the Researcher and the session_researcher
-            request.session_researcher: Researcher = Researcher.objects.get(username=username)
+            request.session_researcher = Researcher.objects.get(username=username)
         except Researcher.DoesNotExist:
-            print("researcher username does not exist\n\n\n")
             return redirect("/", status=400)
-            # return abort(400)
 
         request.researcher_is_an_admin = self.researcher_is_an_admin
 
-        response = self.get_response(request)
+        return self.get_response(request)
 
-        # Code to be executed for each request/response after
-        # the view is called.
-        return response
 
     def researcher_is_an_admin(self):
         return self.request.session_researcher.site_admin \
@@ -92,14 +89,15 @@ def researcher_contexts(request: HttpRequest):
     if request.path in EXCLUDED_PATHS:
         return {}
 
-    kwargs = {} if request.session_researcher.site_admin else \
+    # this is definitely not needed everywhere, it was sourced from get_researcher_allowed_studies
+    allowed_studies_kwargs = {} if request.session_researcher.site_admin else \
         {"study_relations__researcher": request.session_researcher}
 
     return {
         "allowed_studies": [
             study_info_dict for study_info_dict in Study.get_all_studies_by_name()
-            .filter(**kwargs).values("name", "object_id", "id", "is_test")
+            .filter(**allowed_studies_kwargs).values("name", "object_id", "id", "is_test")
         ],
         "site_admin": request.session_researcher.site_admin,
+        "session_researcher": request.session_researcher,
     }
-
