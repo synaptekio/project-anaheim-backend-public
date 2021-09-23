@@ -19,15 +19,15 @@ urlpatterns = [
         admin_pages.view_study,
         name="admin_pages.view_study",
     ),
-    path("manage_credentials", admin_pages.manage_credentials, name="manage_credentials"),
-    path("reset_admin_password", admin_pages.reset_admin_password, name="reset_admin_password", ),
+    path("manage_credentials", admin_pages.manage_credentials, name="admin_pages.manage_credentials"),
+    path("reset_admin_password", admin_pages.reset_admin_password, name="admin_pages.reset_admin_password", ),
     path(
         "reset_download_api_credentials",
         admin_pages.reset_download_api_credentials,
-        name="reset_download_api_credentials",
+        name="admin_pages.reset_download_api_credentials",
     ),
-    path("new_api_key", admin_pages.new_api_key, name="new_api_key"),
-    path("disable_api_key", admin_pages.disable_api_key, name="disable_api_key"),
+    path("new_api_key", admin_pages.new_api_key, name="admin_pages.new_api_key"),
+    path("disable_api_key", admin_pages.disable_api_key, name="admin_pages.disable_api_key"),
 
     # Dashboard
     path(

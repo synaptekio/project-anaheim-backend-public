@@ -322,8 +322,11 @@ class Researcher(AbstractPasswordUser):
         else:
             return self.get_researcher_studies_by_name()
 
-    def is_study_admin(self):
+    def is_study_admin(self) -> bool:
         return self.get_admin_study_relations().exists()
+
+    def is_an_admin(self) -> bool:
+        return self.site_admin or self.is_study_admin()
 
     def check_study_admin(self, study_id):
         return self.study_relations.filter(

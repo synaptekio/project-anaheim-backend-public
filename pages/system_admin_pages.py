@@ -18,7 +18,6 @@ from libs.copy_study import copy_existing_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
 from libs.internal_types import BeiweHttpRequest
-from libs.push_notification_helpers import get_firebase_credential_errors, update_firebase_instance
 from libs.sentry import make_error_sentry, SentryTypes
 from libs.timezone_dropdown import ALL_TIMEZONES_DROPDOWN
 from pages.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUCCESS_TEXT,
@@ -40,7 +39,6 @@ SITE_ADMIN = "Site Admin"
 
 def get_administerable_studies_by_name(request: BeiweHttpRequest):
     """ Site admins see all studies, study admins see only studies they are admins on. """
-    # researcher_admin = get_session_researcher()
     if request.session_researcher.site_admin:
         studies = Study.get_all_studies_by_name()
     else:
@@ -67,16 +65,6 @@ def unflatten_consent_sections(consent_sections_dict: dict):
         _, label, content_type = key.split(".")
         refactored_consent_sections[label][content_type] = content
     return dict(refactored_consent_sections)
-
-
-def get_session_researcher_study_ids(request: BeiweHttpRequest) -> List[int]:
-    """ Returns the appropriate study ids based on whether a user is a study or site admin """
-    if request.session_researcher.site_admin:
-        return Study.objects.exclude(deleted=True).values_list("id", flat=True)
-    else:
-        return request.session_researcher.\
-            study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
-
 
 
 def validate_android_credentials(credentials: str) -> bool:
@@ -116,7 +104,13 @@ def validate_ios_credentials(credentials: str) -> bool:
 def manage_researchers(request: BeiweHttpRequest):
     # get the study names that each user has access to, but only those that the current admin  also
     # has access to.
-    session_ids = get_session_researcher_study_ids()
+
+    if request.session_researcher.site_admin:
+        session_ids = Study.objects.exclude(deleted=True).values_list("id", flat=True)
+    else:
+        session_ids = request.session_researcher.\
+            study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
+
     researcher_list = []
     for researcher in get_administerable_researchers():
         allowed_studies = Study.get_all_studies_by_name().filter(
@@ -125,7 +119,7 @@ def manage_researchers(request: BeiweHttpRequest):
         ).values_list('name', flat=True)
         researcher_list.append((researcher.as_unpacked_native_python(), list(allowed_studies)))
 
-    return render(request, 'manage_researchers.html', admins=researcher_list)
+    return render(request, 'manage_researchers.html', dict(admins=researcher_list))
 
 
 @require_http_methods(['GET', 'POST'])
@@ -204,6 +198,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
         request.FORM.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
 
+
 @require_http_methods(['POST'])
 @authenticate_admin
 def demote_study_admin(request: BeiweHttpRequest):
@@ -218,6 +213,7 @@ def demote_study_admin(request: BeiweHttpRequest):
     return redirect(
         request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
+
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin
@@ -277,6 +273,7 @@ def edit_study(request, study_id=None):
             timezones=ALL_TIMEZONES_DROPDOWN,
         )
     )
+
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin

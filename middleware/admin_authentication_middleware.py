@@ -28,7 +28,7 @@ class AdminAuthenticationMiddleware:
         # Code to be executed for each request before
         # the view (and later middleware) are called.
 
-        self.request = request  # cache for researcher_is_an_admin etc.
+        self.request = request  # cache the researcher.
 
         # this is part of the cached context processor stuff
         if not hasattr(request, "_cached_contexts"):
@@ -49,14 +49,7 @@ class AdminAuthenticationMiddleware:
         except Researcher.DoesNotExist:
             return redirect("/", status=400)
 
-        request.researcher_is_an_admin = self.researcher_is_an_admin
-
         return self.get_response(request)
-
-
-    def researcher_is_an_admin(self):
-        return self.request.session_researcher.site_admin \
-            or self.request.session_researcher.is_study_admin()
 
 
 #
