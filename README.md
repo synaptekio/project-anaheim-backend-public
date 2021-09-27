@@ -93,7 +93,7 @@ While it is possible to run your development environment inside of the system Py
     I usually store it at `private/environment.sh`.  Load up these environment variables by running `source private/environment.sh` at the Bash prompt.
 
 ### Local Celery setup
-1. Install RabbitMQ (https://docs.celeryproject.org/en/latest/getting-started/brokers/rabbitmq.html#broker-rabbitmq)
+1. Install RabbitMQ (https://docs.celeryproject.org/en/latest/getting-started/backends-and-brokers/rabbitmq.html#broker-rabbitmq)
     1. Edit `/etc/rabbitmq/rabbitmq-env.conf` and add the line `NODE_PORT=50000`
     2. Restart RabbitMQ like this in the Bash shell: `time sudo service rabbitmq-server restart` (`time` isn't necessary, but it tells you how long the command took to execute)
 2. `pip install -r requirements_data_processing.txt` (this will install Celery using Pip)
