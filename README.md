@@ -77,7 +77,10 @@ considered invalid  Additional documentation can be found in config/setting.pys.
 How to set up beiwe-backend running on a development machine (NOT a production instance!  For a production instance,
 see https://github.com/onnela-lab/beiwe-backend/wiki/Deployment-Instructions---Scalable-Deployment)
 
-1. `sudo apt-get update;sudo apt-get install postgresql python-psycopg2 libpq-dev`
+#### Before starting:
+While it is possible to run your development environment inside of the system Python environment, this practice is _strongly discouraged_.  We recommend familiarizing yourself with one of the following: Python's [venv](https://docs.python.org/3/tutorial/venv.html) library (basic virtual environments), [Pyenv](https://github.com/pyenv/pyenv) (allows for compiling particular target versions of Python, plus some quality-of-life command-line shell integrations), or [Conda](https://docs.conda.io/en/latest/) (another option, includes integrations with non-Python libraries).
+
+1. `sudo apt-get update; sudo apt-get install postgresql libpq-dev`
 2. `pip install -r requirements.txt`
 3. Create a file for your environment variables that contains at least these:
     ```
