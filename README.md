@@ -87,7 +87,7 @@ While it is possible to run your development environment inside of the system Py
     export DOMAIN_NAME="localhost://8080"
     export FLASK_SECRET_KEY="asdf"
     export S3_BUCKET="a"
-    export SYSADMIN_EMAILS="sysadmin@localhst"
+    export SYSADMIN_EMAILS="sysadmin@localhost"
     ```
     I usually store it at `private/environment.sh`.  Load up these environment variables by running `source private/environment.sh` at the Bash prompt.
 
