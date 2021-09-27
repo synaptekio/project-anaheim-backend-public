@@ -78,11 +78,12 @@ How to set up beiwe-backend running on a development machine (NOT a production i
 see https://github.com/onnela-lab/beiwe-backend/wiki/Deployment-Instructions---Scalable-Deployment)
 
 #### Before starting:
-While it is possible to run your development environment inside of the system Python environment, this practice is _strongly discouraged_.  We recommend familiarizing yourself with one of the following: Python's [venv](https://docs.python.org/3/tutorial/venv.html) library (basic virtual environments), [Pyenv](https://github.com/pyenv/pyenv) (allows for compiling particular target versions of Python, plus some quality-of-life command-line shell integrations), or [Conda](https://docs.conda.io/en/latest/) (another option, includes integrations with non-Python libraries).
+While it is possible to run your development environment inside of the system Python environment, this practice is _strongly discouraged_.  We recommend familiarizing yourself with one of the following: Python's [venv](https://docs.python.org/3/tutorial/venv.html) library (basic virtual environments), [Pyenv](https://github.com/pyenv/pyenv) (allows for compiling particular target versions of Python, plus some quality-of-life command-line shell integrations), or [Conda](https://docs.conda.io/en/latest/) (another option, includes integrations with non-Python libraries).  Note also that the codebase expects at least Python version 3.6.
 
 1. `sudo apt-get update; sudo apt-get install postgresql libpq-dev`
-2. `pip install -r requirements.txt`
-3. Create a file for your environment variables that contains at least these:
+2. `pip install --upgrade pip setuptools wheel`
+3. `pip install -r requirements.txt`
+4. Create a file for your environment variables that contains at least these:
     ```
     export DOMAIN_NAME="localhost://8080"
     export FLASK_SECRET_KEY="asdf"
