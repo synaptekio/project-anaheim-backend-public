@@ -93,20 +93,33 @@ While it is possible to run your development environment inside of the system Py
     I usually store it at `private/environment.sh`.  Load up these environment variables by running `source private/environment.sh` at the Bash prompt.
 
 ### Local Celery setup
+**Update**: it is no longer necessary to use Celery for local testing, though you still need it to be installed in your Python environment in order to avoid import errors.  A full test of Celery requires the full setup below, including installing `rabbitmq`, but as long as the file for the rabbitmq host server IP and password (`manager_ip` in the root of the repository) is missing you will instead be presented with output similar to the example shell session below, indicating a that you are running in a _much_ more convenient single-threaded local testing mode:
+
+```
+In [1]: from services.celery_data_processing import *
+task declared, args: (), kwargs:{'queue': 'data_processing'}
+Instantiating a FalseCeleryApp for celery_process_file_chunks.
+```
+
+For those souls brave enough to run the entire broker queue and Celery task dispatch machinery locally, here are our best instructions.  Caveat: this configuration is based on a one that is known to work on Ubuntu 18.04, and is potentially incompatible with the version of RabbitMQ provided in Ubuntu 20.04. Also, due to the use of the system `service` command it is incompatible with the varient of Ubuntu for use on the Windows Subsystem for Linux.  Have at:
+
 1. Install RabbitMQ (https://docs.celeryproject.org/en/latest/getting-started/backends-and-brokers/rabbitmq.html#broker-rabbitmq)
     1. Edit `/etc/rabbitmq/rabbitmq-env.conf` and add the line `NODE_PORT=50000`
-    2. Restart RabbitMQ like this in the Bash shell: `time sudo service rabbitmq-server restart` (`time` isn't necessary, but it tells you how long the command took to execute)
-2. `pip install -r requirements_data_processing.txt` (this will install Celery using Pip)
-3. Create a file called `manager_ip` in the top level of this `beiwe-backend` repo, and enter two lines in it:
+    2. Restart RabbitMQ like this in the Bash shell: `time sudo service rabbitmq-server restart` (`time` isn't necessary, but it tells you that the command has finished, and how long the command took to execute... which can be... random and excessive?)
+2. `pip install -r requirements_data_processing.txt` (this will install Celery using pip)
+3. Create a file called `manager_ip` in the top level of your `beiwe-backend` repo, and enter these two lines in it.  Do not provide a trailing new-line character.
     ```
     127.0.0.1:50000
-    [PASSWORD]
+    [YOUR DESIRED PASSWORD]
     ```
     Where the password is the one you set when setting up RabbitMQ
-4. `sudo rabbitmqctl set_permissions -p / beiwe ".*" ".*" ".*"`
-5. Set the filename of your Firebase credentials JSON file in `libs/push_notifications.py` line 16 (this is a temporary solution)
-6. Run celery: `celery -A services.celery_push_notifications worker -Q push_notifications --loglevel=info -Ofair --hostname=%%h_notifications --concurrency=20 --pool=threads`
-7. Run `python services/cron.py five_minutes`
+4. run this command to create a user for rabbitmq: `rabbitmqctl add_user beiwe [INSERT THAT PASSWORD HERE]`
+5. run this command to allow the beiwe user access to the appropriate queues: `sudo rabbitmqctl set_permissions -p / beiwe ".*" ".*" ".*"`
+6. If you intend to test Firbase push notifications you will need to upload functional firebase credentials on the local website interface.
+7. To execute push notification tasks run this command _while inside the root of the repo_: `celery -A services.celery_push_notifications worker -Q push_notifications --loglevel=info -Ofair --hostname=%%h_notifications --concurrency=20 --pool=threads`
+8. To run data processing tasks run this command _while inside the root of the repo_: `celery -A services.celery_data_processing worker -Q data_processing --loglevel=info -Ofair --hostname=%%h_processing`
+9. To run forest tasks run this comand _while inside the root of the repo_: `celery -A services.celery_forest worker -Q forest_queue --loglevel=info -Ofair --hostname=%%h_forest` (Forest is still in beta.)
+10. Run this command to dispatch new tasks, which will then be consumed by the Celery processes, _while inside the root of the repo_. `python services/cron.py five_minutes`
 
 
 ### Forest
