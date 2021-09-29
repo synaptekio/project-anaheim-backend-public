@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.urls import path
 
 from api import dashboard_api
-from pages import admin_pages, login_pages, system_admin_pages
+from pages import admin_pages, data_access_web_form, login_pages, system_admin_pages
 
 
 urlpatterns = [
@@ -19,8 +19,14 @@ urlpatterns = [
         admin_pages.view_study,
         name="admin_pages.view_study",
     ),
-    path("manage_credentials", admin_pages.manage_credentials, name="admin_pages.manage_credentials"),
-    path("reset_admin_password", admin_pages.reset_admin_password, name="admin_pages.reset_admin_password", ),
+    path("manage_credentials",
+         admin_pages.manage_credentials,
+         name="admin_pages.manage_credentials"),
+    path(
+        "reset_admin_password",
+        admin_pages.reset_admin_password,
+        name="admin_pages.reset_admin_password",
+    ),
     path(
         "reset_download_api_credentials",
         admin_pages.reset_download_api_credentials,
@@ -137,5 +143,19 @@ urlpatterns = [
         system_admin_pages.delete_ios_firebase_cert,
         name="system_admin_pages.delete_ios_firebase_cert",
     ),
+
+    # data access web form
+    path(
+        "data_access_web_form",
+        data_access_web_form.data_api_web_form_page,
+        name="data_access_web_form.data_access_web_form"
+    ),
+    path(
+        "pipeline_access_web_form",
+        data_access_web_form.pipeline_download_page,
+        name="data_access_web_form.pipeline_download_page"
+    ),
+
+
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

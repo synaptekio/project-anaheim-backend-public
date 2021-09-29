@@ -1,11 +1,12 @@
 from types import FunctionType
-from django.http.response import HttpResponse
-from constants.session_constants import EXPIRY_NAME, SESSION_UUID
+
 from django.http.request import HttpRequest
 from django.shortcuts import redirect
 
+from constants.session_constants import EXPIRY_NAME, SESSION_UUID
 from database.study_models import Study
 from database.user_models import Researcher
+from libs.internal_types import BeiweHttpRequest
 
 
 EXCLUDED_PATHS = ["/", "/validate_login"]
@@ -74,7 +75,7 @@ class CachedContext:
 
 
 # @CachedContext
-def researcher_contexts(request: HttpRequest):
+def researcher_contexts(request: BeiweHttpRequest):
     # def get_researcher_allowed_studies() -> List[Dict]:
     """
     Return a list of studies which the currently logged-in researcher is authorized to view and edit.
@@ -91,6 +92,7 @@ def researcher_contexts(request: HttpRequest):
             study_info_dict for study_info_dict in Study.get_all_studies_by_name()
             .filter(**allowed_studies_kwargs).values("name", "object_id", "id", "is_test")
         ],
+        "is_admin": request.session_researcher.is_an_admin(),
         "site_admin": request.session_researcher.site_admin,
         "session_researcher": request.session_researcher,
     }

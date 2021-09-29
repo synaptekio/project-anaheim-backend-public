@@ -1,35 +1,33 @@
-from flask import Blueprint, flash, Markup, render_template
+from django.contrib import messages
+from django.shortcuts import render
+from django.views.decorators.http import require_GET
 
 from authentication.admin_authentication import (authenticate_researcher_login,
-    get_researcher_allowed_studies, get_researcher_allowed_studies_as_query_set,
-    get_session_researcher, researcher_is_an_admin)
+    get_researcher_allowed_studies, get_researcher_allowed_studies_as_query_set)
 from config.constants import ALL_DATA_STREAMS
 from database.data_access_models import PipelineUploadTags
-
-data_access_web_form = Blueprint('data_access_web_form', __name__)
-
-
-@data_access_web_form.context_processor
-def inject_html_params():
-    # these variables will be accessible to every template rendering attached to the blueprint
-    return {
-        "allowed_studies": get_researcher_allowed_studies(),
-        "users_by_study": participants_by_study(),
-        "is_admin": researcher_is_an_admin()
-    }
+from database.user_models import Researcher
+from libs.internal_types import BeiweHttpRequest
 
 
-@data_access_web_form.route("/data_access_web_form", methods=['GET'])
+@require_GET
 @authenticate_researcher_login
-def data_api_web_form_page():
-    warn_researcher_if_hasnt_yet_generated_access_key(get_session_researcher())
-    return render_template("data_api_web_form.html", ALL_DATA_STREAMS=ALL_DATA_STREAMS)
+def data_api_web_form_page(request: BeiweHttpRequest):
+    warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
+    return render(
+        request,
+        "data_api_web_form.html",
+        context=dict(
+            ALL_DATA_STREAMS=ALL_DATA_STREAMS,
+            users_by_study=participants_by_study(request),
+        )
+    )
 
 
-@data_access_web_form.route("/pipeline_access_web_form", methods=['GET'])
+@require_GET
 @authenticate_researcher_login
-def pipeline_download_page():
-    warn_researcher_if_hasnt_yet_generated_access_key(get_session_researcher())
+def pipeline_download_page(request: BeiweHttpRequest):
+    warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
     # FIXME clean this up.
     # it is a bit obnoxious to get this data, we need to deduplcate it and then turn it back into a list
     tags_by_study = {
@@ -37,26 +35,30 @@ def pipeline_download_page():
             PipelineUploadTags.objects.filter(
                 pipeline_upload__study__id=study['id']).values_list("tag", flat=True)
         ))
-        for study in get_researcher_allowed_studies()
+        for study in get_researcher_allowed_studies(request)
     }
-    return render_template(
+    return render(
+        request,
         "data_pipeline_web_form.html",
-        tags_by_study=tags_by_study,
-        downloadable_studies=get_researcher_allowed_studies(),
+        context=dict(
+            tags_by_study=tags_by_study,
+            downloadable_studies=get_researcher_allowed_studies(request),
+            users_by_study=participants_by_study(request),
+        )
     )
 
 
-def warn_researcher_if_hasnt_yet_generated_access_key(researcher):
+def warn_researcher_if_hasnt_yet_generated_access_key(researcher: Researcher):
     if not researcher.access_key_id:
         msg = """You need to generate an <b>Access Key</b> and a <b>Secret Key </b> before you
         can download data. Go to <a href='/manage_credentials'> Manage Credentials</a> and click
         'Reset Data-Download API Access Credentials'. """
-        flash(Markup(msg), 'danger')
+        messages.warning(Markup(msg))
 
 
-def participants_by_study():
+def participants_by_study(request: BeiweHttpRequest):
     # dict of {study ids : list of user ids}
     return {
         study.pk: list(study.participants.order_by("patient_id").values_list("patient_id", flat=True))
-        for study in get_researcher_allowed_studies_as_query_set()
+        for study in get_researcher_allowed_studies_as_query_set(request)
     }
