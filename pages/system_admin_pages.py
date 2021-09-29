@@ -183,7 +183,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
     assert_admin(request, study_pk)
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
     study = Study.objects.get(pk=study_pk)
-    assert_researcher_under_admin(edit_researcher, study)
+    assert_researcher_under_admin(request, edit_researcher, study)
 
     StudyRelation.objects.filter(researcher=edit_researcher, study=study)\
         .update(relationship=ResearcherRole.study_admin)

@@ -1,8 +1,9 @@
+from config.settings import IS_STAGING
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import dashboard_api
+from api import admin_api, dashboard_api
 from pages import admin_pages, data_access_web_form, login_pages, system_admin_pages
 
 
@@ -156,6 +157,82 @@ urlpatterns = [
         name="data_access_web_form.pipeline_download_page"
     ),
 
+    # admin api
+    path(
+        'set_study_timezone/<str:study_id>',
+        admin_api.set_study_timezone,
+        name="admin_api.set_study_timezone"
+    ),
+    path(
+        'add_researcher_to_study',
+        admin_api.add_researcher_to_study,
+        name="admin_api.add_researcher_to_study"
+    ),
+    path(
+        'remove_researcher_from_study',
+        admin_api.remove_researcher_from_study,
+        name="admin_api.remove_researcher_from_study"
+    ),
+    path(
+        'delete_researcher/<str:researcher_id>',
+        admin_api.delete_researcher,
+        name="admin_api.delete_researcher"
+    ),
+    path(
+        'set_researcher_password',
+        admin_api.set_researcher_password,
+        name="admin_api.set_researcher_password"
+    ),
+    path(
+        'rename_study/<str:study_id>',
+        admin_api.rename_study,
+        name="admin_api.rename_study"
+    ),
+    path(
+        "downloads",
+        admin_api.download_page,
+        name="admin_api.download_page"
+    ),
+    path(
+        "download",
+        admin_api.download_current,
+        name="admin_api.download_current"
+    ),
+    path(
+        "download_debug",
+        admin_api.download_current_debug,
+        name="admin_api.download_current_debug"
+    ),
+    path(
+        "download_beta",
+        admin_api.download_beta,
+        name="admin_api.download_beta"
+    ),
+    path(
+        "download_beta_debug",
+        admin_api.download_beta_debug,
+        name="admin_api.download_beta_debug"
+    ),
+    path(
+        "download_beta_release",
+        admin_api.download_beta_release,
+        name="admin_api.download_beta_release"
+    ),
+    path(
+        "privacy_policy",
+        admin_api.download_privacy_policy,
+        name="admin_api.download_privacy_policy"
+    ),
 
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+if IS_STAGING:
+    urlpatterns.append(
+        path(
+            "is_staging",
+            admin_api.is_staging,
+            name="admin_api.is_staging"
+        ),
+    )
+    
