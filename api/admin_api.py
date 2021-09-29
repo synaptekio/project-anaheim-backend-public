@@ -95,9 +95,9 @@ def delete_researcher(researcher_id):
 @admin_api.route('/set_researcher_password', methods=['POST'])
 @authenticate_admin
 def set_researcher_password():
-    researcher = Researcher.objects.get(pk=request.form.get('researcher_id', None))
+    researcher = Researcher.objects.get(pk=request.POST.get('researcher_id', None))
     assert_researcher_under_admin(researcher)
-    new_password = request.form.get('password', '')
+    new_password = request.POST.get('password', '')
     if check_password_requirements(new_password, flash_message=True):
         researcher.set_password(new_password)
     return redirect('/edit_researcher/{:d}'.format(researcher.pk))
@@ -108,7 +108,7 @@ def set_researcher_password():
 def rename_study(study_id=None):
     study = Study.objects.get(pk=study_id)
     assert_admin(study_id)
-    new_study_name = request.form.get('new_study_name', '')
+    new_study_name = request.POST.get('new_study_name', '')
     study.name = new_study_name
     study.save()
     return redirect('/edit_study/{:d}'.format(study.pk))

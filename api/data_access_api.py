@@ -62,7 +62,7 @@ def pipeline_data_download():
         try:
             tags = json.loads(request.values['tags'])
         except ValueError:
-            tags = request.form.getlist('tags')
+            tags = request.POST.getlist('tags')
         query = PipelineUpload.objects.filter(study__id=study.id, tags__tag__in=tags)
     else:
         query = PipelineUpload.objects.filter(study__id=study.id)
@@ -116,7 +116,7 @@ def determine_data_streams_for_db_query(query_dict: dict):
         try:
             query_dict['data_types'] = json.loads(request.values['data_streams'])
         except ValueError:
-            query_dict['data_types'] = request.form.getlist('data_streams')
+            query_dict['data_types'] = request.POST.getlist('data_streams')
 
         for data_stream in query_dict['data_types']:
             if data_stream not in ALL_DATA_STREAMS:
@@ -131,7 +131,7 @@ def determine_users_for_db_query(query: dict):
         try:
             query['user_ids'] = [user for user in json.loads(request.values['user_ids'])]
         except ValueError:
-            query['user_ids'] = request.form.getlist('user_ids')
+            query['user_ids'] = request.POST.getlist('user_ids')
 
         # Ensure that all user IDs are patient_ids of actual Participants
         if not Participant.objects.filter(patient_id__in=query['user_ids']).count() == len(query['user_ids']):

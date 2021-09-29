@@ -2,6 +2,8 @@ import json
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
+from django.shortcuts import render
+
 from authentication.admin_authentication import (authenticate_researcher_study_access,
     get_researcher_allowed_studies)
 from config.constants import (ALL_DATA_STREAMS, API_DATE_FORMAT, COMPLETE_DATA_STREAM_DICT,
@@ -10,6 +12,7 @@ from database.dashboard_models import DashboardColorSetting, DashboardGradient, 
 from database.data_access_models import ChunkRegistry, PipelineRegistry
 from database.study_models import Study
 from database.user_models import Participant
+from libs.internal_types import BeiweHttpRequest
 
 
 DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be formatted like this: " \
@@ -17,23 +20,26 @@ DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be form
 
 
 @authenticate_researcher_study_access
-def dashboard_page(study_id):
+def dashboard_page(request: BeiweHttpRequest, study_id):
     """ information for the general dashboard view for a study"""
     study = Study.get_or_404(pk=study_id)
     participants = list(Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
-    return render_template(
+    return render(
+        request,
         'dashboard/dashboard.html',
-        study=study,
-        participants=participants,
-        study_id=study_id,
-        data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-        allowed_studies=get_researcher_allowed_studies(),
-        page_location='dashboard_landing',
+        context=dict(
+            study=study,
+            participants=participants,
+            study_id=study_id,
+            data_stream_dict=COMPLETE_DATA_STREAM_DICT,
+            allowed_studies=get_researcher_allowed_studies(),
+            page_location='dashboard_landing',
+        )
     )
 
 
 @authenticate_researcher_study_access
-def get_data_for_dashboard_datastream_display(study_id, data_stream):
+def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_id, data_stream):
     """ Parses information for the data stream dashboard view GET and POST requests left the post
     and get requests in the same function because the body of the get request relies on the
     variables set in the post request if a post request is sent --thus if a post request is sent
@@ -41,7 +47,8 @@ def get_data_for_dashboard_datastream_display(study_id, data_stream):
     study = Study.get_or_404(pk=study_id)
 
     if request.method == "POST":
-        color_low_range, color_high_range, all_flags_list = set_default_settings_post_request(study, data_stream)
+        color_low_range, color_high_range, all_flags_list =\
+            set_default_settings_post_request(request, study, data_stream)
         show_color = "false" if color_low_range == 0 and color_high_range == 0 else "true"
     else:
         color_low_range, color_high_range, show_color = extract_range_args_from_request()
@@ -144,29 +151,32 @@ def get_data_for_dashboard_datastream_display(study_id, data_stream):
         past_url = ""
         byte_streams = {}
 
-    return render_template(
+    return render(
+        request,
         'dashboard/data_stream_dashboard.html',
-        study=study,
-        data_stream=COMPLETE_DATA_STREAM_DICT.get(data_stream),
-        times=unique_dates,
-        byte_streams=byte_streams,
-        base_next_url=next_url,
-        base_past_url=past_url,
-        study_id=study_id,
-        data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-        color_low_range=color_low_range,
-        color_high_range=color_high_range,
-        first_day=first_day,
-        last_day=last_day,
-        show_color=show_color,
-        all_flags_list=all_flags_list,
-        allowed_studies=get_researcher_allowed_studies(),
-        page_location='dashboard_data',
+        context=dict(
+            study=study,
+            data_stream=COMPLETE_DATA_STREAM_DICT.get(data_stream),
+            times=unique_dates,
+            byte_streams=byte_streams,
+            base_next_url=next_url,
+            base_past_url=past_url,
+            study_id=study_id,
+            data_stream_dict=COMPLETE_DATA_STREAM_DICT,
+            color_low_range=color_low_range,
+            color_high_range=color_high_range,
+            first_day=first_day,
+            last_day=last_day,
+            show_color=show_color,
+            all_flags_list=all_flags_list,
+            allowed_studies=get_researcher_allowed_studies(),
+            page_location='dashboard_data',
+        )
     )
 
 
 @authenticate_researcher_study_access
-def get_data_for_dashboard_patient_display(study_id, patient_id):
+def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, patient_id):
     """ parses data to be displayed for the singular participant dashboard view """
     study = Study.get_or_404(pk=study_id)
     participant = get_participant(patient_id, study_id)
@@ -253,22 +263,24 @@ def get_data_for_dashboard_patient_display(study_id, patient_id):
         first_date_data_entry = ""
         last_date_data_entry = ""
 
-    return render_template(
+    return render(
         'dashboard/participant_dashboard.html',
-        study=study,
-        patient_id=patient_id,
-        participant=participant,
-        times=unique_dates,
-        byte_streams=byte_streams,
-        next_url=next_url,
-        past_url=past_url,
-        patient_ids=patient_ids,
-        study_id=study_id,
-        first_date_data=first_date_data_entry,
-        last_date_data=last_date_data_entry,
-        data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-        allowed_studies=get_researcher_allowed_studies(),
-        page_location='dashboard_patient',
+        context=dict(
+            study=study,
+            patient_id=patient_id,
+            participant=participant,
+            times=unique_dates,
+            byte_streams=byte_streams,
+            next_url=next_url,
+            past_url=past_url,
+            patient_ids=patient_ids,
+            study_id=study_id,
+            first_date_data=first_date_data_entry,
+            last_date_data=last_date_data_entry,
+            data_stream_dict=COMPLETE_DATA_STREAM_DICT,
+            allowed_studies=get_researcher_allowed_studies(),
+            page_location='dashboard_patient',
+        )
     )
 
 
@@ -347,10 +359,10 @@ def parse_patient_processed_data(study_id, participant):
     return first_day, last_day, all_data
 
 
-def set_default_settings_post_request(study, data_stream):
-    all_flags_list = request.form.get("all_flags_list", "[]")
-    color_high_range = request.form.get("color_high_range", 0)
-    color_low_range = request.form.get("color_low_range", 0)
+def set_default_settings_post_request(request: BeiweHttpRequest, study: Study, data_stream):
+    all_flags_list = request.POST.get("all_flags_list", "[]")
+    color_high_range = request.POST.get("color_high_range", 0)
+    color_low_range = request.POST.get("color_low_range", 0)
 
     # convert parameters from unicode to correct types
     # if they didn't save a gradient we don't want to save garbage

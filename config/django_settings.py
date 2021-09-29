@@ -121,6 +121,7 @@ TEMPLATES = [
             'autoescape': True,
             'context_processors': [
                 "middleware.admin_authentication_middleware.researcher_contexts",
+                "django.contrib.messages.context_processors.messages",
             ],
         "environment": "config.jinja2.environment"
 

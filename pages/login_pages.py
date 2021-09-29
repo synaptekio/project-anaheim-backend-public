@@ -1,6 +1,6 @@
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render, reverse
-
+from django.contrib import messages
 from authentication import admin_authentication
 from database.user_models import Researcher
 
@@ -20,7 +20,6 @@ def validate_login(request: HttpRequest):
             admin_authentication.log_in_researcher(request, username)
             return redirect("/choose_study")
         else:
-            # convert to django messages?
-            flash("Incorrect username & password combination; try again.", 'danger')
+            messages.warning(request, "Incorrect username & password combination; try again.")
 
-    return reverse('/validate_login')
+    return redirect(reverse("login_pages.login_page"))

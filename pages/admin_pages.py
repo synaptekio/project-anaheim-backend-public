@@ -1,4 +1,6 @@
+from django.contrib import messages
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET, require_POST
 from middleware.admin_authentication_middleware import logout_researcher
 
 from authentication.admin_authentication import (authenticate_researcher_login,
@@ -29,11 +31,10 @@ def logout_admin(request: BeiweHttpRequest):
 ####################################################################################################
 
 
-# @admin_pages.route('/choose_study', methods=['GET'])
+@require_GET
 @authenticate_researcher_login
 def choose_study(request: BeiweHttpRequest):
     allowed_studies = get_researcher_allowed_studies_as_query_set(request)
-
     # If the admin is authorized to view exactly 1 study, redirect to that study,
     # Otherwise, show the "Choose Study" page
     if allowed_studies.count() == 1:
@@ -49,7 +50,7 @@ def choose_study(request: BeiweHttpRequest):
     )
 
 
-# @admin_pages.route('/view_study/<string:study_id>', methods=['GET'])
+@require_GET
 @authenticate_researcher_study_access
 def view_study(request: BeiweHttpRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
@@ -74,7 +75,6 @@ def view_study(request: BeiweHttpRequest, study_id=None):
     )
 
 
-# @admin_pages.route('/manage_credentials')
 @authenticate_researcher_login
 def manage_credentials(request: BeiweHttpRequest):
     serializer = ApiKeySerializer(
@@ -87,39 +87,40 @@ def manage_credentials(request: BeiweHttpRequest):
     )
 
 
-# @admin_pages.route('/reset_admin_password', methods=['POST'])
+@require_POST
 @authenticate_researcher_login
 def reset_admin_password(request: BeiweHttpRequest):
     username = request.session[SESSION_NAME]
-    current_password = request.FORM['current_password']
-    new_password = request.FORM['new_password']
-    confirm_new_password = request.FORM['confirm_new_password']
+    current_password = request.POST['current_password']
+    new_password = request.POST['new_password']
+    confirm_new_password = request.POST['confirm_new_password']
 
     if not Researcher.check_password(username, current_password):
-        flash("The Current Password you have entered is invalid", 'danger')
+        messages.warning(request, "The Current Password you have entered is invalid")
         return redirect('admin_pages.manage_credentials')
     if not check_password_requirements(new_password, flash_message=True):
         return redirect("admin_pages.manage_credentials")
     if new_password != confirm_new_password:
-        flash("New Password does not match Confirm New Password", 'danger')
+        messages.warning(request, "New Password does not match Confirm New Password")
         return redirect('admin_pages.manage_credentials')
 
     # todo: sanitize password?
     Researcher.objects.get(username=username).set_password(new_password)
-    flash("Your password has been reset!", 'success')
+    messages.warning(request, "Your password has been reset!")
     return redirect('admin_pages.manage_credentials')
 
 
-# @admin_pages.route('/reset_download_api_credentials', methods=['POST'])
+@require_POST
 @authenticate_researcher_login
 def reset_download_api_credentials(request: BeiweHttpRequest):
     researcher = Researcher.objects.get(username=request.session[SESSION_NAME])
     access_key, secret_key = researcher.reset_access_credentials()
-    flash(Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)), 'warning')
+    messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)), 'warning')
     return redirect("admin_pages.manage_credentials")
 
 
 # @admin_pages.route('/new_api_key', methods=['POST'])
+@require_POST
 @authenticate_researcher_login
 def new_api_key(request: BeiweHttpRequest):
     form = NewApiKeyForm(request.POST)
@@ -134,29 +135,27 @@ def new_api_key(request: BeiweHttpRequest):
     )
     # noinspection StrFormat
     msg = NEW_API_KEY_MESSAGE % (api_key.access_key_id, api_key.access_key_secret_plaintext)
-    # flash(Markup(msg), 'warning')
+    # messages.warning(request, Markup(msg))
     return redirect("admin_pages.manage_credentials")
 
 
-# @admin_pages.route('/disable_api_key', methods=['POST'])
+@require_POST
 @authenticate_researcher_login
 def disable_api_key(request: BeiweHttpRequest):
-    form = DisableApiKeyForm(request.FORM)
+    form = DisableApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")
 
-    api_key_id = request.FORM["api_key_id"]
-    api_key_query = ApiKey.objects.filter(access_key_id=api_key_id).filter(researcher=get_session_researcher())
+    api_key_id = request.POST["api_key_id"]
+    api_key_query = ApiKey.objects.filter(access_key_id=api_key_id).filter(researcher=request.session_researcher)
     if not api_key_query.exists():
-        flash(Markup("No matching API key found to disable"), 'warning')
+        messages.warning(request, Markup("No matching API key found to disable"))
         return redirect("admin_pages.manage_credentials")
     api_key = api_key_query[0]
     if not api_key.is_active:
-        flash("That API key has already been disabled: %s" % api_key_id, 'warning')
+        messages.warning(request, f"That API key has already been disabled: {api_key_id}")
         return redirect("admin_pages.manage_credentials")
     api_key.is_active = False
     api_key.save()
-    # flash("The API key %s is now disabled" % str(api_key.access_key_id), 'warning')
+    # messages.warning(request, "The API key %s is now disabled" % str(api_key.access_key_id))
     return redirect("admin_pages.manage_credentials")
-
-

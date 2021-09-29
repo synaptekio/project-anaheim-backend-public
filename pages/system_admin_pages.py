@@ -195,7 +195,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
         .update(relationship=ResearcherRole.study_admin)
 
     return redirect(
-        request.FORM.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
+        request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
 
 
@@ -367,8 +367,8 @@ def device_settings(request: BeiweHttpRequest, study_id=None):
     if readonly:
         abort(403)
 
-    params = {k: v for k, v in request.FORM.items() if not k.startswith("consent_section")}
-    consent_sections = {k: v for k, v in request.FORM.items() if k.startswith("consent_section")}
+    params = {k: v for k, v in request.POST.items() if not k.startswith("consent_section")}
+    consent_sections = {k: v for k, v in request.POST.items() if k.startswith("consent_section")}
     params = checkbox_to_boolean(CHECKBOX_TOGGLES, params)
     params = string_to_int(TIMER_VALUES, params)
     # the ios consent sections are a json field but the frontend returns something weird,

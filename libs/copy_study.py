@@ -72,7 +72,7 @@ def update_device_settings(new_device_settings, study, filename):
     updates the provided study's device settings.  Handles the cases of different legacy
     serialization of the consent_sections parameter. """
 
-    if request.form.get('device_settings', None) == 'true':
+    if request.POST.get('device_settings', None) == 'true':
         # Don't copy the PK to the device settings to be updated
         purge_unnecessary_fields(new_device_settings)
 
@@ -90,7 +90,7 @@ def update_device_settings(new_device_settings, study, filename):
 
 def add_new_surveys(new_survey_settings: List[Dict], study: Study, filename: str):
     # surveys are always provided, there is a checkbox about whether to import them
-    if request.form.get('surveys', None) != 'true':
+    if request.POST.get('surveys', None) != 'true':
         return "Copied 0 Surveys and 0 Audio Surveys from %s to %s." % (filename, study.name)
 
     surveys_added, audio_surveys_added, image_surveys_added = 0, 0, 0

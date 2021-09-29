@@ -127,8 +127,8 @@ def create_many_patients(study_id=None):
     each one, pushes data to S3 and the user database, adds users to the study they're supposed
     to be attached to, and returns a CSV file for download with a mapping of Patient IDs and
     passwords. """
-    number_of_new_patients = int(request.form.get('number_of_new_patients', 0))
-    desired_filename = request.form.get('desired_filename', '')
+    number_of_new_patients = int(request.POST.get('number_of_new_patients', 0))
+    desired_filename = request.POST.get('desired_filename', '')
     filename_spaces_to_underscores = sub(r'[\ =]', '_', desired_filename)
     filename = sub(r'[^a-zA-Z0-9_\.=]', '', filename_spaces_to_underscores)
     if not filename.endswith('.csv'):
