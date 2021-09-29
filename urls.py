@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import admin_api, dashboard_api
+from api import admin_api, dashboard_api, study_api
 from pages import admin_pages, data_access_web_form, login_pages, system_admin_pages
 
 
@@ -224,6 +224,41 @@ urlpatterns = [
         name="admin_api.download_privacy_policy"
     ),
 
+    # study api
+    path(
+        'study/<str:study_id>/get_participants_api',
+        study_api.study_participants_api,
+    ),
+    path(
+        'interventions/<str:study_id>',
+        study_api.interventions_page,
+
+    ),
+    path(
+        'delete_intervention/<str:study_id>',
+        study_api.delete_intervention,
+
+    ),
+    path(
+        'edit_intervention/<str:study_id>',
+        study_api.edit_intervention,
+
+    ),
+    path(
+        'study_fields/<str:study_id>',
+        study_api.study_fields,
+
+    ),
+    path(
+        'delete_field/<str:study_id>',
+        study_api.delete_field,
+
+    ),
+    path(
+        'edit_custom_field/<str:study_id>',
+        study_api.edit_custom_field,
+
+    ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
@@ -235,4 +270,3 @@ if IS_STAGING:
             name="admin_api.is_staging"
         ),
     )
-    
