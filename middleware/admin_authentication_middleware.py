@@ -1,3 +1,4 @@
+from datetime import date
 from types import FunctionType
 
 from django.http.request import HttpRequest
@@ -95,4 +96,5 @@ def researcher_contexts(request: BeiweHttpRequest):
         "is_admin": request.session_researcher.is_an_admin(),
         "site_admin": request.session_researcher.site_admin,
         "session_researcher": request.session_researcher,
+        "current_year": date.today().year,
     }
