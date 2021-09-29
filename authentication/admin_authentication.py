@@ -171,10 +171,9 @@ def get_researcher_allowed_studies(request: BeiweHttpRequest) -> List[Dict]:
     """
     Return a list of studies which the currently logged-in researcher is authorized to view and edit.
     """
-    session_researcher = request.session_researcher
     kwargs = {}
-    if not session_researcher.site_admin:
-        kwargs = dict(study_relations__researcher=session_researcher)
+    if not request.session_researcher.site_admin:
+        kwargs = dict(study_relations__researcher=request.session_researcher)
 
     return [
         study_info_dict for study_info_dict in
