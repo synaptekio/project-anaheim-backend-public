@@ -114,10 +114,10 @@ def create_new_participant():
     create_client_key_pair(patient_id, study_object_id)
     repopulate_all_survey_scheduled_events(study, participant)
 
-    response_string = 'Created a new patient\npatient_id: {:s}\npassword: {:s}'.format(patient_id, password)
+    response_string = f'Created a new patient\npatient_id: {patient_id}\npassword: {password}'
     flash(response_string, 'success')
 
-    return redirect('/view_study/{:s}'.format(study_id))
+    return redirect(f'/view_study/{study_id}')
 
 
 @participant_administration.route('/create_many_patients/<string:study_id>', methods=["POST"])

@@ -1,7 +1,6 @@
 import json
 import plistlib
 from collections import defaultdict
-from typing import List
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
@@ -29,9 +28,6 @@ from pages.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUC
 
 SITE_ADMIN = "Site Admin"
 
-# TODO: handle all of these
-# from flask import abort, escape, flash, Markup
-
 ####################################################################################################
 ###################################### Helpers #####################################################
 ####################################################################################################
@@ -40,19 +36,17 @@ SITE_ADMIN = "Site Admin"
 def get_administerable_studies_by_name(request: BeiweHttpRequest):
     """ Site admins see all studies, study admins see only studies they are admins on. """
     if request.session_researcher.site_admin:
-        studies = Study.get_all_studies_by_name()
+        return Study.get_all_studies_by_name()
     else:
-        studies = request.session_researcher.get_administered_studies_by_name()
-    return studies
+        return request.session_researcher.get_administered_studies_by_name()
 
 
 def get_administerable_researchers(request: BeiweHttpRequest):
     """ Site admins see all researchers, study admins see researchers on their studies. """
     if request.session_researcher.site_admin:
-        relevant_researchers = Researcher.filter_alphabetical()
+        return Researcher.filter_alphabetical()
     else:
-        relevant_researchers = request.session_researcher.get_administered_researchers_by_username()
-    return relevant_researchers
+        return request.session_researcher.get_administered_researchers_by_username()
 
 
 def unflatten_consent_sections(consent_sections_dict: dict):
@@ -186,7 +180,7 @@ def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
 def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
     researcher_pk = request.POST.get("researcher_id", None)
     study_pk = request.POST.get("study_id", None)
-    assert_admin(study_pk)
+    assert_admin(request, study_pk)
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
     study = Study.objects.get(pk=study_pk)
     assert_researcher_under_admin(edit_researcher, study)
@@ -204,7 +198,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
 def demote_study_admin(request: BeiweHttpRequest):
     researcher_pk = request.POST.get("researcher_id")
     study_pk = request.POST.get("study_id")
-    assert_admin(study_pk)
+    assert_admin(request, study_pk)
     # assert_researcher_under_admin() would fail here...
     StudyRelation.objects.filter(
         researcher=Researcher.objects.get(pk=researcher_pk),
@@ -269,7 +263,7 @@ def edit_study(request, study_id=None):
             study=Study.objects.get(pk=study_id),
             administerable_researchers=get_administerable_researchers(request),
             listed_researchers=listed_researchers,
-            redirect_url='/edit_study/{:s}'.format(study_id),
+            redirect_url=f'/edit_study/{study_id}',
             timezones=ALL_TIMEZONES_DROPDOWN,
         )
     )
@@ -337,7 +331,7 @@ def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
 @authenticate_admin
 def delete_study(request, study_id=None):
     # Site admins and study admins can delete studies.
-    assert_admin(study_id)
+    assert_admin(request, study_id)
 
     if request.POST.get('confirmation', 'false') == 'true':
         study = Study.objects.get(pk=study_id)
@@ -359,9 +353,11 @@ def device_settings(request: BeiweHttpRequest, study_id=None):
         return render(
             request,
             "device_settings.html",
-            study=study.as_unpacked_native_python(),
-            settings=study.device_settings.as_unpacked_native_python(),
-            readonly=readonly,
+            context=dict(
+                study=study.as_unpacked_native_python(),
+                settings=study.device_settings.as_unpacked_native_python(),
+                readonly=readonly,
+            )
         )
 
     if readonly:

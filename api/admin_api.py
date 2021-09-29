@@ -45,7 +45,7 @@ def set_timezone(study_id=None):
 def add_researcher_to_study():
     researcher_id = request.values['researcher_id']
     study_id = request.values['study_id']
-    assert_admin(study_id)
+    assert_admin(request, study_id)
     try:
         StudyRelation.objects.get_or_create(
             study_id=study_id, researcher_id=researcher_id, relationship=ResearcherRole.researcher
@@ -68,7 +68,7 @@ def remove_researcher_from_study():
         researcher = Researcher.objects.get(pk=researcher_id)
     except Researcher.DoesNotExist:
         return abort(404)
-    assert_admin(study_id)
+    assert_admin(request, study_id)
     assert_researcher_under_admin(researcher, study_id)
     StudyRelation.objects.filter(study_id=study_id, researcher_id=researcher_id).delete()
     return redirect(request.values['redirect_url'])
@@ -107,7 +107,7 @@ def set_researcher_password():
 @authenticate_admin
 def rename_study(study_id=None):
     study = Study.objects.get(pk=study_id)
-    assert_admin(study_id)
+    assert_admin(request, study_id)
     new_study_name = request.POST.get('new_study_name', '')
     study.name = new_study_name
     study.save()

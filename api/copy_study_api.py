@@ -75,4 +75,4 @@ def import_study_settings_file(study_id):
     msg = update_device_settings(device_settings, study, file.filename)
     msg += " \n" + add_new_surveys(surveys, study, file.filename)
     flash(msg, 'success')
-    return redirect('/edit_study/{:s}'.format(study_id))
+    return redirect(f'/edit_study/{study_id}')

@@ -56,7 +56,7 @@ def is_logged_in(request: BeiweHttpRequest):
     return False
 
 
-def assert_admin(study_id: int):
+def assert_admin(request: BeiweHttpRequest, study_id: int):
     """ This function will throw a 403 forbidden error and stop execution.  Note that the abort
         directly raises the 403 error, if we don't hit that return True. """
     session_researcher = request.session_researcher
@@ -67,7 +67,7 @@ def assert_admin(study_id: int):
     return True
 
 
-def assert_researcher_under_admin(researcher: Researcher, study=None):
+def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researcher, study=None):
     """ Asserts that the researcher provided is allowed to be edited by the session user.
         If study is provided then the admin test is strictly for that study, otherwise it checks
         for admin status anywhere. """
