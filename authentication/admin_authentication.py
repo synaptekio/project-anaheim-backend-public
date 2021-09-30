@@ -1,13 +1,13 @@
 import functools
 from datetime import datetime, timedelta
 from typing import Dict, List
+from django.contrib import messages
 
 from django.http.request import HttpRequest
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
-from middleware.admin_authentication_middleware import logout_researcher
-from werkzeug.exceptions import abort
+from middleware.admin_authentication_middleware import abort, logout_researcher
 
 from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
@@ -61,7 +61,7 @@ def assert_admin(request: BeiweHttpRequest, study_id: int):
         directly raises the 403 error, if we don't hit that return True. """
     session_researcher = request.session_researcher
     if not session_researcher.site_admin and not session_researcher.check_study_admin(study_id):
-        flash("This user does not have admin privilages on this study.", "danger")
+        messages.warning("This user does not have admin privilages on this study.")
         return abort(403)
     # allow usage in if statements
     return True
@@ -76,7 +76,7 @@ def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researc
         return
 
     if researcher.site_admin:
-        flash("This user is a site administrator, action rejected.", "danger")
+        messages.warning("This user is a site administrator, action rejected.")
         return abort(403)
 
     kwargs = dict(relationship=ResearcherRole.study_admin)
@@ -84,14 +84,14 @@ def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researc
         kwargs['study'] = study
 
     if researcher.study_relations.filter(**kwargs).exists():
-        flash("This user is a study administrator, action rejected.", "danger")
+        messages.warning("This user is a study administrator, action rejected.")
         return abort(403)
 
     session_studies = set(session_researcher.get_admin_study_relations().values_list("study_id", flat=True))
     researcher_studies = set(researcher.get_researcher_study_relations().values_list("study_id", flat=True))
 
     if not session_studies.intersection(researcher_studies):
-        flash("You are not an administrator for that researcher, action rejected.", "danger")
+        messages.warning("You are not an administrator for that researcher, action rejected.")
         return abort(403)
 
 

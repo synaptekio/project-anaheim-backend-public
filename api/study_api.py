@@ -1,11 +1,11 @@
 import json
 
+from django.contrib import messages
 from django.db.models import ProtectedError
 from django.shortcuts import HttpResponse, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from authentication.admin_authentication import (authenticate_researcher_study_access,
-    get_researcher_allowed_studies)
+from authentication.admin_authentication import authenticate_researcher_study_access
 from database.schedule_models import Intervention, InterventionDate
 from database.study_models import Study, StudyField
 from database.user_models import Participant, ParticipantFieldValue
@@ -35,7 +35,6 @@ def study_participants_api(request: BeiweHttpRequest, study_id):
         "data": data
     }
     return HttpResponse(json.dumps(table_data), status=200)
-
 
 
 @require_http_methods(['GET', 'POST'])
@@ -78,7 +77,7 @@ def delete_intervention(request: BeiweHttpRequest, study_id=None):
             if intervention:
                 intervention.delete()
         except ProtectedError:
-            flash("This Intervention can not be removed because it is already in use", 'danger')
+            messages.warning("This Intervention can not be removed because it is already in use")
 
     return redirect(f'/interventions/{study.id}')
 
@@ -144,7 +143,7 @@ def delete_field(request: BeiweHttpRequest, study_id=None):
             if study_field:
                 study_field.delete()
         except ProtectedError:
-            flash("This field can not be removed because it is already in use", 'danger')
+            messages.warning("This field can not be removed because it is already in use")
 
     return redirect(f'/study_fields/{study.id}')
 

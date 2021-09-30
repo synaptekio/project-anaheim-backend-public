@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
+from markupsafe import Markup
 from middleware.admin_authentication_middleware import logout_researcher
 
 from authentication.admin_authentication import (authenticate_researcher_login,

@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+from middleware.admin_authentication_middleware import abort
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login)
