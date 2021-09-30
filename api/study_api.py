@@ -50,7 +50,6 @@ def interventions_page(request: BeiweHttpRequest, study_id=None):
             context=dict(
                 study=study,
                 interventions=study.interventions.all(),
-                allowed_studies=get_researcher_allowed_studies(request),
             ),
         )
 
@@ -117,7 +116,6 @@ def study_fields(request: BeiweHttpRequest, study_id=None):
             context=dict(
                 study=study,
                 fields=study.fields.all(),
-                allowed_studies=get_researcher_allowed_studies(request),
             ),
         )
 

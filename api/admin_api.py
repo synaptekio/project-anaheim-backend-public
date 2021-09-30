@@ -1,9 +1,10 @@
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
-    authenticate_admin, authenticate_researcher_login, get_researcher_allowed_studies)
+    authenticate_admin, authenticate_researcher_login)
 from config.constants import ResearcherRole
 from config.settings import DOMAIN_NAME, DOWNLOADABLE_APK_URL
 from database.study_models import Study
@@ -23,7 +24,7 @@ def set_study_timezone(request: BeiweHttpRequest, study_id=None):
     """ Sets the custom timezone on a study. """
     new_timezone = request.POST.get("new_timezone_name")
     if new_timezone not in ALL_TIMEZONES:
-        flash("The timezone chosen does not exist.", 'warning')
+        messages.warning(request, ("The timezone chosen does not exist."))
         return redirect(f'/edit_study/{study_id}')
 
     study = Study.objects.get(pk=study_id)
@@ -33,8 +34,7 @@ def set_study_timezone(request: BeiweHttpRequest, study_id=None):
     # All scheduled events for this study need to be recalculated
     # this causes chaos, relative and absolute surveys will be regenerated if already sent.
     repopulate_all_survey_scheduled_events(study)
-
-    flash(f"Timezone {study.timezone_name} has been applied.", 'warning')
+    messages.warning(request, (f"Timezone {study.timezone_name} has been applied."))
     return redirect(f'/edit_study/{study_id}')
 
 
@@ -119,14 +119,11 @@ def download_page(request: BeiweHttpRequest):
     return render(
         request,
         "download_landing_page.html",
-        context=dict(
-            allowed_studies=get_researcher_allowed_studies(),
-            domain_name=DOMAIN_NAME,
-        )
+        context=dict(domain_name=DOMAIN_NAME)
     )
 
 
-def download_current():
+def download_current(request: BeiweHttpRequest):
     return redirect(DOWNLOADABLE_APK_URL)
 
 

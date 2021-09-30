@@ -4,8 +4,7 @@ from datetime import date, datetime, timedelta
 
 from django.shortcuts import render
 
-from authentication.admin_authentication import (authenticate_researcher_study_access,
-    get_researcher_allowed_studies)
+from authentication.admin_authentication import authenticate_researcher_study_access
 from config.constants import (ALL_DATA_STREAMS, API_DATE_FORMAT, COMPLETE_DATA_STREAM_DICT,
     PROCESSED_DATA_STREAM_DICT)
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
@@ -20,10 +19,11 @@ DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be form
 
 
 @authenticate_researcher_study_access
-def dashboard_page(request: BeiweHttpRequest, study_id):
+def dashboard_page(request: BeiweHttpRequest, study_id: int):
     """ information for the general dashboard view for a study"""
     study = Study.get_or_404(pk=study_id)
-    participants = list(Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
+    participants = list(
+        Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
     return render(
         request,
         'dashboard/dashboard.html',
@@ -32,14 +32,15 @@ def dashboard_page(request: BeiweHttpRequest, study_id):
             participants=participants,
             study_id=study_id,
             data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-            allowed_studies=get_researcher_allowed_studies(),
             page_location='dashboard_landing',
         )
     )
 
 
 @authenticate_researcher_study_access
-def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_id, data_stream):
+def get_data_for_dashboard_datastream_display(
+    request: BeiweHttpRequest, study_id: int, data_stream: str
+):
     """ Parses information for the data stream dashboard view GET and POST requests left the post
     and get requests in the same function because the body of the get request relies on the
     variables set in the post request if a post request is sent --thus if a post request is sent
@@ -51,12 +52,12 @@ def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_i
             set_default_settings_post_request(request, study, data_stream)
         show_color = "false" if color_low_range == 0 and color_high_range == 0 else "true"
     else:
-        color_low_range, color_high_range, show_color = extract_range_args_from_request()
-        all_flags_list = extract_flag_args_from_request()
+        color_low_range, color_high_range, show_color = extract_range_args_from_request(request)
+        all_flags_list = extract_flag_args_from_request(request)
 
     default_filters = ""
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
-        settings = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
+        settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
         default_filters = DashboardColorSetting.get_dashboard_color_settings(settings)
     else:
         settings = None
@@ -93,7 +94,7 @@ def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_i
     show_color = True if show_color == "true" else False
 
     # -----------------------------------  general data fetching --------------------------------------------
-    start, end = extract_date_args_from_request()
+    start, end = extract_date_args_from_request(request)
     participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
     unique_dates = []
     next_url = ""
@@ -126,7 +127,7 @@ def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_i
             # check if there is data to display
             data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
     else:
-        start, end = extract_date_args_from_request()
+        start, end = extract_date_args_from_request(request)
         first_day, last_day, stream_data = parse_processed_data(study_id, participant_objects, data_stream)
         if first_day is not None:
             unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
@@ -169,7 +170,6 @@ def get_data_for_dashboard_datastream_display(request: BeiweHttpRequest, study_i
             last_day=last_day,
             show_color=show_color,
             all_flags_list=all_flags_list,
-            allowed_studies=get_researcher_allowed_studies(),
             page_location='dashboard_data',
         )
     )
@@ -180,7 +180,7 @@ def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, 
     """ parses data to be displayed for the singular participant dashboard view """
     study = Study.get_or_404(pk=study_id)
     participant = get_participant(patient_id, study_id)
-    start, end = extract_date_args_from_request()
+    start, end = extract_date_args_from_request(request)
     chunks = dashboard_chunkregistry_query(participant.id)
     patient_ids = list(Participant.objects
                        .filter(study=study_id)
@@ -249,9 +249,7 @@ def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, 
         byte_streams.update(processed_byte_streams)
     elif chunks and not all_data:
         processed_byte_streams = OrderedDict(
-            (stream, [
-                None for date in unique_dates
-            ]) for stream in PROCESSED_DATA_STREAM_DICT
+            (stream, [None for date in unique_dates]) for stream in PROCESSED_DATA_STREAM_DICT
         )
         byte_streams.update(processed_byte_streams)
     # -------------------------  edge case if no data has been entered -----------------------------------
@@ -264,6 +262,7 @@ def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, 
         last_date_data_entry = ""
 
     return render(
+        request,
         'dashboard/participant_dashboard.html',
         context=dict(
             study=study,
@@ -278,7 +277,6 @@ def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, 
             first_date_data=first_date_data_entry,
             last_date_data=last_date_data_entry,
             data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-            allowed_studies=get_researcher_allowed_studies(),
             page_location='dashboard_patient',
         )
     )
@@ -614,10 +612,10 @@ def dashboard_pipelineregistry_query(study_id, participant_id):
     return None
 
 
-def extract_date_args_from_request():
+def extract_date_args_from_request(request: BeiweHttpRequest):
     """ Gets start and end arguments from GET/POST params, throws 400 on date formatting errors. """
-    start = request.values.get("start", None)
-    end = request.values.get("end", None)
+    start = request.POST.get("start", None)
+    end = request.POST.get("end", None)
     try:
         if start:
             start = datetime.strptime(start, API_DATE_FORMAT)
@@ -629,18 +627,17 @@ def extract_date_args_from_request():
     return start, end
 
 
-def extract_range_args_from_request():
+def extract_range_args_from_request(request: BeiweHttpRequest):
     """ Gets minimum and maximum arguments from GET/POST params """
-    color_low_range = request.values.get("color_low", None)
-    color_high_range = request.values.get("color_high", None)
-    show_color = request.values.get("show_color", True)
-
+    color_low_range = request.POST.get("color_low", None)
+    color_high_range = request.POST.get("color_high", None)
+    show_color = request.POST.get("show_color", True)
     return color_low_range, color_high_range, show_color
 
 
-def extract_flag_args_from_request():
+def extract_flag_args_from_request(request: BeiweHttpRequest):
     """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None or empty """
-    all_flags_string = request.values.get("flags", "")
+    all_flags_string = request.POST.get("flags", "")
     all_flags_list = []
     # parse to create a dict of flags
     flags_separated = all_flags_string.split('*')
@@ -652,10 +649,10 @@ def extract_flag_args_from_request():
     return all_flags_list
 
 
-def extract_data_stream_args_from_request():
+def extract_data_stream_args_from_request(request: BeiweHttpRequest):
     """ Gets data stream if it is provided as a request POST or GET parameter,
     throws 400 errors on unknown data streams. """
-    data_stream = request.values.get("data_stream", None)
+    data_stream = request.POST.get("data_stream", None)
     if data_stream:
         if data_stream not in ALL_DATA_STREAMS:
             return abort(400, "unrecognized data stream '%s'" % data_stream)

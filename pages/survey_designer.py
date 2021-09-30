@@ -27,7 +27,6 @@ def render_edit_survey(survey_id=None):
         'edit_survey.html',
         survey=survey.as_unpacked_native_python(),
         study=survey.study,
-        allowed_studies=get_researcher_allowed_studies(),
         is_admin=researcher_is_an_admin(),
         domain_name=DOMAIN_NAME,  # used in a Javascript alert, see survey-editor.js
         interventions_dict={

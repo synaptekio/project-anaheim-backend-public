@@ -2,9 +2,11 @@ import json
 import plistlib
 from collections import defaultdict
 
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
+from markupsafe import escape, Markup
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_study_access)
@@ -106,14 +108,14 @@ def manage_researchers(request: BeiweHttpRequest):
             study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
 
     researcher_list = []
-    for researcher in get_administerable_researchers():
+    for researcher in get_administerable_researchers(request):
         allowed_studies = Study.get_all_studies_by_name().filter(
             study_relations__researcher=researcher,
             study_relations__study__in=session_ids,
         ).values_list('name', flat=True)
         researcher_list.append((researcher.as_unpacked_native_python(), list(allowed_studies)))
 
-    return render(request, 'manage_researchers.html', dict(admins=researcher_list))
+    return render(request, 'manage_researchers.html', context=dict(admins=researcher_list))
 
 
 @require_http_methods(['GET', 'POST'])
@@ -144,7 +146,7 @@ def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
     else:
         # When the session admin is just a study admin then we need to determine if the study that
         # the session admin can see is also one they are an admin on so we can display buttons.
-        administerable_studies = set(get_administerable_studies_by_name().values_list("pk", flat=True))
+        administerable_studies = set(get_administerable_studies_by_name(request).values_list("pk", flat=True))
 
         # We need the overlap of the edit_researcher studies with the studies visible to the session
         # admin, and we need those relationships for display purposes on the page.
@@ -167,12 +169,14 @@ def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
     return render(
         request,
         'edit_researcher.html',
-        edit_researcher=edit_researcher,
-        edit_study_info=edit_study_info,
-        all_studies=get_administerable_studies_by_name(),  # this is all the studies administerable by the user
-        editable_password=editable_password,
-        redirect_url=f'/edit_researcher/{researcher_pk}',
-        is_self=edit_researcher.id == session_researcher.id,
+        dict(
+            edit_researcher=edit_researcher,
+            edit_study_info=edit_study_info,
+            all_studies=get_administerable_studies_by_name(request),
+            editable_password=editable_password,
+            redirect_url=f'/edit_researcher/{researcher_pk}',
+            is_self=edit_researcher.id == session_researcher.id,
+        )
     )
 
 @require_http_methods(['POST'])
@@ -220,7 +224,7 @@ def create_new_researcher(request: BeiweHttpRequest):
     password = request.POST.get('password', '')
 
     if Researcher.objects.filter(username=username).exists():
-        flash(f"There is already a researcher with username {username}", 'danger')
+        messages.error(request, f"There is already a researcher with username {username}")
         return redirect('/create_new_researcher')
     else:
         researcher = Researcher.create_with_password(username, password)
@@ -278,7 +282,7 @@ def create_study(request: BeiweHttpRequest):
 
     if request.method == 'GET':
         studies = [study.as_unpacked_native_python() for study in Study.get_all_studies_by_name()]
-        return render(request, 'create_study.html', studies=studies)
+        return render(request, 'create_study.html', context=dict(studies=studies))
 
     name = request.POST.get('name', '')
     encryption_key = request.POST.get('encryption_key', '')
@@ -301,13 +305,13 @@ def create_study(request: BeiweHttpRequest):
         if duplicate_existing_study:
             old_study = Study.objects.get(pk=request.POST.get('existing_study_id', None))
             copy_existing_study(new_study, old_study)
-        flash(f'Successfully created study {name}.', 'success')
+        messages.success(request, f'Successfully created study {name}.')
         return redirect(f'/device_settings/{new_study.pk}')
 
     except ValidationError as ve:
         # display message describing failure based on the validation error (hacky, but works.)
         for field, message in ve.message_dict.items():
-            flash(f'{field}: {message[0]}', 'danger')
+            messages.error(request, f'{field}: {message[0]}')
         return redirect('/create_study')
 
 @require_http_methods(['POST'])
@@ -320,9 +324,9 @@ def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
     study.forest_enabled = not study.forest_enabled
     study.save()
     if study.forest_enabled:
-        flash(f"Enabled Forest on '{study.name}'", 'success')
+        messages.success(request, f"Enabled Forest on '{study.name}'")
     else:
-        flash(f"Disabled Forest on '{study.name}'", 'success')
+        messages.success(request, f"Disabled Forest on '{study.name}'")
     return redirect(f'/edit_study/{study_id}')
 
 
@@ -337,7 +341,7 @@ def delete_study(request, study_id=None):
         study = Study.objects.get(pk=study_id)
         study.deleted = True
         study.save()
-        flash(f"Deleted study '{study.name}'", 'success')
+        messages.success(request, f"Deleted study '{study.name}'")
         return "success"
 
 
@@ -397,17 +401,17 @@ def upload_backend_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('backend_firebase_cert', None)
 
     if uploaded is None:
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
         return redirect('/manage_firebase_credentials')
 
     try:
         cert = uploaded.read().decode()
     except UnicodeDecodeError:  # raised for an unexpected file type
-        flash(Markup(ALERT_DECODE_ERROR_TEXT), 'error')
+        messages.error(request, Markup(ALERT_DECODE_ERROR_TEXT))
         return redirect('/manage_firebase_credentials')
 
     if not cert:
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
         return redirect('/manage_firebase_credentials')
 
     instantiation_errors = get_firebase_credential_errors(cert)
@@ -416,20 +420,20 @@ def upload_backend_firebase_cert(request: BeiweHttpRequest):
         # This string is sourced purely from the error message of get_firebase_credential_errors,
         # all of which are known-safe text. (no javascript injection)
         error_string = ALERT_SPECIFIC_ERROR_TEXT.format(error_message=instantiation_errors)
-        flash(Markup(error_string), 'error')
+        messages.error(request, Markup(error_string))
         return redirect('/manage_firebase_credentials')
 
     # delete and recreate to get metadata timestamps
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
     FileAsText.objects.create(tag=BACKEND_FIREBASE_CREDENTIALS, text=cert)
     update_firebase_instance()
-    flash(Markup(ALERT_SUCCESS_TEXT), 'info')
+    messages.info(request, Markup(ALERT_SUCCESS_TEXT))
     return redirect('/manage_firebase_credentials')
 
 
 @require_http_methods(['POST'])
 @authenticate_admin
-def upload_android_firebase_cert():
+def upload_android_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('android_firebase_cert', None)
     try:
         if uploaded is None:
@@ -440,23 +444,23 @@ def upload_android_firebase_cert():
         if not validate_android_credentials(cert):
             raise ValidationError('wrong keys for android cert')
         FileAsText.objects.get_or_create(tag=ANDROID_FIREBASE_CREDENTIALS, defaults={"text": cert})
-        flash(Markup(ALERT_ANDROID_SUCCESS_TEXT), 'info')
+        messages.info(request, Markup(ALERT_ANDROID_SUCCESS_TEXT))
     except AssertionError:
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
     except UnicodeDecodeError:  # raised for an unexpected file type
-        flash(Markup(ALERT_DECODE_ERROR_TEXT), 'error')
+        messages.error(request, Markup(ALERT_DECODE_ERROR_TEXT))
     except ValidationError:
-        flash(Markup(ALERT_ANDROID_VALIDATION_FAILED_TEXT), 'error')
+        messages.error(request, Markup(ALERT_ANDROID_VALIDATION_FAILED_TEXT))
     except AttributeError:  # raised for a missing file
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
     except ValueError:
-        flash(Markup(ALERT_MISC_ERROR_TEXT), 'error')
+        messages.error(request, Markup(ALERT_MISC_ERROR_TEXT))
     return redirect('/manage_firebase_credentials')
 
 
 @require_http_methods(['POST'])
 @authenticate_admin
-def upload_ios_firebase_cert():
+def upload_ios_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('ios_firebase_cert', None)
     try:
         if uploaded is None:
@@ -467,27 +471,27 @@ def upload_ios_firebase_cert():
         if not validate_ios_credentials(cert):
             raise ValidationError('wrong keys for ios cert')
         FileAsText.objects.get_or_create(tag=IOS_FIREBASE_CREDENTIALS, defaults={"text": cert})
-        flash(Markup(ALERT_IOS_SUCCESS_TEXT), 'info')
+        messages.info(request, Markup(ALERT_IOS_SUCCESS_TEXT))
     except AssertionError:
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
     except UnicodeDecodeError:  # raised for an unexpected file type
-        flash(Markup(ALERT_DECODE_ERROR_TEXT), 'error')
+        messages.error(request, Markup(ALERT_DECODE_ERROR_TEXT))
     except AttributeError:  # raised for a missing file
-        flash(Markup(ALERT_EMPTY_TEXT), 'error')
+        messages.error(request, Markup(ALERT_EMPTY_TEXT))
     except ValidationError:
-        flash(Markup(ALERT_IOS_VALIDATION_FAILED_TEXT), 'error')
+        messages.error(request, Markup(ALERT_IOS_VALIDATION_FAILED_TEXT))
     except ValueError:
-        flash(Markup(ALERT_MISC_ERROR_TEXT), 'error')
+        messages.error(request, Markup(ALERT_MISC_ERROR_TEXT))
     return redirect('/manage_firebase_credentials')
 
 
 @require_http_methods(['POST'])
 @authenticate_admin
-def delete_backend_firebase_cert():
+def delete_backend_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
     # deletes the existing firebase app connection to clear credentials from memory
     update_firebase_instance()
-    flash(Markup(ALERT_FIREBASE_DELETED_TEXT), 'info')
+    messages.info(request, Markup(ALERT_FIREBASE_DELETED_TEXT))
     return redirect('/manage_firebase_credentials')
 
 
@@ -495,7 +499,7 @@ def delete_backend_firebase_cert():
 @authenticate_admin
 def delete_android_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).delete()
-    flash(Markup(ALERT_ANDROID_DELETED_TEXT), 'info')
+    messages.info(request, Markup(ALERT_ANDROID_DELETED_TEXT))
     return redirect('/manage_firebase_credentials')
 
 
@@ -503,5 +507,5 @@ def delete_android_firebase_cert(request: BeiweHttpRequest):
 @authenticate_admin
 def delete_ios_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).delete()
-    flash(Markup(ALERT_IOS_DELETED_TEXT), 'info')
+    messages.info(request, Markup(ALERT_IOS_DELETED_TEXT))
     return redirect('/manage_firebase_credentials')

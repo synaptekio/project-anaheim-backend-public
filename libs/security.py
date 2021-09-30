@@ -7,7 +7,7 @@ from binascii import Error as base64_error
 from hashlib import pbkdf2_hmac as pbkdf2
 from os import urandom
 
-from flask import flash
+from django.contrib import messages
 
 from config.constants import ITERATIONS, PASSWORD_REQUIREMENT_REGEX_LIST
 from config.settings import FLASK_SECRET_KEY
@@ -84,7 +84,7 @@ def decode_base64(data: bytes) -> bytes:
 
 def generate_user_hash_and_salt(password: bytes) -> (bytes, bytes):
     """ Generates a hash and salt that will match a given input string, and also
-        matches the hashing that is done on a user's device. 
+        matches the hashing that is done on a user's device.
         Input is anticipated to be any arbitrary string."""
     salt = encode_base64(urandom(16))
     password = device_hash(password)
@@ -148,12 +148,14 @@ def generate_random_string() -> bytes:
 def check_password_requirements(password, flash_message=False) -> bool:
     if len(password) < 8:
         if flash_message:
-            flash("Your New Password must be at least 8 characters long.", "danger")
+            messages.warning("Your New Password must be at least 8 characters long.")
         return False
     for regex in PASSWORD_REQUIREMENT_REGEX_LIST:
         if not re.search(regex, password):
             if flash_message:
-                flash("Your New Password must contain at least one symbol, one number, "
-                      "one lowercase, and one uppercase character.", "danger")
+                messages.warning(
+                    "Your New Password must contain at least one symbol, one number, "
+                    "one lowercase, and one uppercase character."
+                )
             return False
     return True

@@ -1,41 +1,31 @@
 from datetime import date, datetime
 
+from django.contrib import messages
 from django.core.paginator import EmptyPage
-from flask import abort, Blueprint, flash, redirect, render_template, request
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET, require_http_methods
 
 from api.participant_administration import add_fields_and_interventions
-from authentication.admin_authentication import (authenticate_researcher_study_access,
-    get_researcher_allowed_studies, researcher_is_an_admin)
+from authentication.admin_authentication import authenticate_researcher_study_access
 from config.constants import API_DATE_FORMAT
 from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant
 from libs.firebase_config import check_firebase_instance
+from libs.internal_types import BeiweHttpRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 
 
-participant_pages = Blueprint('participant_pages', __name__)
-
-
-@participant_pages.context_processor
-def inject_html_params():
-    # these variables will be accessible to every template rendering attached to the blueprint
-    return {
-        "allowed_studies": get_researcher_allowed_studies(),
-        "is_admin": researcher_is_an_admin(),
-    }
-
-
-@participant_pages.route('/view_study/<string:study_id>/participant/<string:patient_id>/notification_history', methods=['GET'])
+@require_GET
 @authenticate_researcher_study_access
-def notification_history(study_id, patient_id):
+def notification_history(request: BeiweHttpRequest, study_id: int, patient_id: str):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
         study = participant.study
     except Participant.DoesNotExist:
         return abort(404)
-    page_number = request.args.get('page', 1)
-    per_page = request.args.get('per_page', 100)
+    page_number = request.GET.get('page', 1)
+    per_page = request.GET.get('per_page', 100)
     survey_names = get_survey_names_dict(study)
     notification_attempts = []
     archived_events = ArchivedEvent.get_values_for_notification_history_paginated(participant.id, per_page=per_page)
@@ -46,13 +36,22 @@ def notification_history(study_id, patient_id):
     last_page_number = archived_events.page_range.stop - 1
     for archived_event in archived_events_page:
         notification_attempts.append(get_notification_details(archived_event, study.timezone, survey_names))
-    return render_template('notification_history.html', participant=participant, page=archived_events_page,
-                           notification_attempts=notification_attempts, study=study, last_page_number=last_page_number)
+    return render(
+        request,
+        context=dict(
+            'notification_history.html',
+            participant=participant,
+            page=archived_events_page,
+            notification_attempts=notification_attempts,
+            study=study,
+            last_page_number=last_page_number,
+        )
+    )
 
 
-@participant_pages.route('/view_study/<string:study_id>/participant/<string:patient_id>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def participant(study_id, patient_id):
+def participant_page(request: BeiweHttpRequest, study_id: int, patient_id: str):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
         study = participant.study
@@ -63,11 +62,11 @@ def participant(study_id, patient_id):
     add_fields_and_interventions(participant, study)
 
     if request.method == 'GET':
-        return render_participant_page(participant, study)
+        return render_participant_page(request, participant, study)
 
     # update intervention dates for participant
     for intervention in study.interventions.all():
-        input_date = request.values.get(f"intervention{intervention.id}", None)
+        input_date = request.POST.get(f"intervention{intervention.id}", None)
         intervention_date = participant.intervention_dates.get(intervention=intervention)
         if input_date:
             intervention_date.date = datetime.strptime(input_date, API_DATE_FORMAT).date()
@@ -77,18 +76,18 @@ def participant(study_id, patient_id):
     for field in study.fields.all():
         input_id = f"field{field.id}"
         field_value = participant.field_values.get(field=field)
-        field_value.value = request.values.get(input_id, None)
+        field_value.value = request.POST.get(input_id, None)
         field_value.save()
 
     # always call through the repopulate everything call, even though we only need to handle
     # relative surveys, the function handles extra cases.
     repopulate_all_survey_scheduled_events(study, participant)
 
-    flash('Successfully edited participant {}.'.format(participant.patient_id), 'success')
+    messages.success(request, 'Successfully edited participant {participant.patient_id}.')
     return redirect(request.referrer)
 
 
-def render_participant_page(participant: Participant, study: Study):
+def render_participant_page(request: BeiweHttpRequest, participant: Participant, study: Study):
     # to reduce database queries we get all the data across 4 queries and then merge it together.
     # dicts of intervention id to intervention date string, and of field names to value
     # (this was quite slow previously)
@@ -119,16 +118,19 @@ def render_participant_page(participant: Participant, study: Study):
     latest_notification_attempt = \
         get_notification_details(last_archived_event, study.timezone, survey_names)
 
-    return render_template(
+    return render(
+        request,
         'participant.html',
-        participant=participant,
-        study=study,
-        intervention_data=intervention_data,
-        field_values=field_data,
-        notification_attempts_count=notification_attempts_count,
-        latest_notification_attempt=latest_notification_attempt,
-        push_notifications_enabled_for_ios=check_firebase_instance(require_ios=True),
-        push_notifications_enabled_for_android=check_firebase_instance(require_android=True)
+        context=dict(
+            participant=participant,
+            study=study,
+            intervention_data=intervention_data,
+            field_values=field_data,
+            notification_attempts_count=notification_attempts_count,
+            latest_notification_attempt=latest_notification_attempt,
+            push_notifications_enabled_for_ios=check_firebase_instance(require_ios=True),
+            push_notifications_enabled_for_android=check_firebase_instance(require_android=True)
+        )
     )
 
 

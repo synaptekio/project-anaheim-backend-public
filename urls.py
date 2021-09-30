@@ -4,7 +4,7 @@ from django.conf.urls.static import static
 from django.urls import path
 
 from api import admin_api, dashboard_api, study_api
-from pages import admin_pages, data_access_web_form, login_pages, system_admin_pages
+from pages import admin_pages, data_access_web_form, login_pages, participant_pages, system_admin_pages
 
 
 urlpatterns = [
@@ -224,41 +224,55 @@ urlpatterns = [
         name="admin_api.download_privacy_policy"
     ),
 
+
     # study api
     path(
         'study/<str:study_id>/get_participants_api',
         study_api.study_participants_api,
+        name="study_api.study_participants_api",
     ),
     path(
         'interventions/<str:study_id>',
         study_api.interventions_page,
-
+        name="study_api.interventions_page",
     ),
     path(
         'delete_intervention/<str:study_id>',
         study_api.delete_intervention,
-
+        name="study_api.delete_intervention",
     ),
     path(
         'edit_intervention/<str:study_id>',
         study_api.edit_intervention,
-
+        name="study_api.edit_intervention",
     ),
     path(
         'study_fields/<str:study_id>',
         study_api.study_fields,
-
+        name="study_api.study_fields",
     ),
     path(
         'delete_field/<str:study_id>',
         study_api.delete_field,
-
+        name="study_api.delete_field",
     ),
     path(
         'edit_custom_field/<str:study_id>',
         study_api.edit_custom_field,
-
+        name="study_api.edit_custom_field",
     ),
+
+    # participant pages
+    path(
+        'view_study/<int:study_id>/participant/<str:patient_id>/notification_history',
+        participant_pages.notification_history,
+        name="participant_pages.notification_history",
+    ),
+    path(
+        'view_study/<int:study_id>/participant/<str:patient_id>',
+        participant_pages.participant_page,
+        name="participant_pages.participant_page",
+    )
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
