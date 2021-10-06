@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import admin_api, dashboard_api, study_api
+from api import admin_api, dashboard_api, study_api, copy_study_api
 from pages import admin_pages, data_access_web_form, login_pages, participant_pages, system_admin_pages
 
 
@@ -272,7 +272,19 @@ urlpatterns = [
         'view_study/<int:study_id>/participant/<str:patient_id>',
         participant_pages.participant_page,
         name="participant_pages.participant_page",
-    )
+    ),
+
+    #copy study api
+    path(
+        'export_study_settings_file/<str:study_id>',
+        copy_study_api.export_study_settings_file,
+        name="export_study_settings_file"
+    ),
+    path(
+        'import_study_settings_file/<str:study_id>',
+        copy_study_api.import_study_settings_file,
+        name="import_study_settings_file"
+    ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

@@ -2,12 +2,13 @@ import json
 from os import path
 from typing import Dict, List
 
-from flask import flash, request
+from django.contrib import messages
 
 from database.common_models import JSONTextField
 from database.schedule_models import AbsoluteSchedule, RelativeSchedule, WeeklySchedule
 from database.study_models import Study
 from database.survey_models import Survey
+from libs.internal_types import BeiweHttpRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 
 
@@ -40,13 +41,13 @@ def allowed_file_extension(filename: str):
     return path.splitext(filename)[1].lower() == '.json'
 
 
-def copy_existing_study(new_study: Study, old_study: Study):
+def copy_existing_study(request: BeiweHttpRequest, new_study: Study, old_study: Study):
     """ Copy logic for an existing study.  This study cannot have users, so we don't need to
     run the repopulate logics. """
     # get, drop the foreign key.
     old_device_settings = old_study.device_settings.as_dict()
     old_device_settings.pop(STUDY_KEY)
-    msg = update_device_settings(old_device_settings, new_study, old_study.name)
+    msg = update_device_settings(request, old_device_settings, new_study, old_study.name)
 
     surveys_to_copy = []
     for survey in old_study.surveys.all():
@@ -63,11 +64,11 @@ def copy_existing_study(new_study: Study, old_study: Study):
 
         surveys_to_copy.append(survey_as_dict)
 
-    msg += " \n" + add_new_surveys(surveys_to_copy, new_study, old_study.name)
-    flash(msg, 'success')
+    msg += " \n" + add_new_surveys(request, surveys_to_copy, new_study, old_study.name)
+    messages.success(request, msg)
 
 
-def update_device_settings(new_device_settings, study, filename):
+def update_device_settings(request: BeiweHttpRequest, new_device_settings, study, filename):
     """ Takes the provided loaded json serialization of a study's device settings and
     updates the provided study's device settings.  Handles the cases of different legacy
     serialization of the consent_sections parameter. """
@@ -88,7 +89,7 @@ def update_device_settings(new_device_settings, study, filename):
         return f"Did not alter {study.name}'s App Settings."
 
 
-def add_new_surveys(new_survey_settings: List[Dict], study: Study, filename: str):
+def add_new_surveys(request: BeiweHttpRequest, new_survey_settings: List[Dict], study: Study, filename: str):
     # surveys are always provided, there is a checkbox about whether to import them
     if request.POST.get('surveys', None) != 'true':
         return "Copied 0 Surveys and 0 Audio Surveys from %s to %s." % (filename, study.name)

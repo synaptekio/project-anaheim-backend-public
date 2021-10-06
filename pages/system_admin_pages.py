@@ -304,7 +304,7 @@ def create_study(request: BeiweHttpRequest):
         new_study = Study.create_with_object_id(name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled)
         if duplicate_existing_study:
             old_study = Study.objects.get(pk=request.POST.get('existing_study_id', None))
-            copy_existing_study(new_study, old_study)
+            copy_existing_study(request, new_study, old_study)
         messages.success(request, f'Successfully created study {name}.')
         return redirect(f'/device_settings/{new_study.pk}')
 
