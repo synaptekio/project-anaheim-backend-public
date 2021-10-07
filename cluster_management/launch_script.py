@@ -55,7 +55,7 @@ from deployment_helpers.general_utils import current_time_string, do_zip_reducti
 # Fabric configuration
 class FabricExecutionError(Exception): pass
 fabric_env.abort_exception = FabricExecutionError
-fabric_env.abort_on_prompts = True
+fabric_env.abort_on_prompts = False
 
 parser = argparse.ArgumentParser(description="interactive set of commands for deploying a Beiwe Cluster")
 
