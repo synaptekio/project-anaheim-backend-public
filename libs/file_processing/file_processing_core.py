@@ -18,6 +18,7 @@ from database.user_models import Participant
 from libs.file_processing.batched_network_operations import batch_upload
 from libs.file_processing.data_fixes import (fix_app_log_file, fix_call_log_csv, fix_identifier_csv,
     fix_survey_timings, fix_wifi_csv)
+from libs.file_processing.data_qty_stats import calculate_data_quantity_stats
 from libs.file_processing.exceptions import (BadTimecodeError, ChunkFailedToExist,
     HeaderMismatchException, ProcessingOverlapError)
 from libs.file_processing.file_for_processing import FileForProcessing
@@ -150,10 +151,16 @@ def do_process_user_file_chunks(
 
     # there are several failure modes and success modes, information for what to do with different
     # files percolates back to here.  Delete various database objects accordingly.
-    more_ftps_to_remove, number_bad_files = upload_binified_data(
+    more_ftps_to_remove, number_bad_files, earliest_time_bin, latest_time_bin = upload_binified_data(
         all_binified_data, error_handler, survey_id_dict
     )
     ftps_to_remove.update(more_ftps_to_remove)
+
+    # Update the data quantity stats, if it actually processed any files
+    if len(files_to_process) > 0:
+        calculate_data_quantity_stats(participant,
+                                      earliest_time_bin_number=earliest_time_bin,
+                                      latest_time_bin_number=latest_time_bin)
 
     # Actually delete the processed FTPs from the database
     FileToProcess.objects.filter(pk__in=ftps_to_remove).delete()
@@ -229,14 +236,25 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
         older data to/from S3 for each chunk.
         Returns a set of concatenations that have succeeded and can be removed.
         Returns the number of failed FTPS so that we don't retry them.
+        Returns the earliest and latest time bins handled
         Raises any errors on the passed in ErrorHandler."""
     failed_ftps = set([])
     ftps_to_retire = set([])
     upload_these = []
+
+    # Track the earliest and latest time bins, to return them at the end of the function
+    earliest_time_bin = None
+    latest_time_bin = None
+
     for data_bin, (data_rows_list, ftp_list) in binified_data.items():
         with error_handler:
             try:
                 study_object_id, user_id, data_type, time_bin, original_header = data_bin
+                # Update earliest and latest time bins
+                if earliest_time_bin is None or time_bin < earliest_time_bin:
+                    earliest_time_bin = time_bin
+                if latest_time_bin is None or time_bin > latest_time_bin:
+                    latest_time_bin = time_bin
                 # data_rows_list may be a generator; here it is evaluated
                 rows = data_rows_list
                 updated_header = convert_unix_to_human_readable_timestamps(original_header, rows)
@@ -325,7 +343,7 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
     pool.terminate()
     # The things in ftps to retire that are not in failed ftps.
     # len(failed_ftps) will become the number of files to skip in the next iteration.
-    return ftps_to_retire.difference(failed_ftps), len(failed_ftps)
+    return ftps_to_retire.difference(failed_ftps), len(failed_ftps), earliest_time_bin, latest_time_bin
 
 
 """################################ S3 Stuff ################################"""

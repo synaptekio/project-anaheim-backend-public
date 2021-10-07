@@ -51,7 +51,7 @@ class ChunkRegistry(TimestampedModel):
     # unnecessarily, so it has been removed.  This has no side effects.
     data_type = models.CharField(max_length=32, db_index=True)
     time_bin = models.DateTimeField(db_index=True)
-    file_size = models.IntegerField(null=True, default=None)
+    file_size = models.IntegerField(null=True, default=None)  # Size (in bytes) of the uncompressed file
     study = models.ForeignKey(
         'Study', on_delete=models.PROTECT, related_name='chunk_registries', db_index=True
     )
