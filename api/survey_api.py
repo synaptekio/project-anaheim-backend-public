@@ -1,34 +1,40 @@
-from flask import abort, Blueprint, flash, json, make_response, redirect, request
+import json
+
+from django.contrib import messages
+from django.http.response import HttpResponse
+from django.shortcuts import redirect
+from django.views.decorators.http import require_http_methods
 
 from authentication.admin_authentication import authenticate_researcher_study_access
 from database.schedule_models import AbsoluteSchedule, RelativeSchedule, WeeklySchedule
 from database.survey_models import Survey
+from libs.internal_types import BeiweHttpRequest
 from libs.json_logic import do_validate_survey
 from libs.push_notification_helpers import (repopulate_absolute_survey_schedule_events,
     repopulate_relative_survey_schedule_events, repopulate_weekly_survey_schedule_events)
+from middleware.admin_authentication_middleware import abort
 
-
-survey_api = Blueprint('survey_api', __name__)
 
 ################################################################################
 ############################## Creation/Deletion ###############################
 ################################################################################
 
 
-@survey_api.route('/create_survey/<string:study_id>/<string:survey_type>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def create_survey(study_id=None, survey_type='tracking_survey'):
+def create_survey(request: BeiweHttpRequest, study_id=None, survey_type='tracking_survey'):
     new_survey = Survey.create_with_settings(study_id=study_id, survey_type=survey_type)
-    return redirect('/edit_survey/{:d}'.format(new_survey.id))
+    return redirect(f'/edit_survey/{new_survey.id}')
 
 
-@survey_api.route('/delete_survey/<string:survey_id>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def delete_survey(survey_id=None):
+def delete_survey(request: BeiweHttpRequest, survey_id=None):
     try:
         survey = Survey.objects.get(pk=survey_id)
     except Survey.DoesNotExist:
         return abort(404)
+
     # mark as deleted, delete all schedules and schedule events
     survey.deleted = True
     survey.save()
@@ -43,9 +49,9 @@ def delete_survey(survey_id=None):
 ################################################################################
 
 
-@survey_api.route('/update_survey/<string:survey_id>', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def update_survey(survey_id=None):
+def update_survey(request: BeiweHttpRequest, survey_id=None):
     """
     Updates the survey when the 'Save & Deploy button on the edit_survey page is hit. Expects
     content, weekly_timings, absolute_timings, relative_timings, and settings in the request body
@@ -73,7 +79,7 @@ def update_survey(survey_id=None):
     if survey.survey_type == Survey.TRACKING_SURVEY:
         errors = do_validate_survey(content)
         if len(errors) > 1:
-            return make_response(json.dumps(errors), 400)
+            return HttpResponse(json.dumps(errors), status_code=400)
 
     # For each of the schedule types, creates Schedule objects and ScheduledEvent objects
     weekly_timings = json.loads(request.values['weekly_timings'])
@@ -93,8 +99,8 @@ def update_survey(survey_id=None):
 
     # if any duplicate schedules were submitted, flash a message
     if w_duplicated or a_duplicated or r_duplicated:
-        flash('Duplicate schedule was submitted. Only one of the duplicates was created.', 'success')
-    return make_response("", 201)
+        messages.succcess('Duplicate schedule was submitted. Only one of the duplicates was created.')
+    return HttpResponse("", status_code=201)
 
 
 def recursive_survey_content_json_decode(json_entity: str):

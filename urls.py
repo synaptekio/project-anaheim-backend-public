@@ -1,10 +1,11 @@
-from config.settings import IS_STAGING
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import admin_api, dashboard_api, study_api, copy_study_api
-from pages import admin_pages, data_access_web_form, login_pages, participant_pages, system_admin_pages
+from api import admin_api, copy_study_api, dashboard_api, study_api, survey_api
+from config.settings import IS_STAGING
+from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
+    system_admin_pages)
 
 
 urlpatterns = [
@@ -274,7 +275,7 @@ urlpatterns = [
         name="participant_pages.participant_page",
     ),
 
-    #copy study api
+    # copy study api
     path(
         'export_study_settings_file/<str:study_id>',
         copy_study_api.export_study_settings_file,
@@ -286,6 +287,22 @@ urlpatterns = [
         name="import_study_settings_file"
     ),
 
+    # survey_api
+    path(
+        'create_survey/<str:study_id>/<str:survey_type>',
+        survey_api.create_survey,
+        name="survey_api.create_survey",
+    ),
+    path(
+        'delete_survey/<str:survey_id>',
+        survey_api.delete_survey,
+        name="survey_api.delete_survey",
+    ),
+    path(
+        'update_survey/<str:survey_id>',
+        survey_api.update_survey,
+        name="survey_api.update_survey",
+    ),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 if IS_STAGING:
