@@ -1,12 +1,13 @@
-from flask import Blueprint, json
+import json
+
+from django.views.decorators.http import require_http_methods
 
 from authentication.data_access_authentication import (api_credential_check,
     api_study_credential_check, get_api_researcher, get_api_study)
 from database.user_models import StudyRelation
 
-other_researcher_apis = Blueprint('other_researcher_apis', __name__)
 
-@other_researcher_apis.route("/get-studies/v1", methods=['POST', "GET"])
+@require_http_methods(['POST', "GET"])
 @api_credential_check
 def get_studies():
     """
@@ -24,7 +25,7 @@ def get_studies():
     )
 
 
-@other_researcher_apis.route("/get-users/v1", methods=['POST', "GET"])
+@require_http_methods(['POST', "GET"])
 @api_study_credential_check()
 def get_users_in_study():
     return json.dumps(  # json can't operate on query, need as list.

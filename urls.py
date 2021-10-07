@@ -2,7 +2,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import admin_api, copy_study_api, dashboard_api, study_api, survey_api
+from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis, study_api,
+    survey_api)
 from config.settings import IS_STAGING
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     system_admin_pages)
@@ -303,6 +304,19 @@ urlpatterns = [
         survey_api.update_survey,
         name="survey_api.update_survey",
     ),
+
+    # other researcher apis
+    path(
+        "get-studies/v1",
+        other_researcher_apis.get_studies,
+        name="other_researcher_apis,get_studies",
+    ),
+    path(
+        "get-users/v1",
+        other_researcher_apis.get_users_in_study,
+        name="other_researcher_apis,get_users_in_study",
+    ),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 if IS_STAGING:
