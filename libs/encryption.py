@@ -5,7 +5,6 @@ from typing import List
 
 from Crypto.PublicKey import RSA
 from Cryptodome.Cipher import AES
-from flask import request
 
 from config.constants import ASYMMETRIC_KEY_LENGTH
 from config.settings import IS_STAGING, STORE_DECRYPTION_KEY_ERRORS
@@ -14,6 +13,7 @@ from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetada
     LineEncryptionError)
 from database.study_models import Study
 from database.user_models import Participant
+from libs.internal_types import BeiweHttpRequest
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
 
 
@@ -110,7 +110,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
                 next_line=encode_base64(file_data[i + 1] if i < len(file_data) - 1 else ''),
                 participant=participant,
             )
-    
+
     bad_lines = []
     error_types = []
     error_count = 0
@@ -130,7 +130,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
         # we need to skip the first line (the decryption key), but need real index values in i
         if i == 0:
             continue
-        
+
         if line is None:
             # this case causes weird behavior inside decrypt_device_line, so we test for it instead.
             error_count += 1
@@ -139,7 +139,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
             bad_lines.append(line)
             print("encountered empty line of data, ignoring.")
             continue
-            
+
         try:
             good_lines.append(decrypt_device_line(participant.patient_id, aes_decryption_key, line))
         except Exception as error_orig:
@@ -181,21 +181,21 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
                 # line error, we can just drop it.
                 # implies an interrupted write operation (or read)
                 continue
-                
+
             if "Input strings must be a multiple of 16 in length" in error_string:
                 error_message += "Line was of incorrect length, dropping it and continuing."
                 create_line_error_db_entry(LineEncryptionError.INVALID_LENGTH)
                 error_types.append(LineEncryptionError.INVALID_LENGTH)
                 bad_lines.append(line)
                 continue
-                
+
             if isinstance(error_orig, InvalidData):
                 error_message += "Line contained no data, skipping: " + str(line)
                 create_line_error_db_entry(LineEncryptionError.LINE_EMPTY)
                 error_types.append(LineEncryptionError.LINE_EMPTY)
                 bad_lines.append(line)
                 continue
-                
+
             if isinstance(error_orig, InvalidIV):
                 error_message += "Line contained no iv, skipping: " + str(line)
                 create_line_error_db_entry(LineEncryptionError.IV_MISSING)
@@ -236,7 +236,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
 
     if error_count:
         EncryptionErrorMetadata.objects.create(
-            file_name=request.values['file_name'],
+            file_name=request.POST['file_name'],
             total_lines=len(file_data),
             number_errors=error_count,
             # generator comprehension:
@@ -250,6 +250,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
 
 
 def extract_aes_key(
+        request: BeiweHttpRequest,
         file_data: List[bytes], participant: Participant, private_key_cipher, original_data: bytes
 ) -> bytes:
     # The following code is ... strange because of an unfortunate design design decision made
@@ -264,7 +265,7 @@ def extract_aes_key(
         if STORE_DECRYPTION_KEY_ERRORS:
 
             DecryptionKeyError.objects.create(
-                    file_path=request.values['file_name'],
+                    file_path=request.POST['file_name'],
                     contents=original_data.decode(),
                     traceback=an_traceback,
                     participant=participant,
