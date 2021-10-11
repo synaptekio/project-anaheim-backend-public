@@ -6,7 +6,7 @@ from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis
     survey_api)
 from config.settings import IS_STAGING
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
-    system_admin_pages)
+    survey_designer, system_admin_pages)
 
 
 urlpatterns = [
@@ -315,6 +315,13 @@ urlpatterns = [
         "get-users/v1",
         other_researcher_apis.get_users_in_study,
         name="other_researcher_apis,get_users_in_study",
+    ),
+
+    # survey designer
+    path(
+        'edit_survey/<str:survey_id>',
+        survey_designer.render_edit_survey,
+        name="survey_designer.render_edit_survey",
     ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
