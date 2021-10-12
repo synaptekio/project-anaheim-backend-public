@@ -48,6 +48,7 @@ class StudyModelTests(CommonTestCase):
 
     # Study model tests:
     def test_study_create_with_object_id(self):
+        self.default_forest_params  # creating studies will fail if this isn't populated in db.
         self.assertEqual(Study.objects.count(), 0)
         self.assertEqual(DeviceSettings.objects.count(), 0)
         study_name = 'my study'
@@ -64,6 +65,7 @@ class StudyModelTests(CommonTestCase):
         self.assertFalse(new_study.deleted)
 
     def test_study_validation(self):
+        self.default_forest_params  # creating studies will fail if this isn't populated in db.
         study_name = 'my study'
         good_encryption_key = 'aabbccddeeffgghhiijjkkllmmnnoopp'
         short_encryption_key = 'aabbccddeeffgghhiijjkkllmm'
@@ -84,6 +86,7 @@ class StudyModelTests(CommonTestCase):
             Study.create_with_object_id(name=study_name, encryption_key=good_encryption_key)
 
     def test_get_all_studies_by_name(self):
+        self.default_forest_params  # creating studies will fail if this isn't populated in db.
         study_names = ['My studies', 'MY STUDY', 'my_study', 'your study']
         encryption_key = 'aabbccddeeffgghhiijjkkllmmnnoopp'
         for name in study_names:

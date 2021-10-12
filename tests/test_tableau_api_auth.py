@@ -1,20 +1,21 @@
 import mock
 import requests
+from app import app
 
 from api.tableau_api.base import AuthenticationFailed, PermissionDenied, TableauApiView
 from api.tableau_api.constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
 from api.tableau_api.views import SummaryStatisticDailySerializer
-from app import app
+from constants.testing_constants import (BASE_URL, TEST_PASSWORD, TEST_STUDY_ENCRYPTION_KEY,
+    TEST_STUDY_NAME, TEST_USERNAME)
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.tableau_api_models import ForestParam
-from tests.authentication_tests.django_flask_hybrid_test_framework import HybridTest
-from tests.authentication_tests.testing_constants import (BASE_URL, TEST_PASSWORD,
-    TEST_STUDY_ENCRYPTION_KEY, TEST_STUDY_NAME, TEST_USERNAME)
 from database.user_models import Researcher, StudyRelation
 
 
-class TableauApiAuthTests(HybridTest):
+from django.test import TestCase
+
+class TableauApiAuthTests(TestCase):
     """
     Test methods of the api authentication system
     """

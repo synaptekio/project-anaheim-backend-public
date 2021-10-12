@@ -19,9 +19,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 
 from django.test import TransactionTestCase, SimpleTestCase
-from flask import Flask, request
-from app import app as flask_app, subdomain
-from config.django_settings import WEBDRIVER_LOC
 from database.study_models import Study
 from database.user_models import Researcher
 from pages import admin_pages

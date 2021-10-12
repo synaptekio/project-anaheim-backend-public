@@ -1,6 +1,7 @@
 from config.constants import ResearcherRole
 from database.study_models import Study
 from database.survey_models import Survey
+from database.tableau_api_models import ForestParam
 from database.user_models import Participant, Researcher, StudyRelation
 
 
@@ -11,6 +12,22 @@ class ReferenceObjectMixin:
     RESEARCHER_NAME = "researcher"
     STUDY_NAME = "teststudy"
     SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
+
+    @property
+    def default_forest_params(self):
+        try:
+            return ForestParam.objects.get(default=True)
+        except ForestParam.DoesNotExist:
+            pass
+
+        ForestParam(
+            default=True,
+            notes="notes",
+            name="name",
+            jasmine_json_string="[]",
+            willow_json_string="[]",
+        ).save()
+        return self.default_forest_params
 
     @property
     def default_study(self):
@@ -26,6 +43,7 @@ class ReferenceObjectMixin:
             timezone_name="America/New_York",
             deleted=False,
             forest_enabled=True,
+            forest_param=self.default_forest_params,
         )
         study.save()
         return study
