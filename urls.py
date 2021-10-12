@@ -2,8 +2,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis, study_api,
-    survey_api)
+from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis,
+    participant_administration, study_api, survey_api)
 from config.settings import IS_STAGING
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     survey_designer, system_admin_pages)
@@ -322,6 +322,33 @@ urlpatterns = [
         'edit_survey/<str:survey_id>',
         survey_designer.render_edit_survey,
         name="survey_designer.render_edit_survey",
+    ),
+
+    # participant administration
+    path(
+        'reset_participant_password',
+        participant_administration.reset_participant_password,
+        name="participant_administration.reset_participant_password"
+    ),
+    path(
+        'reset_device',
+        participant_administration.reset_device,
+        name="participant_administration.reset_device"
+    ),
+    path(
+        'unregister_participant',
+        participant_administration.unregister_participant,
+        name="participant_administration.unregister_participant"
+    ),
+    path(
+        'create_new_participant',
+        participant_administration.create_new_participant,
+        name="participant_administration.create_new_participant"
+    ),
+    path(
+        'create_many_patients/<str:study_id>',
+        participant_administration.create_many_patients,
+        name="participant_administration.create_many_patients"
     ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
