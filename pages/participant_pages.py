@@ -14,6 +14,7 @@ from database.user_models import Participant
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import BeiweHttpRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
+from middleware.admin_authentication_middleware import abort
 
 
 @require_GET
