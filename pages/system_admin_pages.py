@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 from markupsafe import escape, Markup
 
-from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
+from authentication.admin_authentication import (abort, assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_study_access)
 from config.constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     CHECKBOX_TOGGLES, IOS_FIREBASE_CREDENTIALS, ResearcherRole, TIMER_VALUES)
