@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from database.tests.factories import ResearcherFactory
+from tests.factories import ResearcherFactory
 from database.security_models import ApiKey
 
 

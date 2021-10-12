@@ -2,7 +2,7 @@ from django.test import TransactionTestCase
 
 from database.study_models import Study
 from database.survey_models import Survey
-from database.tests.helpers import ReferenceObjectMixin
+from tests.helpers import ReferenceObjectMixin
 from database.user_models import Participant, Researcher
 
 

@@ -8,8 +8,8 @@ from app import app
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.tableau_api_models import ForestParam
-from database.tests.authentication_tests.django_flask_hybrid_test_framework import HybridTest
-from database.tests.authentication_tests.testing_constants import (BASE_URL, TEST_PASSWORD,
+from tests.authentication_tests.django_flask_hybrid_test_framework import HybridTest
+from tests.authentication_tests.testing_constants import (BASE_URL, TEST_PASSWORD,
     TEST_STUDY_ENCRYPTION_KEY, TEST_STUDY_NAME, TEST_USERNAME)
 from database.user_models import Researcher, StudyRelation
 

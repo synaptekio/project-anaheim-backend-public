@@ -5,7 +5,7 @@ from flask import url_for as flask_url_for
 from app import app as flask_app
 from django.test import TransactionTestCase
 
-from database.tests.authentication_tests.testing_constants import HOST, PORT
+from tests.authentication_tests.testing_constants import HOST, PORT
 
 
 class HybridTest(TransactionTestCase):

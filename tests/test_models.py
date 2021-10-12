@@ -1,46 +1,47 @@
 from django.core.exceptions import ValidationError
+from database.study_models import DeviceSettings, Study
 
-from database.models import *
-from database.tests.common import CommonTestCase
+
+from tests.common import CommonTestCase
 
 # Fixme: everything in this file
 #   needs to be rewritten, written, and reviewed.  No work has occurred on this code since django
 #   transition, everything is out of date.
 
 class ResearcherModelTests(CommonTestCase):
+    pass
+    # def test_researcher_create_with_password(self): raise NotImplementedError
 
-    def test_researcher_create_with_password(self): raise NotImplementedError
+    # def test_researcher_check_password(self): raise NotImplementedError
 
-    def test_researcher_check_password(self): raise NotImplementedError
+    # def test_researcher_validate_password(self): raise NotImplementedError
 
-    def test_researcher_validate_password(self): raise NotImplementedError
+    # def test_researcher_set_password(self): raise NotImplementedError
 
-    def test_researcher_set_password(self): raise NotImplementedError
+    # def test_researcher_elevate_to_admin(self): raise NotImplementedError
 
-    def test_researcher_elevate_to_admin(self): raise NotImplementedError
+    # def test_researcher_validate_access_credentials(self): raise NotImplementedError
 
-    def test_researcher_validate_access_credentials(self): raise NotImplementedError
-
-    def test_researcher_reset_access_credentials(self): raise NotImplementedError
+    # def test_researcher_reset_access_credentials(self): raise NotImplementedError
 
 
 class ParticipantModelTests(CommonTestCase):
+    pass
+    # def test_participant_create(self): raise NotImplementedError
 
-    def test_participant_create(self): raise NotImplementedError
+    # def test_participant_debug_validate_password(self): raise NotImplementedError
 
-    def test_participant_debug_validate_password(self): raise NotImplementedError
+    # def test_participant_validate_password(self): raise NotImplementedError
 
-    def test_participant_validate_password(self): raise NotImplementedError
+    # def test_participant_reset_password(self): raise NotImplementedError
 
-    def test_participant_reset_password(self): raise NotImplementedError
+    # def test_participant_set_device(self): raise NotImplementedError
 
-    def test_participant_set_device(self): raise NotImplementedError
+    # def test_participant_set_os_type(self): raise NotImplementedError
 
-    def test_participant_set_os_type(self): raise NotImplementedError
+    # def test_participant_clear_device(self): raise NotImplementedError
 
-    def test_participant_clear_device(self): raise NotImplementedError
-
-    def test_participant_set_password(self): raise NotImplementedError
+    # def test_participant_set_password(self): raise NotImplementedError
 
 
 class StudyModelTests(CommonTestCase):
@@ -94,39 +95,39 @@ class StudyModelTests(CommonTestCase):
         bad_study = Study.create_with_object_id(name='name', encryption_key=encryption_key, deleted=True)
         self.assertNotIn(bad_study, Study.get_all_studies_by_name())
 
-    def test_add_researcher(self): raise NotImplementedError
+    # def test_add_researcher(self): raise NotImplementedError
 
-    def test_remove_researcher(self): raise NotImplementedError
+    # def test_remove_researcher(self): raise NotImplementedError
 
-    def test_add_survey(self): raise NotImplementedError
+    # def test_add_survey(self): raise NotImplementedError
 
-    def reference_participant(self): pass
+    # def reference_participant(self): pass
 
-    def translated_reference_participant(self): pass
+    # def translated_reference_participant(self): pass
 
-    def create_django_reference_participant(self): pass
+    # def create_django_reference_participant(self): pass
 
-    def compare_participant(self, researcher): pass
-
-
-class SurveyModelTests(CommonTestCase):
-    pass
+    # def compare_participant(self, researcher): pass
 
 
-class DeviceSettingsTests(CommonTestCase):
-    pass
+# class SurveyModelTests(CommonTestCase):
+    # pass
 
 
-class DataAccessModelTests(CommonTestCase):
+# class DeviceSettingsTests(CommonTestCase):
+    # pass
+#
 
-    # ChunkRegistry model tests:
-    def test_add_new_chunk(self): raise NotImplementedError
+# class DataAccessModelTests(CommonTestCase):
 
-    def test_get_chunks_time_range(self): raise NotImplementedError
+#     # ChunkRegistry model tests:
+#     def test_add_new_chunk(self): raise NotImplementedError
 
-    def test_update_chunk_hash(self): raise NotImplementedError
+#     def test_get_chunks_time_range(self): raise NotImplementedError
 
-    def test_low_memory_update_chunk_hash(self): raise NotImplementedError
+#     def test_update_chunk_hash(self): raise NotImplementedError
+
+#     def test_low_memory_update_chunk_hash(self): raise NotImplementedError
 
 
 # class ProfilingModelTests(CommonTestCase):

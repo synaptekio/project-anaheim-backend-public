@@ -1,2 +1,2 @@
-from database.tests.test_models import *
-# from database.tests.test_selenium import *
+from tests.test_models import *
+# from tests.test_selenium import *
