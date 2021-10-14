@@ -150,10 +150,3 @@ def download_beta_release(request: BeiweHttpRequest):
 
 def download_privacy_policy():
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/Beiwe+Data+Privacy+and+Security.pdf")
-
-
-"""########################## Debugging Code ###########################"""
-
-# This is here to check whether staging is correctly configured
-def is_staging(request: BeiweHttpRequest):
-    return "yes"

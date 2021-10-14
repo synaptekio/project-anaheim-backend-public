@@ -7,7 +7,7 @@ from Crypto.PublicKey import RSA
 from Cryptodome.Cipher import AES
 
 from config.constants import ASYMMETRIC_KEY_LENGTH
-from config.settings import IS_STAGING, STORE_DECRYPTION_KEY_ERRORS
+from config.settings import STORE_DECRYPTION_KEY_ERRORS, STORE_DECRYPTION_LINE_ERRORS
 from constants.mobile_api import URLSAFE_BASE64_CHARACTERS
 from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetadata,
     LineEncryptionError)
@@ -101,7 +101,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
 
     def create_line_error_db_entry(error_type):
         # declaring this inside decrypt device file to access its function-global variables
-        if IS_STAGING:
+        if STORE_DECRYPTION_LINE_ERRORS:
             LineEncryptionError.objects.create(
                 type=error_type,
                 base64_decryption_key=encode_base64(aes_decryption_key),
@@ -263,7 +263,6 @@ def extract_aes_key(
         # helper function with local variable access.
         # do not refactor to include raising the error in this function, that obfuscates the source.
         if STORE_DECRYPTION_KEY_ERRORS:
-
             DecryptionKeyError.objects.create(
                     file_path=request.POST['file_name'],
                     contents=original_data.decode(),

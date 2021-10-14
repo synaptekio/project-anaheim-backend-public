@@ -4,7 +4,6 @@ from django.urls import path
 
 from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis,
     participant_administration, study_api, survey_api)
-from config.settings import IS_STAGING
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     survey_designer, system_admin_pages)
 
@@ -352,12 +351,3 @@ urlpatterns = [
     ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-if IS_STAGING:
-    urlpatterns.append(
-        path(
-            "is_staging",
-            admin_api.is_staging,
-            name="admin_api.is_staging"
-        ),
-    )

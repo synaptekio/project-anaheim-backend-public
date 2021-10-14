@@ -5,7 +5,7 @@ from collections import defaultdict
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from markupsafe import escape, Markup
 
 from authentication.admin_authentication import (abort, assert_admin, assert_researcher_under_admin,
@@ -18,9 +18,10 @@ from constants.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID
     ALERT_IOS_VALIDATION_FAILED_TEXT, ALERT_MISC_ERROR_TEXT, ALERT_SPECIFIC_ERROR_TEXT,
     ALERT_SUCCESS_TEXT)
 from database.study_models import Study
+from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Researcher, StudyRelation
-from libs.copy_study import copy_existing_study
+from libs.copy_study import copy_study_from_json, format_study, unpack_json_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
 from libs.internal_types import BeiweHttpRequest
@@ -95,7 +96,7 @@ def validate_ios_credentials(credentials: str) -> bool:
 ####################################################################################################
 
 
-@require_http_methods(['GET'])
+@require_GET
 @authenticate_admin
 def manage_researchers(request: BeiweHttpRequest):
     # get the study names that each user has access to, but only those that the current admin  also
@@ -179,7 +180,7 @@ def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
         )
     )
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
     researcher_pk = request.POST.get("researcher_id", None)
@@ -197,7 +198,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
     )
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def demote_study_admin(request: BeiweHttpRequest):
     researcher_pk = request.POST.get("researcher_id")
@@ -233,7 +234,7 @@ def create_new_researcher(request: BeiweHttpRequest):
 
 """########################### Study Pages ##################################"""
 
-@require_http_methods(['GET'])
+@require_GET
 @authenticate_admin
 def manage_studies(request: BeiweHttpRequest):
     return render(request, 'manage_studies.html',
@@ -242,7 +243,7 @@ def manage_studies(request: BeiweHttpRequest):
     )
 
 
-@require_http_methods(['GET'])
+@require_GET
 @authenticate_admin
 def edit_study(request, study_id=None):
     # get the data points for display for all researchers in this study
@@ -301,11 +302,36 @@ def create_study(request: BeiweHttpRequest):
         return abort(400)
 
     try:
-        new_study = Study.create_with_object_id(name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled)
+        new_study = Study.create_with_object_id(
+            name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled
+        )
         if duplicate_existing_study:
-            old_study = Study.objects.get(pk=request.POST.get('existing_study_id', None))
-            copy_existing_study(request, new_study, old_study)
-        messages.success(request, f'Successfully created study {name}.')
+            # surveys are always provided, there is a checkbox about whether to import them
+            copy_device_settings = request.form.get('device_settings', None) == 'true'
+            copy_surveys = request.form.get('surveys', None) == 'true'
+            old_study = Study.objects.get(pk=request.form.get('existing_study_id', None))
+            device_settings, surveys, interventions = unpack_json_study(format_study(old_study))
+
+            copy_study_from_json(
+                new_study,
+                device_settings if copy_device_settings else {},
+                surveys if copy_surveys else [],
+                interventions,
+            )
+            Survey.TRACKING_SURVEY
+            tracking_surveys_added = new_study.surveys.filter(survey_type=Survey.TRACKING_SURVEY).count()
+            audio_surveys_added = new_study.surveys.filter(survey_type=Survey.AUDIO_SURVEY).count()
+            # image_surveys_added = new_study.objects.filter(survey_type=Survey.IMAGE_SURVEY).count()
+            messages.success(
+                f"Copied {tracking_surveys_added} Surveys and {audio_surveys_added} " +
+                f"Audio Surveys from {old_study.name} to {new_study.name}.",
+            )
+            if copy_device_settings:
+                messages.success(f"Overwrote {new_study.name}'s App Settings with custom values.")
+            else:
+                messages.success(f"Did not alter {new_study.name}'s App Settings.")
+
+        messages.success(f'Successfully created study {name}.')
         return redirect(f'/device_settings/{new_study.pk}')
 
     except ValidationError as ve:
@@ -314,7 +340,8 @@ def create_study(request: BeiweHttpRequest):
             messages.error(request, f'{field}: {message[0]}')
         return redirect('/create_study')
 
-@require_http_methods(['POST'])
+
+@require_POST
 @authenticate_admin
 def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
     # Only a SITE admin can toggle forest on a study
@@ -330,8 +357,8 @@ def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
     return redirect(f'/edit_study/{study_id}')
 
 
-# TODO: move to api filemethods=['POST'])
-@require_http_methods(['POST'])
+# TODO: move to api
+@require_POST
 @authenticate_admin
 def delete_study(request, study_id=None):
     # Site admins and study admins can delete studies.
@@ -395,7 +422,7 @@ def manage_firebase_credentials(request: BeiweHttpRequest):
     )
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def upload_backend_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('backend_firebase_cert', None)
@@ -431,7 +458,7 @@ def upload_backend_firebase_cert(request: BeiweHttpRequest):
     return redirect('/manage_firebase_credentials')
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def upload_android_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('android_firebase_cert', None)
@@ -458,7 +485,7 @@ def upload_android_firebase_cert(request: BeiweHttpRequest):
     return redirect('/manage_firebase_credentials')
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def upload_ios_firebase_cert(request: BeiweHttpRequest):
     uploaded = request.FILES.get('ios_firebase_cert', None)
@@ -485,7 +512,7 @@ def upload_ios_firebase_cert(request: BeiweHttpRequest):
     return redirect('/manage_firebase_credentials')
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def delete_backend_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
@@ -495,7 +522,7 @@ def delete_backend_firebase_cert(request: BeiweHttpRequest):
     return redirect('/manage_firebase_credentials')
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def delete_android_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).delete()
@@ -503,7 +530,7 @@ def delete_android_firebase_cert(request: BeiweHttpRequest):
     return redirect('/manage_firebase_credentials')
 
 
-@require_http_methods(['POST'])
+@require_POST
 @authenticate_admin
 def delete_ios_firebase_cert(request: BeiweHttpRequest):
     FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).delete()
