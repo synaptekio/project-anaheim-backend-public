@@ -7,4 +7,3 @@ environment or your IDE.  """
 
 class BeiweHttpRequest(HttpRequest):
     session_researcher: Researcher
-    researcher_is_an_admin: bool

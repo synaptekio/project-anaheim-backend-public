@@ -1,13 +1,12 @@
 import functools
 from datetime import datetime, timedelta
 from typing import Dict, List
-from django.contrib import messages
 
+from django.contrib import messages
 from django.http.request import HttpRequest
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
-from middleware.admin_authentication_middleware import abort, logout_researcher
 
 from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
@@ -15,23 +14,46 @@ from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs.internal_types import BeiweHttpRequest
 from libs.security import generate_easy_alphanumeric_string
+from middleware.admin_authentication_middleware import abort
+
+
+DEBUG_ADMIN_NAUTHENTICATION = False
+
+
+def log(*args, **kwargs):
+    if DEBUG_ADMIN_NAUTHENTICATION:
+        print(*args, **kwargs)
+
+
+# Top level authentication wrappers
+def authenticate_researcher_login(some_function):
+    """ Decorator for functions (pages) that require a login, redirect to login page on failure. """
+    @functools.wraps(some_function)
+    def authenticate_and_call(*args, **kwargs):
+        request: BeiweHttpRequest = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
+
+        if check_is_logged_in(request):
+            populate_session_researcher(request)
+            return some_function(*args, **kwargs)
+        else:
+            return redirect("/")
+
+    return authenticate_and_call
 
 
 ################################################################################
 ############################ Website Functions #################################
 ################################################################################
 
-# need to delete imports
-def authenticate_researcher_login(some_function):
-    """ Decorator for functions (pages) that require a login, redirect to login page on failure. """
-    @functools.wraps(some_function)
-    def authenticate_and_call(*args, **kwargs):
-        if is_logged_in(args[0]):
-            return some_function(*args, **kwargs)
-        else:
-            return redirect("/")
 
-    return authenticate_and_call
+def logout_researcher(request: HttpRequest):
+    """ clear session information for a researcher """
+    if SESSION_UUID in request.session:
+        del request.session[SESSION_UUID]
+    if EXPIRY_NAME in request.session:
+        del request.session[EXPIRY_NAME]
 
 
 def log_in_researcher(request: BeiweHttpRequest, username: str):
@@ -41,19 +63,40 @@ def log_in_researcher(request: BeiweHttpRequest, username: str):
     request.session[SESSION_NAME] = username
 
 
-def is_logged_in(request: BeiweHttpRequest):
+def check_is_logged_in(request: BeiweHttpRequest):
     """ automatically logs out the researcher if their session is timed out. """
     if EXPIRY_NAME in request.session:
-        expiry_datetime = request.session[EXPIRY_NAME]
-        if is_naive(expiry_datetime):
-            if expiry_datetime > datetime.now():
-                return SESSION_UUID in request.session
+        if assert_session_unexpired(request):
+            return SESSION_UUID in request.session
         else:
-            if expiry_datetime > timezone.now():
-                return SESSION_UUID in request.session
-
+            log("session had expired")
+    else:
+        log("expiry (cookie value) was missing")
     logout_researcher(request)
     return False
+
+
+def assert_session_unexpired(request: BeiweHttpRequest):
+    # probably a development environment issue, sometimes the datetime is naive.
+    expiry_datetime = request.session[EXPIRY_NAME]
+    if is_naive(expiry_datetime):
+        return expiry_datetime > datetime.now()
+    else:
+        return expiry_datetime > timezone.now()
+
+
+def populate_session_researcher(request: BeiweHttpRequest):
+    # this function defines the BeiweHttpRequest, which is purely for IDE assistence
+    username = request.session.get("researcher_username", None)
+    if username is None:
+        log("researcher username was not present in session")
+        return abort(400)
+    try:
+        # Cache the Researcher into request.session_researcher.
+        request.session_researcher = Researcher.objects.get(username=username)
+    except Researcher.DoesNotExist:
+        log("could not identify researcher in session")
+        return abort(400)
 
 
 def assert_admin(request: BeiweHttpRequest, study_id: int):
@@ -62,6 +105,7 @@ def assert_admin(request: BeiweHttpRequest, study_id: int):
     session_researcher = request.session_researcher
     if not session_researcher.site_admin and not session_researcher.check_study_admin(study_id):
         messages.warning("This user does not have admin privilages on this study.")
+        log("no admin privilages")
         return abort(403)
     # allow usage in if statements
     return True
@@ -77,6 +121,7 @@ def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researc
 
     if researcher.site_admin:
         messages.warning("This user is a site administrator, action rejected.")
+        log("target researcher is a site admin")
         return abort(403)
 
     kwargs = dict(relationship=ResearcherRole.study_admin)
@@ -85,6 +130,7 @@ def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researc
 
     if researcher.study_relations.filter(**kwargs).exists():
         messages.warning("This user is a study administrator, action rejected.")
+        log("target researcher is a study administrator")
         return abort(403)
 
     session_studies = set(session_researcher.get_admin_study_relations().values_list("study_id", flat=True))
@@ -92,6 +138,7 @@ def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researc
 
     if not session_studies.intersection(researcher_studies):
         messages.warning("You are not an administrator for that researcher, action rejected.")
+        log("session researcher is not an administrator of target researcher")
         return abort(403)
 
 
@@ -113,17 +160,27 @@ def authenticate_researcher_study_access(some_function):
     def authenticate_and_call(*args, **kwargs):
         # Check for regular login requirement
         request: BeiweHttpRequest = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
 
-        if not is_logged_in(request):
+        if not check_is_logged_in(request):
+            log("researcher is not logged in")
             return redirect("/")
 
-        # Get values first from kwargs, then from the POST request
+        populate_session_researcher(request)
+
+        # first get from kwargs, then from the POST request, either one is fine
         survey_id = kwargs.get('survey_id', request.POST.get('survey_id', None))
         study_id = kwargs.get('study_id', request.POST.get('study_id', None))
 
-        # Check proper syntax usage.
-        if not survey_id and not study_id:
-            raise ArgumentMissingException()
+        # Check proper usage
+        if survey_id is None and study_id is None:
+            log("no survey or study provided")
+            return abort(400)
+
+        if survey_id is not None and study_id is None:
+            log("survey was provided but no study was provided")
+            return abort(400)
 
         # We want the survey_id check to execute first if both args are supplied, surveys are
         # attached to studies but do not supply the study id.
@@ -138,19 +195,14 @@ def authenticate_researcher_study_access(some_function):
             study_id = studies.values_list('pk', flat=True).get()
 
         # assert that such a study exists
-        if not Study.objects.filter(pk=study_id).exists():
+        if not Study.objects.filter(pk=study_id, deleted=False).exists():
             return abort(404)
 
-        researcher = request.session_researcher
-        study_relation = StudyRelation.objects.filter(study_id=study_id, researcher=researcher)
-
-        # always allow site admins
-        # currently we allow all study relations.
-        if not researcher.site_admin:
-            if not study_relation.exists():
-                return abort(403)
-
-            if study_relation.get().relationship not in ALL_RESEARCHER_TYPES:
+        # always allow site admins, allow all types of study relations (there is/was only one).
+        if not request.session_researcher.site_admin:
+            relation = StudyRelation.objects.filter(study_id=study_id, researcher=request.session_researcher)
+            if relation.values_list("relationship").get() not in ALL_RESEARCHER_TYPES:
+                log("invalid study relationship for researcher")
                 return abort(403)
 
         return some_function(*args, **kwargs)
@@ -203,7 +255,7 @@ def authenticate_admin(some_function):
             raise TypeError(f"request was a {type(request)}, expected {HttpRequest}")
 
         # Check for regular login requirement
-        if not is_logged_in(request):
+        if not check_is_logged_in(request):
             return redirect("/")
 
         session_researcher = request.session_researcher
@@ -217,9 +269,9 @@ def authenticate_admin(some_function):
             # admin on that study.
             if 'study_id' in kwargs:
                 if not StudyRelation.objects.filter(
-                            researcher=session_researcher,
-                            study_id=kwargs['study_id'],
-                            relationship=ResearcherRole.study_admin
+                    researcher=session_researcher,
+                    study_id=kwargs['study_id'],
+                    relationship=ResearcherRole.study_admin,
                 ).exists():
                     return abort(403)
 
@@ -229,9 +281,7 @@ def authenticate_admin(some_function):
 
 
 def forest_enabled(func):
-    """
-    Decorator for validating that Forest is enabled for this study.
-    """
+    """ Decorator for validating that Forest is enabled for this study. """
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
         try:

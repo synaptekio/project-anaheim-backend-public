@@ -6,7 +6,7 @@ from database.user_models import Researcher
 
 
 def login_page(request: HttpRequest):
-    if admin_authentication.is_logged_in(request):
+    if admin_authentication.check_is_logged_in(request):
         return redirect("/choose_study")
     return render(request, 'admin_login.html')
 

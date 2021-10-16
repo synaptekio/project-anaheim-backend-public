@@ -1,4 +1,5 @@
-from django.test import TransactionTestCase, TestCase
+from django.test import TestCase
+from django.urls import reverse
 
 from database.study_models import Study
 from database.survey_models import Survey
@@ -7,7 +8,11 @@ from database.user_models import Participant, Researcher
 
 
 class CommonTestCase(TestCase, ReferenceObjectMixin):
-    pass
+    def do_default_login(self):
+        return self.client.post(
+            reverse("login_pages.validate_login"),
+            data={"username": self.RESEARCHER_NAME, "password": self.RESEARCHER_PASSWORD}
+        )
 
 
 class TestDefaults(CommonTestCase):

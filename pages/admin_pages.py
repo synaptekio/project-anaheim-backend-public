@@ -2,10 +2,10 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
 from markupsafe import Markup
-from middleware.admin_authentication_middleware import logout_researcher
 
 from authentication.admin_authentication import (authenticate_researcher_login,
-    authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set, SESSION_NAME)
+    authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
+    logout_researcher, SESSION_NAME)
 from constants.admin_pages import (DisableApiKeyForm, NEW_API_KEY_MESSAGE, NewApiKeyForm,
     RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE)
 from database.security_models import ApiKey
