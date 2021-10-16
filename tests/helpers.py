@@ -10,6 +10,7 @@ from database.user_models import Participant, Researcher, StudyRelation
 class ReferenceObjectMixin:
 
     RESEARCHER_NAME = "researcher"
+    RESEARCHER_PASSWORD = "abc123"
     STUDY_NAME = "teststudy"
     SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
 
@@ -58,7 +59,7 @@ class ReferenceObjectMixin:
         researcher = Researcher(
             username=self.RESEARCHER_NAME,
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
-            salt='hllJauvRYDJMQpXQKzTdwQ==',
+            salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
             site_admin=False,
             is_batch_user=False,
             access_key_id='gVsTj58RsUqPkA8P7YiIyJhLLdjSdty6VvFkPo3/cerMqaB1/l8Q4j6MhE5suRW7',
@@ -66,6 +67,7 @@ class ReferenceObjectMixin:
             access_key_secret_salt='GmI_vejug29uZz4WpDofcA==',
         )
         researcher.save()
+        researcher.set_password(self.RESEARCHER_PASSWORD)
         StudyRelation.objects.create(
             researcher=researcher, relationship=ResearcherRole.researcher, study=self.default_study
         )

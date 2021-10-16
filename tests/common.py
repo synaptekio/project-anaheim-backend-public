@@ -1,4 +1,4 @@
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, TestCase
 
 from database.study_models import Study
 from database.survey_models import Survey
@@ -6,7 +6,11 @@ from tests.helpers import ReferenceObjectMixin
 from database.user_models import Participant, Researcher
 
 
-class CommonTestCase(TransactionTestCase, ReferenceObjectMixin):
+class CommonTestCase(TestCase, ReferenceObjectMixin):
+    pass
+
+
+class TestDefaults(CommonTestCase):
 
     def test_defaults(self):
         researcher = self.default_researcher
