@@ -1,10 +1,13 @@
 import functools
+from typing import Tuple
 
-from flask import abort, request
+from django.http.request import HttpRequest
 
 from config.study_constants import BASE64_GENERIC_ALLOWED_CHARACTERS, OBJECT_ID_ALLOWED_CHARS
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
+from libs.internal_types import BeiweApiLightRequest, BeiweApiRequest, BeiweHttpRequest
+from middleware.admin_authentication_middleware import abort
 
 
 class BadObjectIdType(Exception): pass
@@ -35,18 +38,15 @@ def is_object_id(object_id: str) -> bool:
 
 ################################# Primary Access Validation ########################################
 
-def get_api_researcher_and_study() -> (Researcher, Study):
-    return get_api_researcher(), get_api_study()
 
-
-def get_api_study() -> Study:
+def get_api_study(request: BeiweApiRequest) -> Study:
     try:
         return request.api_study
     except AttributeError:
         raise IncorrectAPIAuthUsage("request.api_study used before/without credential checks.")
 
 
-def get_api_researcher() -> Researcher:
+def get_api_researcher(request: BeiweApiLightRequest or BeiweApiRequest) -> Researcher:
     try:
         return request.api_researcher
     except AttributeError:
@@ -57,18 +57,22 @@ def api_credential_check(some_function: callable):
     """ Checks API credentials and attaches the researcher to the request object. """
     @functools.wraps(some_function)
     def wrapper(*args, **kwargs):
-        request.api_researcher = api_get_and_validate_researcher()  # validate and cache
+        request: BeiweApiLightRequest = args[0]
+        assert isinstance(request, HttpRequest), type(request)
+        request.api_researcher = api_get_and_validate_researcher(request)  # validate and cache
         return some_function(*args, **kwargs)
     return wrapper
 
 
-def api_study_credential_check(conditionally_block_test_studies:bool=False) -> callable:
+def api_study_credential_check(block_test_studies: bool=False) -> callable:
     """ Decorate api-credentialed functions to test whether user exists, has provided correct
      credentials, and then attach the study and researcher to the request. """
     def the_decorator(some_function: callable):
         @functools.wraps(some_function)
         def the_inner_wrapper(*args, **kwargs):
-            study, researcher = api_test_researcher_study_access(conditionally_block_test_studies)
+            request: BeiweApiRequest = args[0]
+            assert isinstance(request, HttpRequest), type(request)
+            study, researcher = api_test_researcher_study_access(request, block_test_studies)
             # cache researcher and study on the request for easy database-less access
             request.api_study = study
             request.api_researcher = researcher
@@ -77,9 +81,8 @@ def api_study_credential_check(conditionally_block_test_studies:bool=False) -> c
     return the_decorator
 
 
-def api_get_and_validate_researcher() -> Researcher:
-    """ returns """
-    access_key, secret_key = api_get_and_validate_credentials()
+def api_get_and_validate_researcher(request: HttpRequest) -> Researcher:
+    access_key, secret_key = api_get_and_validate_credentials(request)
     try:
         researcher = Researcher.objects.get(access_key_id=access_key)
     except Researcher.DoesNotExist:
@@ -100,10 +103,10 @@ they are complex and easy to misuse.
 """
 
 
-def api_test_researcher_study_access(block_test_studies: bool) -> (Study, Researcher):
+def api_test_researcher_study_access(request: BeiweHttpRequest, block_test_studies: bool) -> Tuple[Study, Researcher]:
     """ Checks whether the researcher is allowed to do api access on this study.
     Parameter allows control of whether to allow the api call to hit a test study. """
-    study = api_get_study_confirm_exists()
+    study = api_get_study_confirm_exists(request)
     researcher = api_get_validate_researcher_on_study(study)
 
     user_exceptions = researcher.site_admin or researcher.is_batch_user
@@ -117,7 +120,7 @@ def api_test_researcher_study_access(block_test_studies: bool) -> (Study, Resear
     return study, researcher
 
 
-def api_get_and_validate_credentials() -> (str, str):
+def api_get_and_validate_credentials(request: HttpRequest) -> Tuple[str, str]:
     """ Sanitize access and secret keys from request """
     access_key = request.values.get("access_key", None)
     secret_key = request.values.get("secret_key", None)
@@ -140,20 +143,20 @@ def api_get_and_validate_credentials() -> (str, str):
     return access_key, secret_key
 
 
-def api_get_validate_researcher_on_study(study: Study) -> Researcher:
+def api_get_validate_researcher_on_study(request: BeiweHttpRequest, study: Study) -> Researcher:
     """
     Finds researcher based on the secret key provided.
     Returns 403 if researcher doesn't exist, is not credentialed on the study, or if
     the secret key does not match.
     """
-    researcher = api_get_and_validate_researcher()
+    researcher = api_get_and_validate_researcher(request)
     # if the researcher has no relation to the study, and isn't a batch user or site admin, 403.
     # case: batch users and site admins have access to everything.
     # case: researcher is not credentialed for this study.
     if (
-            not StudyRelation.objects.filter(study_id=study.pk, researcher=researcher).exists()
-            and not researcher.site_admin
-            and not researcher.is_batch_user
+        not StudyRelation.objects.filter(study_id=study.pk, researcher=researcher).exists()
+        and not researcher.site_admin
+        and not researcher.is_batch_user
     ):
         log(f"study found: {StudyRelation.objects.filter(study_id=study.pk, researcher=researcher).exists()}")
         log(f"researcher.site_admin: {researcher.site_admin}")
@@ -164,7 +167,7 @@ def api_get_validate_researcher_on_study(study: Study) -> Researcher:
     return researcher
 
 
-def api_get_study_confirm_exists() -> Study:
+def api_get_study_confirm_exists(request: BeiweHttpRequest) -> Study:
     """
     Checks for a valid study object id or primary key.
     Study object id malformed (not 24 characters) causes 400 error.
@@ -182,12 +185,10 @@ def api_get_study_confirm_exists() -> Study:
 
         # If no Study with the given ID exists, we return a 404
         try:
-            study = Study.objects.get(object_id=study_object_id)
+            return Study.objects.get(object_id=study_object_id)
         except Study.DoesNotExist:
-            log("study '%s' does not exist (obj id)" % study_object_id)
+            log(f"study '{study_object_id}' does not exist (obj id)")
             return abort(404)
-        else:
-            return study
 
     elif study_pk is not None:
         # study pk must coerce to an int
@@ -199,12 +200,10 @@ def api_get_study_confirm_exists() -> Study:
 
         # If no Study with the given ID exists, we return a 404
         try:
-            study = Study.objects.get(pk=study_pk)
+            return Study.objects.get(pk=study_pk)
         except Study.DoesNotExist:
             log("study '%s' does not exist (study pk)" % study_object_id)
             return abort(404)
-        else:
-            return study
 
     else:
         log("no study provided at all")

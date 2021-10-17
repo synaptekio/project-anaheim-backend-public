@@ -15,7 +15,7 @@ chunk_fields = ("pk", "participant_id", "data_type", "chunk_path", "time_bin", "
                 "participant__patient_id", "study_id", "survey_id", "survey__object_id")
 
 @data_access_api.route("/get-data/v1", methods=['POST', "GET"])
-@api_study_credential_check(conditionally_block_test_studies=True)
+@api_study_credential_check(block_test_studies=True)
 def get_data():
     """ Required: access key, access secret, study_id
     JSON blobs: data streams, users - default to all

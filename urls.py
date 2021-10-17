@@ -21,9 +21,10 @@ urlpatterns = [
         admin_pages.view_study,
         name="admin_pages.view_study",
     ),
-    path("manage_credentials",
-         admin_pages.manage_credentials,
-         name="admin_pages.manage_credentials"),
+    path(
+        "manage_credentials",
+        admin_pages.manage_credentials,
+        name="admin_pages.manage_credentials"),
     path(
         "reset_admin_password",
         admin_pages.reset_admin_password,
@@ -34,8 +35,16 @@ urlpatterns = [
         admin_pages.reset_download_api_credentials,
         name="admin_pages.reset_download_api_credentials",
     ),
-    path("new_api_key", admin_pages.new_api_key, name="admin_pages.new_api_key"),
-    path("disable_api_key", admin_pages.disable_api_key, name="admin_pages.disable_api_key"),
+    path(
+        "new_api_key",
+        admin_pages.new_api_key,
+        name="admin_pages.new_api_key",
+    ),
+    path(
+        "disable_api_key",
+        admin_pages.disable_api_key,
+        name="admin_pages.disable_api_key",
+    ),
 
     # Dashboard
     path(
@@ -225,7 +234,6 @@ urlpatterns = [
         name="admin_api.download_privacy_policy"
     ),
 
-
     # study api
     path(
         'study/<str:study_id>/get_participants_api',
@@ -304,18 +312,6 @@ urlpatterns = [
         name="survey_api.update_survey",
     ),
 
-    # other researcher apis
-    path(
-        "get-studies/v1",
-        other_researcher_apis.get_studies,
-        name="other_researcher_apis,get_studies",
-    ),
-    path(
-        "get-users/v1",
-        other_researcher_apis.get_users_in_study,
-        name="other_researcher_apis,get_users_in_study",
-    ),
-
     # survey designer
     path(
         'edit_survey/<str:survey_id>',
@@ -350,4 +346,15 @@ urlpatterns = [
         name="participant_administration.create_many_patients"
     ),
 
+    # other researcher apis
+    path(
+        "get-studies/v1",
+        other_researcher_apis.get_studies,
+        name="other_researcher_apis,get_studies",
+    ),
+    path(
+        "get-users/v1",
+        other_researcher_apis.get_users_in_study,
+        name="other_researcher_apis,get_users_in_study",
+    ),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
