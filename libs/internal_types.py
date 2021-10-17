@@ -1,7 +1,7 @@
 from django.http.request import HttpRequest
 
 from database.study_models import Study
-from database.user_models import Researcher
+from database.user_models import Participant, Researcher
 
 
 """
@@ -22,3 +22,7 @@ class ApiStudyResearcherRequest(HttpRequest):
 
 class ApiResearcherRequest(HttpRequest):
     api_researcher: Researcher
+
+
+class ParticipantRequest(HttpRequest):
+    participant: Participant

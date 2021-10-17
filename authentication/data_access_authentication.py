@@ -46,7 +46,7 @@ def api_credential_check(some_function: callable):
     def wrapper(*args, **kwargs):
         request: ApiResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), \
-            f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
         # populate the ApiResearcherRequest
         request.api_researcher = api_get_and_validate_researcher(request)  # validate and cache
         return some_function(*args, **kwargs)
@@ -61,7 +61,7 @@ def api_study_credential_check(block_test_studies: bool=False) -> callable:
         def the_inner_wrapper(*args, **kwargs):
             request: ApiStudyResearcherRequest = args[0]
             assert isinstance(request, HttpRequest), \
-                f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
+                f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
 
             # populate the ApiStudyResearcherRequest
             request.api_study, request.api_researcher = \

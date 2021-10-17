@@ -32,7 +32,7 @@ def authenticate_researcher_login(some_function):
     def authenticate_and_call(*args, **kwargs):
         request: ResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), \
-            f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
 
         if check_is_logged_in(request):
             populate_session_researcher(request)
@@ -161,7 +161,7 @@ def authenticate_researcher_study_access(some_function):
         # Check for regular login requirement
         request: ResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), \
-            f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
 
         if not check_is_logged_in(request):
             log("researcher is not logged in")

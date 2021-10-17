@@ -12,7 +12,7 @@ mobile_pages = Blueprint('mobile_pages', __name__)
 def fetch_graph():
     """ Fetches the patient's answers to the most recent survey, marked by survey ID. The results
     are dumped into a jinja template and pushed to the device. """
-    participant = get_session_participant()
+    participant = request.participant
     # See docs in config manipulations for details
     study_object_id = participant.study.object_id
     survey_object_id_set = participant.study.surveys.values_list('object_id', flat=True)

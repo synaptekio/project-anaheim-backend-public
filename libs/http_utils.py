@@ -1,7 +1,9 @@
 import functools
 
+from django.http.request import HttpRequest
+
 from database.user_models import Participant
-from libs.internal_types import ResearcherRequest
+from libs.internal_types import ParticipantRequest, ResearcherRequest
 
 
 def checkbox_to_boolean(list_checkbox_params, dict_all_params):
@@ -23,7 +25,7 @@ def string_to_int(list_int_params, dict_all_params):
     return dict_all_params
 
 
-def determine_os_api(request: ResearcherRequest, some_function):
+def determine_os_api(some_function):
     """ Add this as a decorator to a url function, under (after) the wsgi route
     decorator.  It detects if the url ends in /ios.
     This decorator provides to the function with the new variable "OS_API", which can
@@ -33,6 +35,10 @@ def determine_os_api(request: ResearcherRequest, some_function):
     'OS_API=""' into your url function declaration. """
     @functools.wraps(some_function)
     def provide_os_determination_and_call(*args, **kwargs):
+        request: ParticipantRequest = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
+
         # naive, could be improved, but sufficient
         url_end = request.path[-4:].lower()
         if "ios" in url_end:
