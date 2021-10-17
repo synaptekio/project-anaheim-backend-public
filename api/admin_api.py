@@ -2,7 +2,6 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
-from middleware.admin_authentication_middleware import abort
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login)
@@ -10,10 +9,11 @@ from config.constants import ResearcherRole
 from config.settings import DOMAIN_NAME, DOWNLOADABLE_APK_URL
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 from libs.security import check_password_requirements
 from libs.timezone_dropdown import ALL_TIMEZONES
+from middleware.abort_middleware import abort
 
 
 """######################### Study Administration ###########################"""
@@ -21,7 +21,7 @@ from libs.timezone_dropdown import ALL_TIMEZONES
 
 @require_POST
 @authenticate_admin
-def set_study_timezone(request: BeiweHttpRequest, study_id=None):
+def set_study_timezone(request: ResearcherRequest, study_id=None):
     """ Sets the custom timezone on a study. """
     new_timezone = request.POST.get("new_timezone_name")
     if new_timezone not in ALL_TIMEZONES:
@@ -41,7 +41,7 @@ def set_study_timezone(request: BeiweHttpRequest, study_id=None):
 
 @require_POST
 @authenticate_admin
-def add_researcher_to_study(request: BeiweHttpRequest, ):
+def add_researcher_to_study(request: ResearcherRequest, ):
     researcher_id = request.POST['researcher_id']
     study_id = request.POST['study_id']
     assert_admin(request, study_id)
@@ -60,7 +60,7 @@ def add_researcher_to_study(request: BeiweHttpRequest, ):
 
 @require_POST
 @authenticate_admin
-def remove_researcher_from_study(request: BeiweHttpRequest, ):
+def remove_researcher_from_study(request: ResearcherRequest, ):
     researcher_id = request.POST['researcher_id']
     study_id = request.POST['study_id']
     try:
@@ -75,7 +75,7 @@ def remove_researcher_from_study(request: BeiweHttpRequest, ):
 
 @require_POST
 @authenticate_admin
-def delete_researcher(request: BeiweHttpRequest, researcher_id):
+def delete_researcher(request: ResearcherRequest, researcher_id):
     # only site admins can delete researchers from the system.
     if not request.session_researcher.site_admin:
         return abort(403)
@@ -92,7 +92,7 @@ def delete_researcher(request: BeiweHttpRequest, researcher_id):
 
 @require_POST
 @authenticate_admin
-def set_researcher_password(request: BeiweHttpRequest, ):
+def set_researcher_password(request: ResearcherRequest, ):
     researcher = Researcher.objects.get(pk=request.POST.get('researcher_id', None))
     assert_researcher_under_admin(request, researcher)
     new_password = request.POST.get('password', '')
@@ -103,7 +103,7 @@ def set_researcher_password(request: BeiweHttpRequest, ):
 
 @require_POST
 @authenticate_admin
-def rename_study(request: BeiweHttpRequest, study_id=None):
+def rename_study(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
     assert_admin(request, study_id)
     new_study_name = request.POST.get('new_study_name', '')
@@ -116,7 +116,7 @@ def rename_study(request: BeiweHttpRequest, study_id=None):
 
 
 @authenticate_researcher_login
-def download_page(request: BeiweHttpRequest):
+def download_page(request: ResearcherRequest):
     return render(
         request,
         "download_landing_page.html",
@@ -124,27 +124,27 @@ def download_page(request: BeiweHttpRequest):
     )
 
 
-def download_current(request: BeiweHttpRequest):
+def download_current(request: ResearcherRequest):
     return redirect(DOWNLOADABLE_APK_URL)
 
 
 @authenticate_researcher_login
-def download_current_debug(request: BeiweHttpRequest):
+def download_current_debug(request: ResearcherRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/release/Beiwe-debug.apk")
 
 
 @authenticate_researcher_login
-def download_beta(request: BeiweHttpRequest):
+def download_beta(request: ResearcherRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/release/Beiwe.apk")
 
 
 @authenticate_researcher_login
-def download_beta_debug(request: BeiweHttpRequest):
+def download_beta_debug(request: ResearcherRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/debug/Beiwe-debug.apk")
 
 
 @authenticate_researcher_login
-def download_beta_release(request: BeiweHttpRequest):
+def download_beta_release(request: ResearcherRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/release/Beiwe-2.2.3-onnelaLabServer-release.apk")
 
 

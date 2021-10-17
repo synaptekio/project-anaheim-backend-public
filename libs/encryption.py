@@ -13,7 +13,7 @@ from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetada
     LineEncryptionError)
 from database.study_models import Study
 from database.user_models import Participant
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
 
 
@@ -250,7 +250,7 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
 
 
 def extract_aes_key(
-        request: BeiweHttpRequest,
+        request: ResearcherRequest,
         file_data: List[bytes], participant: Participant, private_key_cipher, original_data: bytes
 ) -> bytes:
     # The following code is ... strange because of an unfortunate design design decision made

@@ -10,7 +10,7 @@ from authentication.admin_authentication import authenticate_researcher_study_ac
 from database.schedule_models import InterventionDate
 from database.study_models import Study
 from database.user_models import Participant, ParticipantFieldValue
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 from libs.s3 import create_client_key_pair, s3_upload
 from libs.streaming_bytes_io import StreamingStringsIO
@@ -18,7 +18,7 @@ from libs.streaming_bytes_io import StreamingStringsIO
 
 @require_POST
 @authenticate_researcher_study_access
-def reset_participant_password(request: BeiweHttpRequest):
+def reset_participant_password(request: ResearcherRequest):
     """ Takes a patient ID and resets its password. Returns the new random password."""
     patient_id = request.POST['patient_id']
     study_id = request.POST['study_id']
@@ -40,7 +40,7 @@ def reset_participant_password(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_study_access
-def reset_device(request: BeiweHttpRequest):
+def reset_device(request: ResearcherRequest):
     """ Resets a participant's device. The participant will not be able to connect until they
     register a new device. """
     patient_id = request.POST['patient_id']
@@ -64,7 +64,7 @@ def reset_device(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_study_access
-def unregister_participant(request: BeiweHttpRequest):
+def unregister_participant(request: ResearcherRequest):
     """ Block participant from uploading further data """
     patient_id = request.POST['patient_id']
     study_id = request.POST['study_id']
@@ -91,7 +91,7 @@ def unregister_participant(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_study_access
-def create_new_participant(request: BeiweHttpRequest):
+def create_new_participant(request: ResearcherRequest):
     """ Creates a new user, generates a password and keys, pushes data to s3 and user database, adds
     user to the study they are supposed to be attached to and returns a string containing
     password and patient id. """
@@ -115,7 +115,7 @@ def create_new_participant(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_study_access
-def create_many_patients(request: BeiweHttpRequest, study_id=None):
+def create_many_patients(request: ResearcherRequest, study_id=None):
     """ Creates a number of new users at once for a study.  Generates a password and keys for
     each one, pushes data to S3 and the user database, adds users to the study they're supposed
     to be attached to, and returns a CSV file for download with a mapping of Patient IDs and

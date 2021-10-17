@@ -4,6 +4,8 @@
 .project
 .idea/
 .python-version
+.coverage
+htmlcov/
 
 # A place to stick your files
 env/*

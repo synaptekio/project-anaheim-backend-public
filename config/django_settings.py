@@ -1,12 +1,11 @@
 # names in this file's scope are passed in to the django settings.configure command in load_django.
 
 import os
-import sys
 from os.path import dirname, join
 
 from config import DB_MODE, DB_MODE_POSTGRES, DB_MODE_SQLITE
-from config import settings
 from config.settings import FLASK_SECRET_KEY
+
 
 DB_PATH = join(dirname(dirname(__file__)), "private/beiwe_db.sqlite")
 TEST_DATABASE_PATH = join(dirname(dirname(__file__)), 'private/tests_db.sqlite')
@@ -49,7 +48,7 @@ MIDDLEWARE = [
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'middleware.admin_authentication_middleware.EasyAbortMiddleware',
+    'middleware.abort_middleware.AbortMiddleware',
 ]
 
 
@@ -120,7 +119,7 @@ TEMPLATES = [
         'OPTIONS': {
             'autoescape': True,
             'context_processors': [
-                "middleware.admin_authentication_middleware.researcher_contexts",
+                "middleware.context_processor.researcher_context_processor",
                 "django.contrib.messages.context_processors.messages",
             ],
         "environment": "config.jinja2.environment"

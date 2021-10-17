@@ -24,7 +24,7 @@ from database.user_models import Researcher, StudyRelation
 from libs.copy_study import copy_study_from_json, format_study, unpack_json_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.sentry import make_error_sentry, SentryTypes
 from libs.timezone_dropdown import ALL_TIMEZONES_DROPDOWN
 
@@ -36,7 +36,7 @@ SITE_ADMIN = "Site Admin"
 ####################################################################################################
 
 
-def get_administerable_studies_by_name(request: BeiweHttpRequest):
+def get_administerable_studies_by_name(request: ResearcherRequest):
     """ Site admins see all studies, study admins see only studies they are admins on. """
     if request.session_researcher.site_admin:
         return Study.get_all_studies_by_name()
@@ -44,7 +44,7 @@ def get_administerable_studies_by_name(request: BeiweHttpRequest):
         return request.session_researcher.get_administered_studies_by_name()
 
 
-def get_administerable_researchers(request: BeiweHttpRequest):
+def get_administerable_researchers(request: ResearcherRequest):
     """ Site admins see all researchers, study admins see researchers on their studies. """
     if request.session_researcher.site_admin:
         return Researcher.filter_alphabetical()
@@ -98,7 +98,7 @@ def validate_ios_credentials(credentials: str) -> bool:
 
 @require_GET
 @authenticate_admin
-def manage_researchers(request: BeiweHttpRequest):
+def manage_researchers(request: ResearcherRequest):
     # get the study names that each user has access to, but only those that the current admin  also
     # has access to.
 
@@ -121,7 +121,7 @@ def manage_researchers(request: BeiweHttpRequest):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
+def edit_researcher_page(request: ResearcherRequest, researcher_pk):
     # Wow this got complex...
     session_researcher = request.session_researcher
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
@@ -182,7 +182,7 @@ def edit_researcher_page(request: BeiweHttpRequest, researcher_pk):
 
 @require_POST
 @authenticate_admin
-def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
+def elevate_researcher_to_study_admin(request: ResearcherRequest):
     researcher_pk = request.POST.get("researcher_id", None)
     study_pk = request.POST.get("study_id", None)
     assert_admin(request, study_pk)
@@ -200,7 +200,7 @@ def elevate_researcher_to_study_admin(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def demote_study_admin(request: BeiweHttpRequest):
+def demote_study_admin(request: ResearcherRequest):
     researcher_pk = request.POST.get("researcher_id")
     study_pk = request.POST.get("study_id")
     assert_admin(request, study_pk)
@@ -216,7 +216,7 @@ def demote_study_admin(request: BeiweHttpRequest):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def create_new_researcher(request: BeiweHttpRequest):
+def create_new_researcher(request: ResearcherRequest):
     if request.method == 'GET':
         return render(request, 'create_new_researcher.html')
 
@@ -236,7 +236,7 @@ def create_new_researcher(request: BeiweHttpRequest):
 
 @require_GET
 @authenticate_admin
-def manage_studies(request: BeiweHttpRequest):
+def manage_studies(request: ResearcherRequest):
     return render(request, 'manage_studies.html',
         context={"studies": [study.as_unpacked_native_python()
                              for study in get_administerable_studies_by_name(request)]}
@@ -276,7 +276,7 @@ def edit_study(request, study_id=None):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin
-def create_study(request: BeiweHttpRequest):
+def create_study(request: ResearcherRequest):
     # Only a SITE admin can create new studies.
     if not request.session_researcher.site_admin:
         return abort(403)
@@ -343,7 +343,7 @@ def create_study(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def toggle_study_forest_enabled(request: BeiweHttpRequest, study_id=None):
+def toggle_study_forest_enabled(request: ResearcherRequest, study_id=None):
     # Only a SITE admin can toggle forest on a study
     if request.session_researcher.site_admin:
         return abort(403)
@@ -374,7 +374,7 @@ def delete_study(request, study_id=None):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def device_settings(request: BeiweHttpRequest, study_id=None):
+def device_settings(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
     researcher = request.session_researcher
     readonly = True if not researcher.check_study_admin(study_id) and not researcher.site_admin else False
@@ -410,7 +410,7 @@ def device_settings(request: BeiweHttpRequest, study_id=None):
 # not intended for use with .format or other potential injection vectors
 
 @authenticate_admin
-def manage_firebase_credentials(request: BeiweHttpRequest):
+def manage_firebase_credentials(request: ResearcherRequest):
     return render(
         request,
         'manage_firebase_credentials.html',
@@ -424,7 +424,7 @@ def manage_firebase_credentials(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def upload_backend_firebase_cert(request: BeiweHttpRequest):
+def upload_backend_firebase_cert(request: ResearcherRequest):
     uploaded = request.FILES.get('backend_firebase_cert', None)
 
     if uploaded is None:
@@ -460,7 +460,7 @@ def upload_backend_firebase_cert(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def upload_android_firebase_cert(request: BeiweHttpRequest):
+def upload_android_firebase_cert(request: ResearcherRequest):
     uploaded = request.FILES.get('android_firebase_cert', None)
     try:
         if uploaded is None:
@@ -487,7 +487,7 @@ def upload_android_firebase_cert(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def upload_ios_firebase_cert(request: BeiweHttpRequest):
+def upload_ios_firebase_cert(request: ResearcherRequest):
     uploaded = request.FILES.get('ios_firebase_cert', None)
     try:
         if uploaded is None:
@@ -514,7 +514,7 @@ def upload_ios_firebase_cert(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def delete_backend_firebase_cert(request: BeiweHttpRequest):
+def delete_backend_firebase_cert(request: ResearcherRequest):
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
     # deletes the existing firebase app connection to clear credentials from memory
     update_firebase_instance()
@@ -524,7 +524,7 @@ def delete_backend_firebase_cert(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def delete_android_firebase_cert(request: BeiweHttpRequest):
+def delete_android_firebase_cert(request: ResearcherRequest):
     FileAsText.objects.filter(tag=ANDROID_FIREBASE_CREDENTIALS).delete()
     messages.info(request, Markup(ALERT_ANDROID_DELETED_TEXT))
     return redirect('/manage_firebase_credentials')
@@ -532,7 +532,7 @@ def delete_android_firebase_cert(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_admin
-def delete_ios_firebase_cert(request: BeiweHttpRequest):
+def delete_ios_firebase_cert(request: ResearcherRequest):
     FileAsText.objects.filter(tag=IOS_FIREBASE_CREDENTIALS).delete()
     messages.info(request, Markup(ALERT_IOS_DELETED_TEXT))
     return redirect('/manage_firebase_credentials')

@@ -7,12 +7,12 @@ from authentication.admin_authentication import (authenticate_researcher_login,
 from config.constants import ALL_DATA_STREAMS
 from database.data_access_models import PipelineUploadTags
 from database.user_models import Researcher
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 
 
 @require_GET
 @authenticate_researcher_login
-def data_api_web_form_page(request: BeiweHttpRequest):
+def data_api_web_form_page(request: ResearcherRequest):
     warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
     return render(
         request,
@@ -26,7 +26,7 @@ def data_api_web_form_page(request: BeiweHttpRequest):
 
 @require_GET
 @authenticate_researcher_login
-def pipeline_download_page(request: BeiweHttpRequest):
+def pipeline_download_page(request: ResearcherRequest):
     warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
     # FIXME clean this up.
     # it is a bit obnoxious to get this data, we need to deduplcate it and then turn it back into a list
@@ -56,7 +56,7 @@ def warn_researcher_if_hasnt_yet_generated_access_key(researcher: Researcher):
         messages.warning(Markup(msg))
 
 
-def participants_by_study(request: BeiweHttpRequest):
+def participants_by_study(request: ResearcherRequest):
     # dict of {study ids : list of user ids}
     return {
         study.pk: list(study.participants.order_by("patient_id").values_list("patient_id", flat=True))

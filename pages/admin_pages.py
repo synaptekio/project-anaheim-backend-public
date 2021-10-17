@@ -12,7 +12,7 @@ from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher
 from libs.firebase_config import check_firebase_instance
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.security import check_password_requirements
 from libs.serializers import ApiKeySerializer
 
@@ -22,7 +22,7 @@ from libs.serializers import ApiKeySerializer
 ####################################################################################################
 
 
-def logout_admin(request: BeiweHttpRequest):
+def logout_admin(request: ResearcherRequest):
     """ clear session information for a researcher """
     logout_researcher(request)
     return redirect("/")
@@ -34,7 +34,7 @@ def logout_admin(request: BeiweHttpRequest):
 
 @require_GET
 @authenticate_researcher_login
-def choose_study(request: BeiweHttpRequest):
+def choose_study(request: ResearcherRequest):
     allowed_studies = get_researcher_allowed_studies_as_query_set(request)
     # If the admin is authorized to view exactly 1 study, redirect to that study,
     # Otherwise, show the "Choose Study" page
@@ -53,7 +53,7 @@ def choose_study(request: BeiweHttpRequest):
 
 @require_GET
 @authenticate_researcher_study_access
-def view_study(request: BeiweHttpRequest, study_id=None):
+def view_study(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
 
     return render(
@@ -77,7 +77,7 @@ def view_study(request: BeiweHttpRequest, study_id=None):
 
 
 @authenticate_researcher_login
-def manage_credentials(request: BeiweHttpRequest):
+def manage_credentials(request: ResearcherRequest):
     serializer = ApiKeySerializer(
         ApiKey.objects.filter(researcher=request.session_researcher), many=True)
     return render(
@@ -90,7 +90,7 @@ def manage_credentials(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_login
-def reset_admin_password(request: BeiweHttpRequest):
+def reset_admin_password(request: ResearcherRequest):
     username = request.session[SESSION_NAME]
     current_password = request.POST['current_password']
     new_password = request.POST['new_password']
@@ -113,7 +113,7 @@ def reset_admin_password(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_login
-def reset_download_api_credentials(request: BeiweHttpRequest):
+def reset_download_api_credentials(request: ResearcherRequest):
     researcher = Researcher.objects.get(username=request.session[SESSION_NAME])
     access_key, secret_key = researcher.reset_access_credentials()
     messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)), 'warning')
@@ -123,7 +123,7 @@ def reset_download_api_credentials(request: BeiweHttpRequest):
 # @admin_pages.route('/new_api_key', methods=['POST'])
 @require_POST
 @authenticate_researcher_login
-def new_api_key(request: BeiweHttpRequest):
+def new_api_key(request: ResearcherRequest):
     form = NewApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")
@@ -142,7 +142,7 @@ def new_api_key(request: BeiweHttpRequest):
 
 @require_POST
 @authenticate_researcher_login
-def disable_api_key(request: BeiweHttpRequest):
+def disable_api_key(request: ResearcherRequest):
     form = DisableApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")

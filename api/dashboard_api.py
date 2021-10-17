@@ -1,7 +1,6 @@
 import json
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
-from middleware.admin_authentication_middleware import abort
 
 from django.shortcuts import render
 
@@ -12,7 +11,8 @@ from database.dashboard_models import DashboardColorSetting, DashboardGradient, 
 from database.data_access_models import ChunkRegistry, PipelineRegistry
 from database.study_models import Study
 from database.user_models import Participant
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
+from middleware.abort_middleware import abort
 
 
 DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be formatted like this: " \
@@ -20,7 +20,7 @@ DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be form
 
 
 @authenticate_researcher_study_access
-def dashboard_page(request: BeiweHttpRequest, study_id: int):
+def dashboard_page(request: ResearcherRequest, study_id: int):
     """ information for the general dashboard view for a study"""
     study = Study.get_or_404(pk=study_id)
     participants = list(
@@ -40,7 +40,7 @@ def dashboard_page(request: BeiweHttpRequest, study_id: int):
 
 @authenticate_researcher_study_access
 def get_data_for_dashboard_datastream_display(
-    request: BeiweHttpRequest, study_id: int, data_stream: str
+    request: ResearcherRequest, study_id: int, data_stream: str
 ):
     """ Parses information for the data stream dashboard view GET and POST requests left the post
     and get requests in the same function because the body of the get request relies on the
@@ -177,7 +177,7 @@ def get_data_for_dashboard_datastream_display(
 
 
 @authenticate_researcher_study_access
-def get_data_for_dashboard_patient_display(request: BeiweHttpRequest, study_id, patient_id):
+def get_data_for_dashboard_patient_display(request: ResearcherRequest, study_id, patient_id):
     """ parses data to be displayed for the singular participant dashboard view """
     study = Study.get_or_404(pk=study_id)
     participant = get_participant(patient_id, study_id)
@@ -358,7 +358,7 @@ def parse_patient_processed_data(study_id, participant):
     return first_day, last_day, all_data
 
 
-def set_default_settings_post_request(request: BeiweHttpRequest, study: Study, data_stream):
+def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream):
     all_flags_list = request.POST.get("all_flags_list", "[]")
     color_high_range = request.POST.get("color_high_range", 0)
     color_low_range = request.POST.get("color_low_range", 0)
@@ -613,7 +613,7 @@ def dashboard_pipelineregistry_query(study_id, participant_id):
     return None
 
 
-def extract_date_args_from_request(request: BeiweHttpRequest):
+def extract_date_args_from_request(request: ResearcherRequest):
     """ Gets start and end arguments from GET/POST params, throws 400 on date formatting errors. """
     start = request.POST.get("start", None)
     end = request.POST.get("end", None)
@@ -628,7 +628,7 @@ def extract_date_args_from_request(request: BeiweHttpRequest):
     return start, end
 
 
-def extract_range_args_from_request(request: BeiweHttpRequest):
+def extract_range_args_from_request(request: ResearcherRequest):
     """ Gets minimum and maximum arguments from GET/POST params """
     color_low_range = request.POST.get("color_low", None)
     color_high_range = request.POST.get("color_high", None)
@@ -636,7 +636,7 @@ def extract_range_args_from_request(request: BeiweHttpRequest):
     return color_low_range, color_high_range, show_color
 
 
-def extract_flag_args_from_request(request: BeiweHttpRequest):
+def extract_flag_args_from_request(request: ResearcherRequest):
     """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None or empty """
     all_flags_string = request.POST.get("flags", "")
     all_flags_list = []
@@ -650,7 +650,7 @@ def extract_flag_args_from_request(request: BeiweHttpRequest):
     return all_flags_list
 
 
-def extract_data_stream_args_from_request(request: BeiweHttpRequest):
+def extract_data_stream_args_from_request(request: ResearcherRequest):
     """ Gets data stream if it is provided as a request POST or GET parameter,
     throws 400 errors on unknown data streams. """
     data_stream = request.POST.get("data_stream", None)

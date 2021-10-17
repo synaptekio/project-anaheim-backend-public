@@ -6,8 +6,8 @@ from django.http.request import HttpRequest
 from config.study_constants import BASE64_GENERIC_ALLOWED_CHARACTERS, OBJECT_ID_ALLOWED_CHARS
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
-from libs.internal_types import BeiweApiLightRequest, BeiweApiRequest, BeiweHttpRequest
-from middleware.admin_authentication_middleware import abort
+from libs.internal_types import ApiResearcherRequest, ApiStudyResearcherRequest, ResearcherRequest
+from middleware.abort_middleware import abort
 
 
 class BadObjectIdType(Exception): pass
@@ -39,14 +39,14 @@ def is_object_id(object_id: str) -> bool:
 ################################# Primary Access Validation ########################################
 
 
-def get_api_study(request: BeiweApiRequest) -> Study:
+def get_api_study(request: ApiStudyResearcherRequest) -> Study:
     try:
         return request.api_study
     except AttributeError:
         raise IncorrectAPIAuthUsage("request.api_study used before/without credential checks.")
 
 
-def get_api_researcher(request: BeiweApiLightRequest or BeiweApiRequest) -> Researcher:
+def get_api_researcher(request: ApiResearcherRequest or ApiStudyResearcherRequest) -> Researcher:
     try:
         return request.api_researcher
     except AttributeError:
@@ -57,7 +57,7 @@ def api_credential_check(some_function: callable):
     """ Checks API credentials and attaches the researcher to the request object. """
     @functools.wraps(some_function)
     def wrapper(*args, **kwargs):
-        request: BeiweApiLightRequest = args[0]
+        request: ApiResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), type(request)
         request.api_researcher = api_get_and_validate_researcher(request)  # validate and cache
         return some_function(*args, **kwargs)
@@ -70,7 +70,7 @@ def api_study_credential_check(block_test_studies: bool=False) -> callable:
     def the_decorator(some_function: callable):
         @functools.wraps(some_function)
         def the_inner_wrapper(*args, **kwargs):
-            request: BeiweApiRequest = args[0]
+            request: ApiStudyResearcherRequest = args[0]
             assert isinstance(request, HttpRequest), type(request)
             study, researcher = api_test_researcher_study_access(request, block_test_studies)
             # cache researcher and study on the request for easy database-less access
@@ -103,7 +103,7 @@ they are complex and easy to misuse.
 """
 
 
-def api_test_researcher_study_access(request: BeiweHttpRequest, block_test_studies: bool) -> Tuple[Study, Researcher]:
+def api_test_researcher_study_access(request: ResearcherRequest, block_test_studies: bool) -> Tuple[Study, Researcher]:
     """ Checks whether the researcher is allowed to do api access on this study.
     Parameter allows control of whether to allow the api call to hit a test study. """
     study = api_get_study_confirm_exists(request)
@@ -143,7 +143,7 @@ def api_get_and_validate_credentials(request: HttpRequest) -> Tuple[str, str]:
     return access_key, secret_key
 
 
-def api_get_validate_researcher_on_study(request: BeiweHttpRequest, study: Study) -> Researcher:
+def api_get_validate_researcher_on_study(request: ResearcherRequest, study: Study) -> Researcher:
     """
     Finds researcher based on the secret key provided.
     Returns 403 if researcher doesn't exist, is not credentialed on the study, or if
@@ -167,7 +167,7 @@ def api_get_validate_researcher_on_study(request: BeiweHttpRequest, study: Study
     return researcher
 
 
-def api_get_study_confirm_exists(request: BeiweHttpRequest) -> Study:
+def api_get_study_confirm_exists(request: ResearcherRequest) -> Study:
     """
     Checks for a valid study object id or primary key.
     Study object id malformed (not 24 characters) causes 400 error.

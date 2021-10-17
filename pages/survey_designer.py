@@ -6,12 +6,12 @@ from authentication.admin_authentication import authenticate_researcher_study_ac
 from config.settings import DOMAIN_NAME
 from database.survey_models import Survey
 from libs.firebase_config import check_firebase_instance
-from libs.internal_types import BeiweHttpRequest
-from middleware.admin_authentication_middleware import abort
+from libs.internal_types import ResearcherRequest
+from middleware.abort_middleware import abort
 
 
 @authenticate_researcher_study_access
-def render_edit_survey(request: BeiweHttpRequest, survey_id=None):
+def render_edit_survey(request: ResearcherRequest, survey_id=None):
     try:
         survey = Survey.objects.get(pk=survey_id)
     except Survey.DoesNotExist:

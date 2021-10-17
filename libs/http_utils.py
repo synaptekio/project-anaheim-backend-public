@@ -1,7 +1,7 @@
 import functools
 
 from database.user_models import Participant
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 
 
 def checkbox_to_boolean(list_checkbox_params, dict_all_params):
@@ -23,7 +23,7 @@ def string_to_int(list_int_params, dict_all_params):
     return dict_all_params
 
 
-def determine_os_api(request: BeiweHttpRequest,some_function):
+def determine_os_api(request: ResearcherRequest, some_function):
     """ Add this as a decorator to a url function, under (after) the wsgi route
     decorator.  It detects if the url ends in /ios.
     This decorator provides to the function with the new variable "OS_API", which can

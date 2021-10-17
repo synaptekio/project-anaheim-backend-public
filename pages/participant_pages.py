@@ -12,14 +12,14 @@ from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant
 from libs.firebase_config import check_firebase_instance
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
-from middleware.admin_authentication_middleware import abort
+from middleware.abort_middleware import abort
 
 
 @require_GET
 @authenticate_researcher_study_access
-def notification_history(request: BeiweHttpRequest, study_id: int, patient_id: str):
+def notification_history(request: ResearcherRequest, study_id: int, patient_id: str):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
         study = participant.study
@@ -52,7 +52,7 @@ def notification_history(request: BeiweHttpRequest, study_id: int, patient_id: s
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def participant_page(request: BeiweHttpRequest, study_id: int, patient_id: str):
+def participant_page(request: ResearcherRequest, study_id: int, patient_id: str):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
         study = participant.study
@@ -88,7 +88,7 @@ def participant_page(request: BeiweHttpRequest, study_id: int, patient_id: str):
     return redirect(request.referrer)
 
 
-def render_participant_page(request: BeiweHttpRequest, participant: Participant, study: Study):
+def render_participant_page(request: ResearcherRequest, participant: Participant, study: Study):
     # to reduce database queries we get all the data across 4 queries and then merge it together.
     # dicts of intervention id to intervention date string, and of field names to value
     # (this was quite slow previously)

@@ -4,20 +4,21 @@ from database.study_models import Study
 from database.user_models import Researcher
 
 
-""" This file includes types and typing information that may be missing from your development
-environment or your IDE.  """
+"""
+This file includes types and typing information that may be missing from your development
+environment or your IDE.
+"""
 
 
-class BeiweHttpRequest(HttpRequest):
+class ResearcherRequest(HttpRequest):
     # these attributes are present on the normal researcher endpoints
     session_researcher: Researcher
 
 
-class BeiweApiRequest(HttpRequest):
+class ApiStudyResearcherRequest(HttpRequest):
     api_researcher: Researcher
     api_study: Study
 
 
-class BeiweApiLightRequest(HttpRequest):
+class ApiResearcherRequest(HttpRequest):
     api_researcher: Researcher
-

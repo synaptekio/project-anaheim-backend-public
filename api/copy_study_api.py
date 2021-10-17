@@ -9,8 +9,8 @@ from database.study_models import Study
 from database.survey_models import Survey
 from libs.copy_study import (allowed_file_extension, copy_study_from_json, format_study,
     unpack_json_study)
-from libs.internal_types import BeiweHttpRequest
-from middleware.admin_authentication_middleware import abort
+from libs.internal_types import ResearcherRequest
+from middleware.abort_middleware import abort
 
 
 """
@@ -24,7 +24,7 @@ JSON structure for exporting and importing study surveys and settings:
 
 @require_GET
 @authenticate_admin
-def export_study_settings_file(request: BeiweHttpRequest, study_id):
+def export_study_settings_file(request: ResearcherRequest, study_id):
     """ Endpoint that returns a json representation of a study. """
     study = Study.objects.get(pk=study_id)
     filename = study.name.replace(' ', '_') + "_surveys_and_settings.json"
@@ -38,7 +38,7 @@ def export_study_settings_file(request: BeiweHttpRequest, study_id):
 
 @require_POST
 @authenticate_admin
-def import_study_settings_file(request: BeiweHttpRequest, study_id):
+def import_study_settings_file(request: ResearcherRequest, study_id):
     """ Endpoint that takes the output of export_study_settings_file and creates a new study. """
     study = Study.objects.get(pk=study_id)
     file = request.files.get('upload', None)

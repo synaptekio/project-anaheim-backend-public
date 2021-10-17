@@ -8,11 +8,11 @@ from django.views.decorators.http import require_http_methods
 from authentication.admin_authentication import authenticate_researcher_study_access
 from database.schedule_models import AbsoluteSchedule, RelativeSchedule, WeeklySchedule
 from database.survey_models import Survey
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.json_logic import do_validate_survey
 from libs.push_notification_helpers import (repopulate_absolute_survey_schedule_events,
     repopulate_relative_survey_schedule_events, repopulate_weekly_survey_schedule_events)
-from middleware.admin_authentication_middleware import abort
+from middleware.abort_middleware import abort
 
 
 ################################################################################
@@ -22,14 +22,14 @@ from middleware.admin_authentication_middleware import abort
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def create_survey(request: BeiweHttpRequest, study_id=None, survey_type='tracking_survey'):
+def create_survey(request: ResearcherRequest, study_id=None, survey_type='tracking_survey'):
     new_survey = Survey.create_with_settings(study_id=study_id, survey_type=survey_type)
     return redirect(f'/edit_survey/{new_survey.id}')
 
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def delete_survey(request: BeiweHttpRequest, survey_id=None):
+def delete_survey(request: ResearcherRequest, survey_id=None):
     try:
         survey = Survey.objects.get(pk=survey_id)
     except Survey.DoesNotExist:
@@ -51,7 +51,7 @@ def delete_survey(request: BeiweHttpRequest, survey_id=None):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def update_survey(request: BeiweHttpRequest, survey_id=None):
+def update_survey(request: ResearcherRequest, survey_id=None):
     """
     Updates the survey when the 'Save & Deploy button on the edit_survey page is hit. Expects
     content, weekly_timings, absolute_timings, relative_timings, and settings in the request body

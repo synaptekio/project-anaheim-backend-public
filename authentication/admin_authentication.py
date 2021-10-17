@@ -12,9 +12,9 @@ from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 from libs.security import generate_easy_alphanumeric_string
-from middleware.admin_authentication_middleware import abort
+from middleware.abort_middleware import abort
 
 
 DEBUG_ADMIN_NAUTHENTICATION = False
@@ -30,7 +30,7 @@ def authenticate_researcher_login(some_function):
     """ Decorator for functions (pages) that require a login, redirect to login page on failure. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        request: BeiweHttpRequest = args[0]
+        request: ResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
 
@@ -56,14 +56,14 @@ def logout_researcher(request: HttpRequest):
         del request.session[EXPIRY_NAME]
 
 
-def log_in_researcher(request: BeiweHttpRequest, username: str):
+def log_in_researcher(request: ResearcherRequest, username: str):
     """ populate session for a researcher """
     request.session[SESSION_UUID] = generate_easy_alphanumeric_string()
     request.session[EXPIRY_NAME] = datetime.now() + timedelta(hours=6)
     request.session[SESSION_NAME] = username
 
 
-def check_is_logged_in(request: BeiweHttpRequest):
+def check_is_logged_in(request: ResearcherRequest):
     """ automatically logs out the researcher if their session is timed out. """
     if EXPIRY_NAME in request.session:
         if assert_session_unexpired(request):
@@ -76,7 +76,7 @@ def check_is_logged_in(request: BeiweHttpRequest):
     return False
 
 
-def assert_session_unexpired(request: BeiweHttpRequest):
+def assert_session_unexpired(request: ResearcherRequest):
     # probably a development environment issue, sometimes the datetime is naive.
     expiry_datetime = request.session[EXPIRY_NAME]
     if is_naive(expiry_datetime):
@@ -85,8 +85,8 @@ def assert_session_unexpired(request: BeiweHttpRequest):
         return expiry_datetime > timezone.now()
 
 
-def populate_session_researcher(request: BeiweHttpRequest):
-    # this function defines the BeiweHttpRequest, which is purely for IDE assistence
+def populate_session_researcher(request: ResearcherRequest):
+    # this function defines the ResearcherRequest, which is purely for IDE assistence
     username = request.session.get("researcher_username", None)
     if username is None:
         log("researcher username was not present in session")
@@ -99,7 +99,7 @@ def populate_session_researcher(request: BeiweHttpRequest):
         return abort(400)
 
 
-def assert_admin(request: BeiweHttpRequest, study_id: int):
+def assert_admin(request: ResearcherRequest, study_id: int):
     """ This function will throw a 403 forbidden error and stop execution.  Note that the abort
         directly raises the 403 error, if we don't hit that return True. """
     session_researcher = request.session_researcher
@@ -111,7 +111,7 @@ def assert_admin(request: BeiweHttpRequest, study_id: int):
     return True
 
 
-def assert_researcher_under_admin(request: BeiweHttpRequest, researcher: Researcher, study=None):
+def assert_researcher_under_admin(request: ResearcherRequest, researcher: Researcher, study=None):
     """ Asserts that the researcher provided is allowed to be edited by the session user.
         If study is provided then the admin test is strictly for that study, otherwise it checks
         for admin status anywhere. """
@@ -159,7 +159,7 @@ def authenticate_researcher_study_access(some_function):
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
         # Check for regular login requirement
-        request: BeiweHttpRequest = args[0]
+        request: ResearcherRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} type HttpRequest, was {type(request)}."
 
@@ -210,7 +210,7 @@ def authenticate_researcher_study_access(some_function):
     return authenticate_and_call
 
 
-def get_researcher_allowed_studies_as_query_set(request: BeiweHttpRequest):
+def get_researcher_allowed_studies_as_query_set(request: ResearcherRequest):
     if request.session_researcher.site_admin:
         return Study.get_all_studies_by_name()
 
@@ -219,7 +219,7 @@ def get_researcher_allowed_studies_as_query_set(request: BeiweHttpRequest):
     )
 
 
-def get_researcher_allowed_studies(request: BeiweHttpRequest) -> List[Dict]:
+def get_researcher_allowed_studies(request: ResearcherRequest) -> List[Dict]:
     """
     Return a list of studies which the currently logged-in researcher is authorized to view and edit.
     """
@@ -248,7 +248,7 @@ def authenticate_admin(some_function):
 #    500 error inside the authenticate_researcher_study_access decorator. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        request: BeiweHttpRequest = args[0]
+        request: ResearcherRequest = args[0]
 
         # this is debugging code for the django frontend server port
         if not isinstance(request, HttpRequest):

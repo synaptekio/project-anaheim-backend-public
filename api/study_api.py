@@ -9,12 +9,12 @@ from authentication.admin_authentication import authenticate_researcher_study_ac
 from database.schedule_models import Intervention, InterventionDate
 from database.study_models import Study, StudyField
 from database.user_models import Participant, ParticipantFieldValue
-from libs.internal_types import BeiweHttpRequest
+from libs.internal_types import ResearcherRequest
 
 
 @require_GET
 @authenticate_researcher_study_access
-def study_participants_api(request: BeiweHttpRequest, study_id):
+def study_participants_api(request: ResearcherRequest, study_id):
     study = Study.objects.get(pk=study_id)
     # `draw` is passed by DataTables. It's automatically incremented, starting with 1 on the page
     # load, and then 2 with the next call to this API endpoint, and so on.
@@ -39,7 +39,7 @@ def study_participants_api(request: BeiweHttpRequest, study_id):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def interventions_page(request: BeiweHttpRequest, study_id=None):
+def interventions_page(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
 
     if request.method == 'GET':
@@ -64,7 +64,7 @@ def interventions_page(request: BeiweHttpRequest, study_id=None):
 
 @require_POST
 @authenticate_researcher_study_access
-def delete_intervention(request: BeiweHttpRequest, study_id=None):
+def delete_intervention(request: ResearcherRequest, study_id=None):
     """Deletes the specified Intervention. Expects intervention in the request body."""
     study = Study.objects.get(pk=study_id)
     intervention_id = request.POST.get('intervention')
@@ -84,7 +84,7 @@ def delete_intervention(request: BeiweHttpRequest, study_id=None):
 
 @require_POST
 @authenticate_researcher_study_access
-def edit_intervention(request: BeiweHttpRequest, study_id=None):
+def edit_intervention(request: ResearcherRequest, study_id=None):
     """
     Edits the name of the intervention. Expects intervention_id and edit_intervention in the
     request body
@@ -105,7 +105,7 @@ def edit_intervention(request: BeiweHttpRequest, study_id=None):
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def study_fields(request: BeiweHttpRequest, study_id=None):
+def study_fields(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
 
     if request.method == 'GET':
@@ -129,7 +129,7 @@ def study_fields(request: BeiweHttpRequest, study_id=None):
 
 @require_POST
 @authenticate_researcher_study_access
-def delete_field(request: BeiweHttpRequest, study_id=None):
+def delete_field(request: ResearcherRequest, study_id=None):
     """Deletes the specified Custom Field. Expects field in the request body."""
     study = Study.objects.get(pk=study_id)
     field = request.POST.get('field', None)
@@ -150,7 +150,7 @@ def delete_field(request: BeiweHttpRequest, study_id=None):
 
 @require_POST
 @authenticate_researcher_study_access
-def edit_custom_field(request: BeiweHttpRequest, study_id=None):
+def edit_custom_field(request: ResearcherRequest, study_id=None):
     """Edits the name of a Custom field. Expects field_id anf edit_custom_field in request body"""
     field_id = request.POST.get("field_id")
     new_field_name = request.POST.get("edit_custom_field")
