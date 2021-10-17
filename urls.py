@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.urls import path
 
 from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api, other_researcher_apis,
-    participant_administration, study_api, survey_api)
+    participant_administration, push_notifications_api, study_api, survey_api)
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     survey_designer, system_admin_pages)
 
@@ -412,5 +412,21 @@ urlpatterns = [
         name="mobile_api.get_latest_surveys_ios"
     ),
 
+    # push notification api
+    path(
+        'set_fcm_token',
+        push_notifications_api.set_fcm_token,
+        name="push_notifications_api.set_fcm_token",
+    ),
+    path(
+        'test_notification',
+        push_notifications_api.send_test_notification,
+        name="push_notifications_api.test_notification",
+    ),
+    path(
+        'send_survey_notification',
+        push_notifications_api.send_survey_notification,
+        name="push_notifications_api.send_survey_notification",
+    ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
