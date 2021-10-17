@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
+from markupsafe import Markup
 
 from authentication.admin_authentication import (authenticate_researcher_login,
     get_researcher_allowed_studies, get_researcher_allowed_studies_as_query_set)

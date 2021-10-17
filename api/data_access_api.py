@@ -1,22 +1,25 @@
+import json
 from datetime import datetime
 
 from django.db.models import QuerySet
-from flask import abort, Blueprint, json, request, Response
+from django.http.response import StreamingHttpResponse
+from django.views.decorators.http import require_http_methods
 
-from authentication.data_access_authentication import api_study_credential_check, get_api_study
+from authentication.data_access_authentication import api_study_credential_check
 from config.constants import ALL_DATA_STREAMS, API_TIME_FORMAT
 from database.data_access_models import ChunkRegistry, PipelineUpload
 from database.user_models import Participant
+from libs.internal_types import ApiStudyResearcherRequest
 from libs.streaming_zip import zip_generator, zip_generator_for_pipeline
+from middleware.abort_middleware import abort
 
-data_access_api = Blueprint('data_access_api', __name__)
 
 chunk_fields = ("pk", "participant_id", "data_type", "chunk_path", "time_bin", "chunk_hash",
                 "participant__patient_id", "study_id", "survey_id", "survey__object_id")
 
-@data_access_api.route("/get-data/v1", methods=['POST', "GET"])
+@require_http_methods(['POST', "GET"])
 @api_study_credential_check(block_test_studies=True)
-def get_data():
+def get_data(request: ApiStudyResearcherRequest):
     """ Required: access key, access secret, study_id
     JSON blobs: data streams, users - default to all
     Strings: date-start, date-end - format as "YYYY-MM-DDThh:mm:ss"
@@ -25,60 +28,62 @@ def get_data():
         missing creds or study, invalid researcher or study, researcher does not have access
         researcher creds are invalid
         (Flask automatically returns a 400 response if a parameter is accessed
-        but does not exist in request.values() )
+        but does not exist in request.POST() )
     Returns a zip file of all data files found by the query. """
 
     query_args = {}
-    determine_data_streams_for_db_query(query_args)
-    determine_users_for_db_query(query_args)
-    determine_time_range_for_db_query(query_args)
+    determine_data_streams_for_db_query(request, query_args)
+    determine_users_for_db_query(request, query_args)
+    determine_time_range_for_db_query(request, query_args)
 
     # Do query! (this is actually a generator)
-    get_these_files = handle_database_query(get_api_study().pk, query_args, registry_dict=parse_registry())
+    get_these_files = handle_database_query(request.api_study.pk, query_args, registry_dict=parse_registry(request))
 
     # If the request is from the web form we need to indicate that it is an attachment,
     # and don't want to create a registry file.
     # Oddly, it is the presence of  mimetype=zip that causes the streaming response to actually stream.
-    if 'web_form' in request.values:
-        return Response(
+    if 'web_form' in request.POST:
+        return StreamingHttpResponse(
+            request,
             zip_generator(get_these_files, construct_registry=False),
             mimetype="zip",
             headers={'Content-Disposition': 'attachment; filename="data.zip"'}
         )
     else:
-        return Response(
+        return StreamingHttpResponse(
+            request,
             zip_generator(get_these_files, construct_registry=True),
             mimetype="zip",
         )
 
 
-@data_access_api.route("/get-pipeline/v1", methods=["GET", "POST"])
+@require_http_methods(["GET", "POST"])
 @api_study_credential_check()
-def pipeline_data_download():
+def pipeline_data_download(request: ApiStudyResearcherRequest):
     # the following two cases are for difference in content wrapping between the CLI script and
     # the download page.
-    study = get_api_study()
-    if 'tags' in request.values:
+    if 'tags' in request.POST:
         try:
-            tags = json.loads(request.values['tags'])
+            tags = json.loads(request.POST['tags'])
         except ValueError:
             tags = request.POST.getlist('tags')
-        query = PipelineUpload.objects.filter(study__id=study.id, tags__tag__in=tags)
+        query = PipelineUpload.objects.filter(study__id=request.api_study.id, tags__tag__in=tags)
     else:
-        query = PipelineUpload.objects.filter(study__id=study.id)
+        query = PipelineUpload.objects.filter(study__id=request.api_study.id)
 
-    return Response(
+    return StreamingHttpResponse(
+        request,
         zip_generator_for_pipeline(query),
         mimetype="zip",
         headers={'Content-Disposition': 'attachment; filename="data.zip"'}
     )
 
 
-def parse_registry():
+def parse_registry(request: ApiStudyResearcherRequest):
     """ Parses the provided registry.dat file and returns a dictionary of chunk
     file names and hashes.  (The registry file is just a json dictionary containing
     a list of file names and hashes.) """
-    registry = request.values.get("registry", None)
+    registry = request.POST.get("registry", None)
     if registry is None:
         return None
 
@@ -106,15 +111,15 @@ def str_to_datetime(time_string):
 ############################ DB Query For Data Download #################################
 #########################################################################################
 
-def determine_data_streams_for_db_query(query_dict: dict):
+def determine_data_streams_for_db_query(request: ApiStudyResearcherRequest, query_dict: dict):
     """ Determines, from the html request, the data streams that should go into the database query.
     Modifies the provided query object accordingly, there is no return value
     Throws a 404 if the data stream provided does not exist. """
-    if 'data_streams' in request.values:
+    if 'data_streams' in request.POST:
         # the following two cases are for difference in content wrapping between
         # the CLI script and the download page.
         try:
-            query_dict['data_types'] = json.loads(request.values['data_streams'])
+            query_dict['data_types'] = json.loads(request.POST['data_streams'])
         except ValueError:
             query_dict['data_types'] = request.POST.getlist('data_streams')
 
@@ -123,13 +128,13 @@ def determine_data_streams_for_db_query(query_dict: dict):
                 return abort(404)
 
 
-def determine_users_for_db_query(query: dict):
+def determine_users_for_db_query(request: ApiStudyResearcherRequest, query: dict):
     """ Determines, from the html request, the users that should go into the database query.
     Modifies the provided query object accordingly, there is no return value.
     Throws a 404 if a user provided does not exist. """
-    if 'user_ids' in request.values:
+    if 'user_ids' in request.POST:
         try:
-            query['user_ids'] = [user for user in json.loads(request.values['user_ids'])]
+            query['user_ids'] = [user for user in json.loads(request.POST['user_ids'])]
         except ValueError:
             query['user_ids'] = request.POST.getlist('user_ids')
 
@@ -138,14 +143,14 @@ def determine_users_for_db_query(query: dict):
             return abort(404)
 
 
-def determine_time_range_for_db_query(query: dict):
+def determine_time_range_for_db_query(request: ApiStudyResearcherRequest, query: dict):
     """ Determines, from the html request, the time range that should go into the database query.
     Modifies the provided query object accordingly, there is no return value.
     Throws a 404 if a user provided does not exist. """
-    if 'time_start' in request.values:
-        query['start'] = str_to_datetime(request.values['time_start'])
-    if 'time_end' in request.values:
-        query['end'] = str_to_datetime(request.values['time_end'])
+    if 'time_start' in request.POST:
+        query['start'] = str_to_datetime(request.POST['time_start'])
+    if 'time_end' in request.POST:
+        query['end'] = str_to_datetime(request.POST['time_end'])
 
 
 def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict = None) -> QuerySet:

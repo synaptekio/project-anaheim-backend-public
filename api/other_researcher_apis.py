@@ -3,7 +3,7 @@ import json
 from django.views.decorators.http import require_http_methods
 
 from authentication.data_access_authentication import (api_credential_check,
-    api_study_credential_check, get_api_researcher, get_api_study)
+    api_study_credential_check)
 from database.user_models import StudyRelation
 from libs.internal_types import ApiResearcherRequest, ApiStudyResearcherRequest
 
@@ -20,16 +20,15 @@ def get_studies(request: ApiResearcherRequest):
     """
     return json.dumps(
         dict(
-            StudyRelation.objects.filter(researcher=get_api_researcher(request))
+            StudyRelation.objects.filter(researcher=request.api_researcher)
                 .values_list("study__object_id", "study__name")
         )
     )
 
 
 @require_http_methods(['POST', "GET"])
-@api_study_credential_check()
+@api_study_credential_check
 def get_users_in_study(request: ApiStudyResearcherRequest):
-    return json.dumps(  # json can't operate on query, need as list.
-        list(get_api_study(request).participants.values_list('patient_id', flat=True))
+    return json.dumps(  # json can't operate on queryset, need as list.
+        list(request.api_study.participants.values_list('patient_id', flat=True))
     )
-

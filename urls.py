@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import (admin_api, copy_study_api, dashboard_api, other_researcher_apis,
+from api import (admin_api, copy_study_api, dashboard_api, data_access_api, other_researcher_apis,
     participant_administration, study_api, survey_api)
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     survey_designer, system_admin_pages)
@@ -357,4 +357,18 @@ urlpatterns = [
         other_researcher_apis.get_users_in_study,
         name="other_researcher_apis,get_users_in_study",
     ),
+
+    # data_access_api
+    path(
+        "get-data/v1",
+        data_access_api.get_data,
+        name="data_access_api.get_data",
+    ),
+    path(
+        "get-pipeline/v1",
+        data_access_api.pipeline_data_download,
+        name="data_access_api.get_pipeline",
+    ),
+
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

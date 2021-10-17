@@ -25,4 +25,3 @@ try:
     django_loaded = True
 except RuntimeError as e:
     pass
-
