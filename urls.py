@@ -2,9 +2,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api, other_researcher_apis,
-    participant_administration, push_notifications_api, study_api, survey_api)
-from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
+from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api,
+    other_researcher_apis, participant_administration, push_notifications_api, study_api,
+    survey_api)
+from pages import (admin_pages, data_access_web_form, login_pages, mobile_pages, participant_pages,
     survey_designer, system_admin_pages)
 
 
@@ -428,5 +429,12 @@ urlpatterns = [
         push_notifications_api.send_survey_notification,
         name="push_notifications_api.send_survey_notification",
     ),
+
+    # mobile pages
+    path(
+        'graph',
+        mobile_pages.fetch_graph,
+        name="mobile_pages.fetch_graph",
+    )
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
