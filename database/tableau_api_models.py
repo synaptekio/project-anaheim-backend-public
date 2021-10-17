@@ -7,16 +7,17 @@ import shutil
 import uuid
 
 from django.db import models
+
+from constants.forest_integration import ForestTree, TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS
 from database.common_models import TimestampedModel
 from database.user_models import Participant
-from libs.forest_integration.constants import ForestTree, TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS
 from libs.utils.date_utils import datetime_to_list
 
 
 class ForestParam(TimestampedModel):
     """
     Model for tracking params used in Forest analyses. There is one object for all trees.
-    
+
     When adding support for a new tree, make sure to add a migration to populate existing
     ForestMetadata objects with the default metadata for the new tree. This way, all existing
     ForestTasks are still associated to the same ForestMetadata object and we don't have to give
@@ -29,10 +30,10 @@ class ForestParam(TimestampedModel):
     default = models.NullBooleanField(unique=True)
     notes = models.TextField(blank=True)
     name = models.TextField(blank=True)
-    
+
     jasmine_json_string = models.TextField()
     willow_json_string = models.TextField()
-    
+
     def params_for_tree(self, tree_name):
         if tree_name not in ForestTree.values():
             raise KeyError(f"Invalid tree \"{tree_name}\". Must be one of {ForestTree.values()}.")
@@ -47,48 +48,48 @@ class ForestTask(TimestampedModel):
     # the external id is used for endpoints that refer to forest trackers to avoid exposing the
     # primary keys of the model. it is intentionally not the primary key
     external_id = models.UUIDField(default=uuid.uuid4, editable=False)
-    
+
     forest_param = models.ForeignKey(ForestParam, on_delete=models.PROTECT)
     params_dict_cache = models.TextField(blank=True)  # Cache of the params used
-    
+
     forest_tree = models.TextField(choices=ForestTree.choices())
     data_date_start = models.DateField()  # inclusive
     data_date_end = models.DateField()  # inclusive
-    
+
     total_file_size = models.BigIntegerField(blank=True, null=True)  # input file size sum for accounting
     process_start_time = models.DateTimeField(null=True, blank=True)
     process_download_end_time = models.DateTimeField(null=True, blank=True)
     process_end_time = models.DateTimeField(null=True, blank=True)
-    
+
     # Whether or not there was any data output by Forest (None indicates unknown)
     forest_output_exists = models.NullBooleanField()
-    
+
     class Status:
         queued = 'queued'
         running = 'running'
         success = 'success'
         error = 'error'
         cancelled = 'cancelled'
-        
+
         @classmethod
         def choices(cls):
             return [(choice, choice.title()) for choice in cls.values()]
-        
+
         @classmethod
         def values(cls):
             return [cls.queued, cls.running, cls.success, cls.error, cls.cancelled]
-    
+
     status = models.TextField(choices=Status.choices())
     stacktrace = models.TextField(null=True, blank=True, default=None)  # for logs
     forest_version = models.CharField(blank=True, max_length=10)
-    
+
     all_bv_set_s3_key = models.TextField(blank=True)
     all_memory_dict_s3_key = models.TextField(blank=True)
 
     @property
     def all_bv_set_path(self):
         return os.path.join(self.data_output_path, "all_BV_set.pkl")
-    
+
     @property
     def all_memory_dict_path(self):
         return os.path.join(self.data_output_path, "all_memory_dict.pkl")
@@ -107,11 +108,11 @@ class ForestTask(TimestampedModel):
             task_attribute = "willow_task"
         else:
             raise Exception("Unknown tree")
-        
+
         with open(self.forest_results_path, "r") as f:
             reader = csv.DictReader(f)
             has_data = False
-    
+
             for line in reader:
                 has_data = True
                 summary_date = datetime.date(
@@ -131,9 +132,9 @@ class ForestTask(TimestampedModel):
                             updates[summary_stat_field] = None
                         else:
                             updates[summary_stat_field] = value
-            
+
                 updates[task_attribute] = self
-                
+
                 data = {
                     "date": summary_date,
                     "defaults": updates,
@@ -147,35 +148,35 @@ class ForestTask(TimestampedModel):
         Delete temporary input and output files from this Forest run.
         """
         shutil.rmtree(self.data_base_path)
-    
+
     @property
     def data_base_path(self):
         """
         Return the path to the base data folder, creating it if it doesn't already exist.
         """
         return os.path.join("/tmp", str(self.external_id), self.forest_tree)
-    
+
     @property
     def data_input_path(self):
         """
         Return the path to the input data folder, creating it if it doesn't already exist.
         """
         return os.path.join(self.data_base_path, "data")
-    
+
     @property
     def data_output_path(self):
         """
         Return the path to the output data folder, creating it if it doesn't already exist.
         """
         return os.path.join(self.data_base_path, "output")
-    
+
     @property
     def forest_results_path(self):
         """
         Return the path to the file that contains the output of Forest.
         """
         return os.path.join(self.data_output_path, f"{self.participant.patient_id}.csv")
-    
+
     def params_dict(self):
         """
         Return a dict of params to pass into the Forest function.
@@ -192,7 +193,7 @@ class ForestTask(TimestampedModel):
             other_params["all_BV_set"] = self.get_all_bv_set_dict()
             other_params["all_memory_dict"] = self.get_all_memory_dict_dict()
         return {**self.forest_param.params_for_tree(self.forest_tree), **other_params}
-    
+
     def generate_all_bv_set_s3_key(self):
         """
         Generate the S3 key that all_bv_set_s3_key should live in (whereas the direct
@@ -200,7 +201,7 @@ class ForestTask(TimestampedModel):
         of how generation changes).
         """
         return os.path.join(self.s3_base_folder, 'all_bv_set.pkl')
-    
+
     def generate_all_memory_dict_s3_key(self):
         """
         Generate the S3 key that all_memory_dict_s3_key should live in (whereas the direct
@@ -208,7 +209,7 @@ class ForestTask(TimestampedModel):
         of how generation changes).
         """
         return os.path.join(self.s3_base_folder, 'all_memory_dict.pkl')
-    
+
     def get_all_bv_set_dict(self):
         """
         Return the unpickled all_bv_set dict.
@@ -218,7 +219,7 @@ class ForestTask(TimestampedModel):
         from libs.s3 import s3_retrieve
         bytes = s3_retrieve(self.all_bv_set_s3_key, self.participant.study.object_id, raw_path=True)
         return pickle.loads(bytes)
-    
+
     def get_all_memory_dict_dict(self):
         """
         Return the unpickled all_memory_dict dict.
@@ -232,7 +233,7 @@ class ForestTask(TimestampedModel):
             raw_path=True,
         )
         return pickle.loads(bytes)
-    
+
     def get_slug(self):
         """
         Return a human-readable identifier.
@@ -245,11 +246,11 @@ class ForestTask(TimestampedModel):
             str(self.data_date_end),
         ]
         return "_".join(parts)
-    
+
     @property
     def s3_base_folder(self):
         return os.path.join(self.participant.study.object_id, "forest")
-    
+
     def save_all_bv_set_bytes(self, all_bv_set_bytes):
         from libs.s3 import s3_upload
         s3_upload(
@@ -260,7 +261,7 @@ class ForestTask(TimestampedModel):
         )
         self.all_bv_set_s3_key = self.generate_all_bv_set_s3_key()
         self.save(update_fields=["all_bv_set_s3_key"])
-    
+
     def save_all_memory_dict_bytes(self, all_memory_dict_bytes):
         from libs.s3 import s3_upload
         s3_upload(
@@ -298,7 +299,7 @@ class SummaryStatisticDaily(TimestampedModel):
     texts_bytes = models.IntegerField(null=True, blank=True)
     audio_recordings_bytes = models.IntegerField(null=True, blank=True)
     wifi_bytes = models.IntegerField(null=True, blank=True)
-    
+
     # GPS
     distance_diameter = models.FloatField(null=True, blank=True)
     distance_from_home = models.FloatField(null=True, blank=True)
@@ -315,7 +316,7 @@ class SummaryStatisticDaily(TimestampedModel):
     significant_location_count = models.IntegerField(null=True, blank=True)
     significant_location_entropy = models.IntegerField(null=True, blank=True)
     stationary_fraction = models.TextField(null=True, blank=True)
-    
+
     # Texts
     text_incoming_count = models.IntegerField(null=True, blank=True)
     text_incoming_degree = models.IntegerField(null=True, blank=True)
@@ -325,7 +326,7 @@ class SummaryStatisticDaily(TimestampedModel):
     text_outgoing_degree = models.IntegerField(null=True, blank=True)
     text_outgoing_length = models.IntegerField(null=True, blank=True)
     text_reciprocity = models.IntegerField(null=True, blank=True)
-    
+
     # Calls
     call_incoming_count = models.IntegerField(null=True, blank=True)
     call_incoming_degree = models.IntegerField(null=True, blank=True)
@@ -334,19 +335,19 @@ class SummaryStatisticDaily(TimestampedModel):
     call_outgoing_count = models.IntegerField(null=True, blank=True)
     call_outgoing_degree = models.IntegerField(null=True, blank=True)
     call_outgoing_duration = models.IntegerField(null=True, blank=True)
-    
+
     # Accelerometer
     acceleration_direction = models.TextField(null=True, blank=True)
     accelerometer_coverage_fraction = models.TextField(null=True, blank=True)
     accelerometer_signal_variability = models.TextField(null=True, blank=True)
     accelerometer_univariate_summaries = models.FloatField(null=True, blank=True)
     device_proximity = models.BooleanField(null=True, blank=True)
-    
+
     # Power state
     total_power_events = models.IntegerField(null=True, blank=True)
     total_screen_events = models.IntegerField(null=True, blank=True)
     total_unlock_events = models.IntegerField(null=True, blank=True)
-    
+
     # Multiple domains
     awake_onset_time = models.DateTimeField(null=True, blank=True)
     sleep_duration = models.IntegerField(null=True, blank=True)

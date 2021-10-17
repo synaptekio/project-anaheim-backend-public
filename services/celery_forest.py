@@ -14,12 +14,10 @@ from pkg_resources import get_distribution
 
 from api.data_access_api import chunk_fields
 from config.constants import FOREST_QUEUE
+from constants.forest_integration import ForestTree
 from database.data_access_models import ChunkRegistry
 from database.tableau_api_models import ForestTask
 from libs.celery_control import forest_celery_app, safe_apply_async
-from libs.forest_integration.constants import ForestTree
-
-
 # run via cron every five minutes
 from libs.s3 import s3_retrieve
 from libs.streaming_zip import determine_file_name
@@ -49,7 +47,7 @@ def celery_run_forest(forest_task_id):
 
         participant = task.participant
         forest_tree = task.forest_tree
-        
+
         # Check if there already is a running task for this participant and tree, handling
         # concurrency and requeuing of the ask if necessary
         tasks = (
@@ -61,7 +59,7 @@ def celery_run_forest(forest_task_id):
         if tasks.filter(status=ForestTask.Status.running).exists():
             enqueue_forest_task(args=[task.id])
             return
-        
+
         # Get the chronologically earliest task that's queued
         task = (
             tasks
@@ -71,7 +69,7 @@ def celery_run_forest(forest_task_id):
         )
         if task is None:
             return
-        
+
         # Set metadata on the task
         task.status = ForestTask.Status.running
         task.forest_version = get_distribution("forest").version
@@ -95,7 +93,7 @@ def celery_run_forest(forest_task_id):
             raise Exception('No chunked data found for participant for the dates specified.')
         task.total_file_size = file_size
         task.save(update_fields=["total_file_size"])
-        
+
         # Download data
         create_local_data_files(task, chunks)
         task.process_download_end_time = timezone.now()
@@ -106,7 +104,7 @@ def celery_run_forest(forest_task_id):
         task.params_dict_cache = json.dumps(params_dict, cls=DjangoJSONEncoder)
         task.save(update_fields=["params_dict_cache"])
         TREE_TO_FOREST_FUNCTION[task.forest_tree](**params_dict)
-        
+
         # Save data
         task.forest_output_exists = task.construct_summary_statistics()
         task.save(update_fields=["forest_output_exists"])
@@ -120,7 +118,7 @@ def celery_run_forest(forest_task_id):
     task.clean_up_files()
     task.process_end_time = timezone.now()
     task.save(update_fields=["process_end_time"])
-    
+
 
 
 def create_local_data_files(task, chunks):

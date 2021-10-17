@@ -5,7 +5,7 @@ from django.urls import path
 from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api,
     other_researcher_apis, participant_administration, push_notifications_api, study_api,
     survey_api)
-from pages import (admin_pages, data_access_web_form, login_pages, mobile_pages, participant_pages,
+from pages import (admin_pages, data_access_web_form, forest_pages, login_pages, mobile_pages, participant_pages,
     survey_designer, system_admin_pages)
 
 
@@ -435,6 +435,38 @@ urlpatterns = [
         'graph',
         mobile_pages.fetch_graph,
         name="mobile_pages.fetch_graph",
-    )
+    ),
+
+    # forest pages
+    path(
+        'studies/<str:study_id>/forest/progress',
+        forest_pages.analysis_progress,
+        name="forest_pages.analysis_progress",
+    ),
+    path(
+        'studies/<str:study_id>/forest/tasks/create',
+        forest_pages.create_tasks,
+        name="forest_pages.create_tasks",
+    ),
+    path(
+        'studies/<str:study_id>/forest/tasks',
+        forest_pages.task_log,
+        "forest_pages.task_log",
+    ),
+    path(
+        'forest/tasks/download',
+        forest_pages.download_task_log,
+        name="forest_pages.download_task_log",
+    ),
+    path(
+        "studies/<str:study_id>/forest/tasks/<str:forest_task_external_id>/cancel",
+        forest_pages.cancel_task,
+        name="forest_pages.cancel_task",
+    ),
+    path(
+        "studies/<str:study_id>/forest/tasks/<str:forest_task_external_id>/download",
+        forest_pages.download_task_data,
+        name="forest_pages.download_task_data",
+    ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

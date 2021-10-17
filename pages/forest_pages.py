@@ -2,41 +2,33 @@ import csv
 import datetime
 from collections import defaultdict
 
-from django import forms
+from django.contrib import messages
+from django.http.response import StreamingHttpResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
-from flask import render_template, request, abort, flash, redirect, Blueprint, url_for, Response
-from werkzeug.datastructures import MultiDict
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from api.data_access_api import chunk_fields
-from authentication.admin_authentication import authenticate_researcher_study_access, \
-    researcher_is_an_admin, get_session_researcher, authenticate_admin, \
-    get_researcher_allowed_studies, forest_enabled
+from authentication.admin_authentication import (authenticate_admin,
+    authenticate_researcher_study_access, forest_enabled)
+from constants.forest_integration import ForestTree
 from database.data_access_models import ChunkRegistry
 from database.study_models import Study
 from database.tableau_api_models import ForestTask
 from database.user_models import Participant
-from libs.forest_integration.constants import ForestTree
-from libs.serializers import ForestTaskSerializer, ForestTaskCsvSerializer
+from libs.django_forms import CreateTasksForm
+from libs.internal_types import ResearcherRequest
+from libs.serializers import ForestTaskCsvSerializer, ForestTaskSerializer
 from libs.streaming_zip import zip_generator
 from libs.utils.date_utils import daterange
-from libs.utils.form_utils import CommaSeparatedListCharField, CommaSeparatedListChoiceField
-
-forest_pages = Blueprint('forest_pages', __name__)
+from middleware.abort_middleware import abort
 
 
-@forest_pages.context_processor
-def inject_html_params():
-    # these variables will be accessible to every template rendering attached to the blueprint
-    return {
-        "allowed_studies": get_researcher_allowed_studies(),
-        "is_admin": researcher_is_an_admin(),
-    }
-
-
-@forest_pages.route('/studies/<string:study_id>/forest/progress', methods=['GET'])
+@require_GET
 @authenticate_researcher_study_access
 @forest_enabled
-def analysis_progress(study_id=None):
+def analysis_progress(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
     participants = Participant.objects.filter(study=study_id)
 
@@ -60,13 +52,13 @@ def analysis_progress(study_id=None):
 
     # generate the date range for charting
     dates = list(daterange(start_date, end_date, inclusive=True))
-
     chart_columns = ["participant", "tree"] + dates
     chart = []
 
     for participant in participants:
         for tree in ForestTree.values():
-            row = [participant.patient_id, tree] + [results[(participant.id, tree, date)] for date in dates]
+            row = [participant.patient_id, tree] + \
+                [results[(participant.id, tree, date)] for date in dates]
             chart.append(row)
 
     params_conflict = False
@@ -77,92 +69,36 @@ def analysis_progress(study_id=None):
             params_conflict = True
             break
 
-    return render_template(
+    return render(
+        request,
         'forest/analysis_progress.html',
-        study=study,
-        chart_columns=chart_columns,
-        status_choices=ForestTask.Status,
-        params_conflict=params_conflict,
-        start_date=start_date,
-        end_date=end_date,
-        chart=chart  # this uses the jinja safe filter and should never involve user input
+        context=dict(
+            study=study,
+            chart_columns=chart_columns,
+            status_choices=ForestTask.Status,
+            params_conflict=params_conflict,
+            start_date=start_date,
+            end_date=end_date,
+            chart=chart  # this uses the jinja safe filter and should never involve user input
+        )
     )
 
 
-class CreateTasksForm(forms.Form):
-    date_start = forms.DateField()
-    date_end = forms.DateField()
-    participant_patient_ids = CommaSeparatedListCharField()
-    trees = CommaSeparatedListChoiceField(choices=ForestTree.choices())
-    
-    def __init__(self, *args, **kwargs):
-        self.study = kwargs.pop("study")
-        if "data" in kwargs:
-            if isinstance(kwargs["data"], MultiDict):
-                # Convert Flask/Werkzeug MultiDict format into comma-separated values. This is
-                # to allow Flask's handling of multi inputs to work with Django's form data
-                # structures.
-                kwargs["data"] = {
-                    key: ",".join(value)
-                    for key, value in kwargs["data"].to_dict(flat=False).items()
-                }
-        super().__init__(*args, **kwargs)
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data["date_end"] < cleaned_data["date_start"]:
-            error_message = "Start date must be before or the same as end date."
-            self.add_error("date_start", error_message)
-            self.add_error("date_end", error_message)
-    
-    def clean_participant_patient_ids(self):
-        """
-        Filter participants to those who are registered in this study and specified in this field
-        (instead of raising a ValidationError if an invalid or non-study patient id is specified).
-        """
-        patient_ids = self.cleaned_data["participant_patient_ids"]
-        participants = (
-            Participant
-                .objects
-                .filter(patient_id__in=patient_ids, study=self.study)
-                .values("id", "patient_id")
-        )
-        self.cleaned_data["participant_ids"] = [participant["id"] for participant in participants]
-        
-        return [participant["patient_id"] for participant in participants]
-
-    def save(self):
-        forest_tasks = []
-        for participant_id in self.cleaned_data["participant_ids"]:
-            for tree in self.cleaned_data["trees"]:
-                forest_tasks.append(
-                    ForestTask(
-                        participant_id=participant_id,
-                        forest_tree=tree,
-                        data_date_start=self.cleaned_data["date_start"],
-                        data_date_end=self.cleaned_data["date_end"],
-                        status=ForestTask.Status.queued,
-                        forest_param=self.study.forest_param,
-                    )
-                )
-        ForestTask.objects.bulk_create(forest_tasks)
-
-
-@forest_pages.route('/studies/<string:study_id>/forest/tasks/create', methods=['GET', 'POST'])
+@require_http_methods(['GET', 'POST'])
 @authenticate_admin
 @forest_enabled
-def create_tasks(study_id=None):
+def create_tasks(request: ResearcherRequest, study_id=None):
     # Only a SITE admin can queue forest tasks
-    if not get_session_researcher().site_admin:
+    if not request.session_researcher.site_admin:
         return abort(403)
     try:
         study = Study.objects.get(pk=study_id)
     except Study.DoesNotExist:
         return abort(404)
-        
+
     if request.method == "GET":
         return _render_create_tasks(study)
-    
+
     form = CreateTasksForm(data=request.values, study=study)
 
     if not form.is_valid():
@@ -172,64 +108,83 @@ def create_tasks(study_id=None):
             for message in messages
         ]
         error_messages_string = "\n".join(error_messages)
-        flash(f"Errors:\n\n{error_messages_string}", "warning")
+        messages.warning(f"Errors:\n\n{error_messages_string}")
         return _render_create_tasks(study)
-    
+
     form.save()
-    flash("Forest tasks successfully queued!", "success")
-    return redirect(url_for("forest_pages.task_log", study_id=study_id))
+    messages.success("Forest tasks successfully queued!")
+    return redirect(reverse("forest_pages.task_log", study_id=study_id))
 
 
-def _render_create_tasks(study):
-    try:
-        participants = Participant.objects.filter(study=study)
-        start_date = ChunkRegistry.objects.filter(participant__in=participants).earliest("time_bin")
-        end_date = ChunkRegistry.objects.filter(participant__in=participants).latest("time_bin")
-        start_date = start_date.time_bin.date()
-        end_date = end_date.time_bin.date()
-    except ChunkRegistry.DoesNotExist:
-        start_date = study.created_on.date()
-        end_date = timezone.now().date()
-    return render_template(
-        "forest/create_tasks.html",
-        study=study,
-        participants=list(
-            study.participants.order_by("patient_id").values_list("patient_id", flat=True)
-        ),
-        trees=ForestTree.choices(),
-        start_date=start_date.strftime('%Y-%m-%d'),
-        end_date=end_date.strftime('%Y-%m-%d')
-    )
-
-@forest_pages.route('/studies/<string:study_id>/forest/tasks', methods=["GET"])
+@require_GET
 @authenticate_researcher_study_access
 @forest_enabled
-def task_log(study_id=None):
+def task_log(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
-    forest_tasks = (
-        ForestTask
-            .objects
-            .filter(participant__study_id=study_id)
-            .order_by("-created_on")
-    )
-    return render_template(
+    forest_tasks = ForestTask.objects.filter(participant__study_id=study_id).order_by("-created_on")
+    return render(
+        request,
         "forest/task_log.html",
-        study=study,
-        is_site_admin=get_session_researcher().site_admin,
-        status_choices=ForestTask.Status,
-        forest_log=ForestTaskSerializer(forest_tasks, many=True).data,
+        context=dict(
+            study=study,
+            is_site_admin=request.session_researcher.site_admin,
+            status_choices=ForestTask.Status,
+            forest_log=ForestTaskSerializer(forest_tasks, many=True).data,
+        )
     )
 
 
+@require_GET
+@authenticate_admin
+def download_task_log(request: ResearcherRequest):
+    filename = f"forest_task_log_{timezone.now().isoformat()}.csv"
+    forest_tasks = ForestTask.objects.order_by("created_on")
+    return StreamingHttpResponse(
+        request,
+        stream_forest_task_log_csv(forest_tasks),
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+        mimetype="text/csv",
+    )
 
-class CSVBuffer:
-    line = ""
-    
-    def read(self):
-        return self.line
-    
-    def write(self, line):
-        self.line = line
+
+@require_POST
+@authenticate_admin
+@forest_enabled
+def cancel_task(request: ResearcherRequest, study_id, forest_task_external_id):
+    number_updated = \
+        ForestTask.objects.filter(
+            external_id=forest_task_external_id, status=ForestTask.Status.queued
+        ).update(
+            status=ForestTask.Status.cancelled,
+            stacktrace=f"Canceled by {request.session_researcher.username} on {datetime.date.today()}",
+        )
+
+    if number_updated > 0:
+        messages.success("Forest task successfully cancelled.")
+    else:
+        messages.warning("Sorry, we were unable to find or cancel this Forest task.")
+
+    return redirect(reverse("forest_pages.task_log", study_id=study_id))
+
+
+@require_GET
+@authenticate_admin
+@forest_enabled
+def download_task_data(request: ResearcherRequest, study_id, forest_task_external_id):
+    try:
+        tracker = ForestTask.objects.get(
+            external_id=forest_task_external_id, participant__study_id=study_id
+        )
+    except ForestTask.DoesNotExist:
+        return abort(404)
+
+    chunks = ChunkRegistry.objects.filter(participant=tracker.participant).values(*chunk_fields)
+    return StreamingHttpResponse(
+        request,
+        zip_generator(chunks),
+        headers={"Content-Disposition": f"attachment; filename=\"{tracker.get_slug()}.zip\""},
+        mimetype="zip",
+    )
 
 
 def stream_forest_task_log_csv(forest_tasks):
@@ -244,54 +199,36 @@ def stream_forest_task_log_csv(forest_tasks):
             yield buffer.read()
 
 
-@forest_pages.route('/forest/tasks/download', methods=["GET"])
-@authenticate_admin
-def download_task_log():
-    filename = f"forest_task_log_{timezone.now().isoformat()}.csv"
-    forest_tasks = ForestTask.objects.order_by("created_on")
-    return Response(
-        stream_forest_task_log_csv(forest_tasks),
-        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
-        mimetype="text/csv",
-    )
-
-
-@forest_pages.route("/studies/<string:study_id>/forest/tasks/<string:forest_task_external_id>/cancel", methods=["POST"])
-@authenticate_admin
-@forest_enabled
-def cancel_task(study_id, forest_task_external_id):
-    number_updated = (
-        ForestTask
-            .objects
-            .filter(external_id=forest_task_external_id, status=ForestTask.Status.queued)
-            .update(
-                status=ForestTask.Status.cancelled,
-                stacktrace=f"Canceled by {get_session_researcher().username} on {datetime.date.today()}",
-            )
-    )
-    if number_updated > 0:
-        flash("Forest task successfully cancelled.", "success")
-    else:
-        flash("Sorry, we were unable to find or cancel this Forest task.", "warning")
-
-    return redirect(url_for("forest_pages.task_log", study_id=study_id))
-
-
-@forest_pages.route("/studies/<string:study_id>/forest/tasks/<string:forest_task_external_id>/download", methods=["GET"])
-@authenticate_admin
-@forest_enabled
-def download_task_data(study_id, forest_task_external_id):
+def _render_create_tasks(request: ResearcherRequest, study: Study):
+    participants = Participant.objects.filter(study=study)
     try:
-        tracker = ForestTask.objects.get(
-            external_id=forest_task_external_id,
-            participant__study_id=study_id,
+        start_date = ChunkRegistry.objects.filter(participant__in=participants).earliest("time_bin")
+        end_date = ChunkRegistry.objects.filter(participant__in=participants).latest("time_bin")
+        start_date = start_date.time_bin.date()
+        end_date = end_date.time_bin.date()
+    except ChunkRegistry.DoesNotExist:
+        start_date = study.created_on.date()
+        end_date = timezone.now().date()
+    return render(
+        request,
+        "forest/create_tasks.html",
+        context=dict(
+            study=study,
+            participants=list(
+                study.participants.order_by("patient_id").values_list("patient_id", flat=True)
+            ),
+            trees=ForestTree.choices(),
+            start_date=start_date.strftime('%Y-%m-%d'),
+            end_date=end_date.strftime('%Y-%m-%d')
         )
-    except ForestTask.DoesNotExist:
-        return abort(404)
-
-    chunks = ChunkRegistry.objects.filter(participant=tracker.participant).values(*chunk_fields)
-    return Response(
-        zip_generator(chunks),
-        headers={"Content-Disposition": f"attachment; filename=\"{tracker.get_slug()}.zip\""},
-        mimetype="zip",
     )
+
+
+class CSVBuffer:
+    line = ""
+
+    def read(self):
+        return self.line
+
+    def write(self, line):
+        self.line = line
