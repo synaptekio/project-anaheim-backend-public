@@ -1,34 +1,11 @@
 import functools
+from django.http.request import HttpRequest
 
-from flask import abort, request
 from werkzeug.datastructures import MultiDict
 
 from database.user_models import Participant
-
-
-def get_session_participant() -> Participant:
-    """ Safely and appropriately grabs the participant based on the structure of the request,
-    which should be universal. First check is of the cache, which is also populated in the
-    authentication wrapper code later in this file. """
-
-    try:
-        return request._beiwe_participant
-    except AttributeError:
-        pass
-
-    try:
-        participant_id = request.values['patient_id']
-    except KeyError:
-        return abort(400)  # invalid post request structure
-
-    try:
-        participant = Participant.objects.get(patient_id=participant_id)
-    except Participant.DoesNotExist:
-        return abort(404)  # invalid participant id
-
-    request._beiwe_participant = participant
-
-    return participant
+from libs.internal_types import ParticipantRequest
+from middleware.abort_middleware import abort
 
 
 ####################################################################################################
@@ -37,36 +14,42 @@ def get_session_participant() -> Participant:
 def minimal_validation(some_function) -> callable:
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
+        request = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
+
+        # handle ios requests, they require basic auth
         is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
-        correct_for_basic_auth()
-        if validate_post_ignore_password(is_ios):
+        correct_for_basic_auth(request)
+        if validate_post_ignore_password(request, is_ios):
             return some_function(*args, **kwargs)
+
+        # ios requires different http codes
         return abort(401 if is_ios else 403)
     return authenticate_and_call
 
 
-def validate_post_ignore_password(is_ios) -> bool:
-    """Check if user exists, that a password was provided but ignores its validation, and if the
+def validate_post_ignore_password(request: ParticipantRequest, is_ios: bool) -> bool:
+    """Check if user exists, that a password was provided but IGNORES its validation, and if the
     device id matches.
     IOS apparently has problems retaining the device id, so we want to bypass it when it is an ios user
     """
-    rv = request.values
-    if "patient_id" not in rv or "password" not in rv or "device_id" not in rv:
+    rp = request.POST
+    if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
         return False
 
-    participant_set = Participant.objects.filter(patient_id=request.values['patient_id'])
-    if not participant_set.exists():
+    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
+    if not participant_query.exists():
         return False
-    participant = participant_set.get()
 
-    # Disabled
-    # if not participant.validate_password(request.values['password']):
-    #     return False
-    # Only execute if it is an android device
-    # if not is_ios and not participant.device_id == request.values['device_id']:
-    #     return False
+    try:
+        request.participant = participant_query.get()
+    except Participant.DoesNotExist:
+        # FIXME: need to check the app expectations on response codes
+        #  this used to throw a 400 if the there was no patient_id field in the post request,
+        #  and 404 when there was no such user, when it was get_session_participant.
+        return False  # invalid participant id
 
-    request._beiwe_participant = participant  # cache participant
     return True
 
 ####################################################################################################
@@ -82,6 +65,10 @@ def authenticate_user(some_function) -> callable:
    password, a parameter named "device_id" with a unique identifier derived from that device. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
+        request = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
+
         correct_for_basic_auth()
         if validate_post():
             return some_function(*args, **kwargs)
@@ -89,22 +76,26 @@ def authenticate_user(some_function) -> callable:
     return authenticate_and_call
 
 
-def validate_post() -> bool:
+def validate_post(request: ParticipantRequest) -> bool:
     """Check if user exists, check if the provided passwords match, and if the device id matches."""
-    rv = request.values
-    if "patient_id" not in rv or "password" not in rv or "device_id" not in rv:
+    rp = request.POST
+    if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
         return False
 
-    participant_set = Participant.objects.filter(patient_id=request.values['patient_id'])
-    if not participant_set.exists():
-        return False
-    participant = participant_set.get()
-    if not participant.validate_password(request.values['password']):
-        return False
-    if not participant.device_id == request.values['device_id']:
+    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
+    if not participant_query.exists():
         return False
 
-    request._beiwe_participant = participant  # cache participant
+    if not request.participant.validate_password(request.POST['password']):
+        return False
+
+    if not request.participant.device_id == request.POST['device_id']:
+        return False
+
+    request.participant = participant_query.get()
+    # FIXME: need to check the app expectations on response codes
+    #  this used to throw a 400 if the there was no patient_id field in the post request,
+    #  and 404 when there was no such user, when it was get_session_participant.
     return True
 
 
@@ -118,6 +109,10 @@ def authenticate_user_registration(some_function) -> callable:
    password. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
+        request = args[0]
+        assert isinstance(request, HttpRequest), \
+            f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
+
         correct_for_basic_auth()
         if validate_registration():
             return some_function(*args, **kwargs)
@@ -125,56 +120,58 @@ def authenticate_user_registration(some_function) -> callable:
     return authenticate_and_call
 
 
-def validate_registration() -> bool:
+def validate_registration(request: ParticipantRequest) -> bool:
     """Check if user exists, check if the provided passwords match"""
-    rv = request.values
+    rv = request.POST
     if "patient_id" not in rv or "password" not in rv or "device_id" not in rv:
         return False
 
-    participant_set = Participant.objects.filter(patient_id=request.values['patient_id'])
-    if not participant_set.exists():
+    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
+    if not participant_query.exists():
         return False
-    participant = participant_set.get()
-    if not participant.validate_password(request.values['password']):
+
+    request.participant = participant_query.get()
+    if not request.participant.validate_password(request.POST['password']):
         return False
+
     return True
 
 
 # TODO: basic auth is not a good thing, it is only used because it was easy and we enforce
 #  https on all connections.  Review.
-def correct_for_basic_auth():
+def correct_for_basic_auth(request: ParticipantRequest):
     """
     Basic auth is used in IOS.
-    
+
     If basic authentication exists and is in the correct format, move the patient_id,
     device_id, and password into request.values for processing by the existing user
     authentication functions.
-    
+
     Flask automatically parses a Basic authentication header into request.authorization
-    
+
     If this is set, and the username portion is in the form xxxxxx@yyyyyyy, then assume this is
     patient_id@device_id.
-    
+
     Parse out the patient_id, device_id from username, and then store patient_id, device_id and
     password as if they were passed as parameters (into request.values)
-    
+
     Note:  Because request.values is immutable in Flask, copy it and replace with a mutable dict
     first.
-    
+
     Check if user exists, check if the provided passwords match.
     """
-    
+    # FIXME: this is broken - django port
     auth = request.authorization
     if not auth:
         return
-    
+
     username_parts = auth.username.split('@')
     if len(username_parts) == 2:
-        replace_dict = MultiDict(request.values.to_dict())
+        replace_dict = MultiDict(request.POST.to_dict())
         if "patient_id" not in replace_dict:
             replace_dict['patient_id'] = username_parts[0]
         if "device_id" not in replace_dict:
             replace_dict['device_id'] = username_parts[1]
         if "password" not in replace_dict:
             replace_dict['password'] = auth.password
-        request.values = replace_dict
+        request.POST = replace_dict

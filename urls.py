@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
 
-from api import (admin_api, copy_study_api, dashboard_api, data_access_api, other_researcher_apis,
+from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api, other_researcher_apis,
     participant_administration, study_api, survey_api)
 from pages import (admin_pages, data_access_web_form, login_pages, participant_pages,
     survey_designer, system_admin_pages)
@@ -368,6 +368,48 @@ urlpatterns = [
         "get-pipeline/v1",
         data_access_api.pipeline_data_download,
         name="data_access_api.get_pipeline",
+    ),
+
+
+    path(
+        'upload',
+        mobile_api.upload,
+        name="mobile_api.upload"
+    ),
+    path(
+        'upload/ios',
+        mobile_api.upload,
+        name="mobile_api.upload_ios"
+    ),
+    path(
+        'register_user',
+        mobile_api.register_user,
+        name="mobile_api.register_user"
+    ),
+    path(
+        'register_user/ios',
+        mobile_api.register_user,
+        name="mobile_api.register_user_ios"
+    ),
+    path(
+        'set_password',
+        mobile_api.set_password,
+        name="mobile_api.set_password"
+    ),
+    path(
+        'set_password/ios',
+        mobile_api.set_password,
+        name="mobile_api.set_password_ios"
+    ),
+    path(
+        'download_surveys',
+        mobile_api.get_latest_surveys,
+        name="mobile_api.get_latest_surveys"
+    ),
+    path(
+        'download_surveys/ios',
+        mobile_api.get_latest_surveys,
+        name="mobile_api.get_latest_surveys_ios"
     ),
 
 
