@@ -10,7 +10,6 @@ from os import urandom
 from django.contrib import messages
 
 from config.constants import ITERATIONS, PASSWORD_REQUIREMENT_REGEX_LIST
-from config.settings import FLASK_SECRET_KEY
 from config.study_constants import EASY_ALPHANUMERIC_CHARS
 
 
@@ -21,11 +20,6 @@ random.seed(urandom(256))
 class DatabaseIsDownError(Exception): pass
 class PaddingException(Exception): pass
 class Base64LengthException(Exception): pass
-
-
-def set_secret_key(app):
-    """grabs the Flask secret key"""
-    app.secret_key = FLASK_SECRET_KEY
 
 
 ################################################################################

@@ -27,9 +27,11 @@ def get_data(request: ApiStudyResearcherRequest):
     cases handled:
         missing creds or study, invalid researcher or study, researcher does not have access
         researcher creds are invalid
-        (Flask automatically returns a 400 response if a parameter is accessed
-        but does not exist in request.POST() )
     Returns a zip file of all data files found by the query. """
+
+    # FIXME: this comment:
+    # (Flask automatically returns a 400 response if a parameter is accessed
+    #    but does not exist in request.POST() )
 
     query_args = {}
     determine_data_streams_for_db_query(request, query_args)

@@ -3,9 +3,9 @@ from random import choice as random_choice
 
 from django.db import models
 from django.db.models.fields.related import RelatedField
-from flask import abort
 
 from config.study_constants import OBJECT_ID_ALLOWED_CHARS
+from middleware.abort_middleware import abort
 
 
 class ObjectIdError(Exception): pass
@@ -82,7 +82,7 @@ class UtilityModel(models.Model):
             if related_field.one_to_one and related_field.related_name:
                 related_entity = getattr(self, related_field.related_name)
                 ret[related_field.related_name] = related_entity.as_dict() if related_entity else None
-            
+
             # many to one and many to many use this.
             elif related_field.related_name:
                 # get all the related things using .values() for access, but convert to dict
