@@ -27,7 +27,7 @@ SERIALIZABLE_FIELD_NAMES = [
     "texts_bytes",
     "audio_recordings_bytes",
     "wifi_bytes",
-    
+
     # GPS
     "distance_diameter",
     "distance_from_home",
@@ -44,7 +44,7 @@ SERIALIZABLE_FIELD_NAMES = [
     # "significant_location_count",
     # "significant_location_entropy",
     # "stationary_fraction",
-    
+
     # Texts
     # "text_incoming_count",
     # "text_incoming_degree",
@@ -54,7 +54,7 @@ SERIALIZABLE_FIELD_NAMES = [
     # "text_outgoing_degree",
     # "text_outgoing_length",
     # "text_reciprocity",
-    
+
     # Calls
     # "call_incoming_count",
     # "call_incoming_degree",
@@ -63,19 +63,19 @@ SERIALIZABLE_FIELD_NAMES = [
     # "call_outgoing_count",
     # "call_outgoing_degree",
     # "call_outgoing_duration",
-    
+
     # Accelerometer
     # "acceleration_direction",
     # "accelerometer_coverage_fraction",
     # "accelerometer_signal_variability",
     # "accelerometer_univariate_summaries",
     # "device_proximity",
-    
+
     # Power state
     # "total_power_events",
     # "total_screen_events",
     # "total_unlock_events",
-    
+
     # Multiple domains
     # "awake_onset_time",
     # "sleep_duration",

@@ -2,7 +2,7 @@ from flask import render_template
 from flask.views import MethodView
 from flask_cors import cross_origin
 
-from api.tableau_api.constants import FIELD_TYPE_MAP, SERIALIZABLE_FIELD_NAMES
+from constants.tableau_api_constants import FIELD_TYPE_MAP, SERIALIZABLE_FIELD_NAMES
 from database.tableau_api_models import SummaryStatisticDaily
 
 

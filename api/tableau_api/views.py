@@ -8,8 +8,8 @@ from rest_framework import serializers
 from rest_framework.renderers import JSONRenderer
 
 from api.tableau_api.base import TableauApiView
-from api.tableau_api.constants import (SERIALIZABLE_FIELD_NAMES,
-                                       SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
+from constants.tableau_api_constants import (SERIALIZABLE_FIELD_NAMES,
+    SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
 from database.tableau_api_models import SummaryStatisticDaily
 from libs.utils.form_utils import CommaSeparatedListCharField, CommaSeparatedListChoiceField
 
@@ -27,7 +27,7 @@ class SummaryStatisticDailySerializer(serializers.ModelSerializer):
     def __init__(self, *args, fields=None, **kwargs):
         """ dynamically modify the subset of fields on instantiation """
         super().__init__(*args, **kwargs)
-    
+
         if fields is not None:
             for field_name in set(self.fields) - set(fields):
                 # is this pop valid? the value is a cached property... this needs to be tested.
