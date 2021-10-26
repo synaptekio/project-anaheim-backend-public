@@ -4,20 +4,7 @@ from django.urls import reverse
 from rest_framework import serializers
 
 from config.constants import DEV_TIME_FORMAT
-from database.security_models import ApiKey
 from database.tableau_api_models import ForestTask
-
-
-class ApiKeySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ApiKey
-        fields = [
-            "access_key_id",
-            "created_on",
-            "has_tableau_api_permissions",
-            "is_active",
-            "readable_name",
-        ]
 
 
 class ForestTaskBaseSerializer(serializers.ModelSerializer):

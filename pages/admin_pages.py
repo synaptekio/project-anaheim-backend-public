@@ -14,7 +14,7 @@ from forms.django_forms import DisableApiKeyForm, NewApiKeyForm
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import ResearcherRequest
 from libs.security import check_password_requirements
-from libs.serializers import ApiKeySerializer
+from serializers.tableau_serializers import ApiKeySerializer
 
 
 ####################################################################################################

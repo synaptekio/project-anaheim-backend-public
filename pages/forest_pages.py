@@ -19,10 +19,10 @@ from database.tableau_api_models import ForestTask
 from database.user_models import Participant
 from forms.django_forms import CreateTasksForm
 from libs.internal_types import ResearcherRequest
-from libs.serializers import ForestTaskCsvSerializer, ForestTaskSerializer
 from libs.streaming_zip import zip_generator
 from libs.utils.date_utils import daterange
 from middleware.abort_middleware import abort
+from serializers.forest_serializers import ForestTaskCsvSerializer, ForestTaskSerializer
 
 
 @require_GET
