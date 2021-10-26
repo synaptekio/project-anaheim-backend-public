@@ -1,15 +1,14 @@
-import json
 import functools
+import json
 
-from django import forms
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.request import HttpRequest
 from django.http.response import HttpResponse
 
 from constants.tableau_api_constants import (APIKEY_NO_ACCESS_MESSAGE,
-    CREDENTIALS_NOT_VALID_ERROR_MESSAGE, HEADER_IS_REQUIRED, NO_STUDY_FOUND_MESSAGE,
-    NO_STUDY_PROVIDED_MESSAGE, RESEARCHER_NOT_ALLOWED, RESOURCE_NOT_FOUND,
-    STUDY_HAS_FOREST_DISABLED_MESSAGE, X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET)
+    CREDENTIALS_NOT_VALID_ERROR_MESSAGE, NO_STUDY_FOUND_MESSAGE, NO_STUDY_PROVIDED_MESSAGE,
+    RESEARCHER_NOT_ALLOWED, RESOURCE_NOT_FOUND, STUDY_HAS_FOREST_DISABLED_MESSAGE, X_ACCESS_KEY_ID,
+    X_ACCESS_KEY_SECRET)
 from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import StudyRelation
@@ -18,21 +17,6 @@ from libs.internal_types import TableauRequest
 
 class TableauAuthenticationFailed(Exception): pass
 class PermissionDenied(Exception): pass
-
-
-class AuthenticationForm(forms.Form):
-    """ Form for fetching request headers """
-
-    def __init__(self, *args, **kwargs):
-        """ Define authentication form fields since the keys contain illegal characters for variable
-        names. """
-        super().__init__(*args, **kwargs)
-        self.fields[X_ACCESS_KEY_ID] = forms.CharField(
-            error_messages={"required": HEADER_IS_REQUIRED}
-        )
-        self.fields[X_ACCESS_KEY_SECRET] = forms.CharField(
-            error_messages={"required": HEADER_IS_REQUIRED}
-        )
 
 
 def authenticate_tableau(some_function):

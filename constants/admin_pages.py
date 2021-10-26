@@ -1,6 +1,3 @@
-from django import forms
-
-
 # These should be changed to be inside the template
 _CRED_MESSAGE_BASE = """
 <p>Your new <b>Access Key</b> is:
@@ -26,14 +23,3 @@ NEW_API_KEY_MESSAGE = (
     "<h3>New Tableau API credentials have been generated for you!</h3>" + _CRED_MESSAGE_BASE
 ).strip()
 
-
-class NewApiKeyForm(forms.Form):
-    readable_name = forms.CharField(required=False)
-
-    def clean(self):
-        super().clean()
-        self.cleaned_data['tableau_api_permission'] = True
-
-
-class DisableApiKeyForm(forms.Form):
-    api_key_id = forms.CharField()

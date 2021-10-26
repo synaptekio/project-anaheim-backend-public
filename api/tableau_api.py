@@ -9,7 +9,7 @@ from rest_framework.renderers import JSONRenderer
 from authentication.tableau_authentication import authenticate_tableau
 from constants.tableau_api_constants import FIELD_TYPE_MAP, SERIALIZABLE_FIELD_NAMES
 from database.tableau_api_models import SummaryStatisticDaily
-from libs.django_forms import ApiQueryForm
+from forms.django_forms import ApiQueryForm
 from libs.internal_types import TableauRequest
 
 

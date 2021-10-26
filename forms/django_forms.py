@@ -1,13 +1,39 @@
-
 from django import forms
 from werkzeug.datastructures import MultiDict
 
 from constants.forest_integration import ForestTree
-from constants.tableau_api_constants import (SERIALIZABLE_FIELD_NAMES,
-    SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
+from constants.tableau_api_constants import (HEADER_IS_REQUIRED, SERIALIZABLE_FIELD_NAMES,
+    SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS, X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET)
 from database.tableau_api_models import ForestTask
 from database.user_models import Participant
-from libs.django_form_fields import CommaSeparatedListCharField, CommaSeparatedListChoiceField
+from forms.django_form_fields import CommaSeparatedListCharField, CommaSeparatedListChoiceField
+
+
+class NewApiKeyForm(forms.Form):
+    readable_name = forms.CharField(required=False)
+
+    def clean(self):
+        super().clean()
+        self.cleaned_data['tableau_api_permission'] = True
+
+
+class DisableApiKeyForm(forms.Form):
+    api_key_id = forms.CharField()
+    
+
+class AuthenticationForm(forms.Form):
+    """ Form for fetching request headers """
+
+    def __init__(self, *args, **kwargs):
+        """ Define authentication form fields since the keys contain illegal characters for variable
+        names. """
+        super().__init__(*args, **kwargs)
+        self.fields[X_ACCESS_KEY_ID] = forms.CharField(
+            error_messages={"required": HEADER_IS_REQUIRED}
+        )
+        self.fields[X_ACCESS_KEY_SECRET] = forms.CharField(
+            error_messages={"required": HEADER_IS_REQUIRED}
+        )
 
 
 class CreateTasksForm(forms.Form):

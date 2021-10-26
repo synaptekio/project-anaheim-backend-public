@@ -6,11 +6,11 @@ from markupsafe import Markup
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
     logout_researcher, SESSION_NAME)
-from constants.admin_pages import (DisableApiKeyForm, NEW_API_KEY_MESSAGE, NewApiKeyForm,
-    RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE)
+from constants.admin_pages import NEW_API_KEY_MESSAGE, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE
 from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher
+from forms.django_forms import DisableApiKeyForm, NewApiKeyForm
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import ResearcherRequest
 from libs.security import check_password_requirements
