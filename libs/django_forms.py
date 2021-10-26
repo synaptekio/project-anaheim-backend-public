@@ -3,9 +3,11 @@ from django import forms
 from werkzeug.datastructures import MultiDict
 
 from constants.forest_integration import ForestTree
+from constants.tableau_api_constants import (SERIALIZABLE_FIELD_NAMES,
+    SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS)
 from database.tableau_api_models import ForestTask
 from database.user_models import Participant
-from libs.utils.form_utils import CommaSeparatedListCharField, CommaSeparatedListChoiceField
+from libs.django_form_fields import CommaSeparatedListCharField, CommaSeparatedListChoiceField
 
 
 class CreateTasksForm(forms.Form):
@@ -65,3 +67,59 @@ class CreateTasksForm(forms.Form):
                     )
                 )
         ForestTask.objects.bulk_create(forest_tasks)
+
+
+class ApiQueryForm(forms.Form):
+    end_date = forms.DateField(
+        required=False,
+        error_messages={
+            "invalid": "end date could not be interpreted as a date. Dates should be "
+                       "formatted as YYYY-MM-DD"
+        },
+    )
+
+    start_date = forms.DateField(
+        required=False,
+        error_messages={
+            "invalid": "start date could not be interpreted as a date. Dates should be "
+                       "formatted as YYYY-MM-DD"
+        },
+    )
+
+    limit = forms.IntegerField(
+        required=False,
+        error_messages={"invalid": "limit value could not be interpreted as an integer value"},
+    )
+    order_by = forms.ChoiceField(
+        choices=SERIALIZABLE_FIELD_NAMES_DROPDOWN,
+        required=False,
+        error_messages={
+            "invalid_choice": "%(value)s is not a field that can be used to sort the output"
+        },
+    )
+
+    order_direction = forms.ChoiceField(
+        choices=[("ascending", "ascending"), ("descending", "descending")],
+        required=False,
+        error_messages={
+            "invalid_choice": "If provided, the order_direction parameter "
+                              "should contain either the value 'ascending' or 'descending'"
+        },
+    )
+
+    participant_ids = CommaSeparatedListCharField(required=False)
+
+    fields = CommaSeparatedListChoiceField(
+        choices=SERIALIZABLE_FIELD_NAMES_DROPDOWN,
+        default=SERIALIZABLE_FIELD_NAMES,
+        required=False,
+        error_messages={"invalid_choice": "%(value)s is not a valid field"},
+    )
+
+    def clean(self) -> dict:
+        """ Retains only members of VALID_QUERY_PARAMETERS and non-falsey-but-not-False objects """
+        super().clean()
+        return {
+            k: v for k, v in self.cleaned_data.items()
+            if k in VALID_QUERY_PARAMETERS and (v or v is False)
+        }

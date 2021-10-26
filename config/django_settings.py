@@ -119,7 +119,7 @@ TEMPLATES = [
         'OPTIONS': {
             'autoescape': True,
             'context_processors': [
-                "middleware.context_processor.researcher_context_processor",
+                "middleware.context_processors.researcher_context_processor",
                 "django.contrib.messages.context_processors.messages",
             ],
         "environment": "config.jinja2.environment"

@@ -2,12 +2,13 @@ openapi: 3.0.3
 info:
   title: Beiwe Tableau API
   description: >
-    This spec details the interface for the Beiwe Tableau API. You can view this with any OpenAPI viewer (like
-    [Swagger Editor](https://editor.swagger.io)). For more information about how individual values are calculated, visit
-    the [Beiwe Summary Statitics Wiki](https://github.com/onnela-lab/beiwe/wiki/Summary-Statistics).
-    
-    
-    Note: This API and specification is currently in active development and is subject to change without notice.
+    This spec details the interface for the Beiwe Tableau API. You can view this with any OpenAPI
+    viewer (like [Swagger Editor](https://editor.swagger.io)). For more information about how
+    individual values are calculated, visit the
+    [Beiwe Summary Statitics Wiki](https://github.com/onnela-lab/beiwe/wiki/Summary-Statistics).
+
+    Note: This API and specification is currently in active development and is subject to change
+    without notice.
   termsOfService: 'https://beiwe.org/'  # Todo
   contact:
     email: todo@beiwe.org

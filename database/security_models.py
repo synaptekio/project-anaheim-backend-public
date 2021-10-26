@@ -9,13 +9,11 @@ from libs.security import compare_password, generate_hash_and_salt, generate_ran
 
 
 class ApiKey(TimestampedModel):
-    access_key_id = models.CharField(
-        max_length=64, unique=True, validators=[STANDARD_BASE_64_VALIDATOR]
-    )
+    access_key_id = models.CharField(max_length=64, unique=True, validators=[STANDARD_BASE_64_VALIDATOR])
+
     access_key_secret = models.CharField(max_length=44, validators=[URL_SAFE_BASE_64_VALIDATOR])
-    access_key_secret_salt = models.CharField(
-        max_length=24, validators=[URL_SAFE_BASE_64_VALIDATOR]
-    )
+
+    access_key_secret_salt = models.CharField(max_length=24, validators=[URL_SAFE_BASE_64_VALIDATOR])
 
     is_active = models.BooleanField(default=True)
 

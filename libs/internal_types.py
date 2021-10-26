@@ -26,3 +26,7 @@ class ApiResearcherRequest(HttpRequest):
 
 class ParticipantRequest(HttpRequest):
     participant: Participant
+
+
+class TableauRequest(HttpRequest):
+    pass

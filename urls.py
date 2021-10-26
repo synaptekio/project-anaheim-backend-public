@@ -4,7 +4,7 @@ from django.urls import path
 
 from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api,
     other_researcher_apis, participant_administration, push_notifications_api, study_api,
-    survey_api)
+    survey_api, tableau_api)
 from pages import (admin_pages, data_access_web_form, forest_pages, login_pages, mobile_pages, participant_pages,
     survey_designer, system_admin_pages)
 
@@ -468,5 +468,18 @@ urlpatterns = [
         forest_pages.download_task_data,
         name="forest_pages.download_task_data",
     ),
+
+    # tableau
+    path(
+        # "summary_statistics_daily_study_view",
+        "api/v0/studies/<str:study_object_id>/summary-statistics/daily",
+        tableau_api.get_tableau_daily,
+        "tableau_api.get_tableau_daily",
+    ),
+    path(
+        'api/v0/studies/<str:study_object_id>/summary-statistics/daily/wdc',
+        tableau_api.web_data_connector,
+        "tableau_api.web_data_connector",
+    )
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
