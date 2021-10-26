@@ -75,7 +75,7 @@ SHELL_PLUS_POST_IMPORTS = [
     ["collections", ("Counter", "defaultdict")],
     ["django.utils.timezone", ("localtime", "make_aware", "make_naive")],
     ["time", ("sleep",)],
-    ["libs.shell_utils", "*"],
+    ["libs.utils.shell_utils", "*"],
     ["dateutil", ('tz',)],
     ['libs.dev_utils', "GlobalTimeTracker"],
     # ['libs.celery_control', (
