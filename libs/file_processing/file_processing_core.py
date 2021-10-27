@@ -7,9 +7,10 @@ from botocore.exceptions import ReadTimeoutError
 from cronutils.error_handler import ErrorHandler
 from django.core.exceptions import ValidationError
 
-from config.constants import (ACCELEROMETER, ANDROID_LOG_FILE, CALL_LOG, CHUNK_TIMESLICE_QUANTUM,
-    CHUNKS_FOLDER, IDENTIFIERS, SURVEY_DATA_FILES, SURVEY_TIMINGS, WIFI)
 from config.settings import CONCURRENT_NETWORK_OPS, FILE_PROCESS_PAGE_SIZE
+from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM, CHUNKS_FOLDER
+from constants.data_stream_constants import (ACCELEROMETER, ANDROID_LOG_FILE, CALL_LOG, IDENTIFIERS,
+    SURVEY_DATA_FILES, SURVEY_TIMINGS, WIFI)
 from database.data_access_models import ChunkRegistry, FileToProcess
 from database.study_models import Study
 from database.survey_models import Survey
@@ -28,6 +29,7 @@ from libs.file_processing.utility_functions_simple import (binify_from_timecode,
     convert_unix_to_human_readable_timestamps, ensure_sorted_by_timestamp,
     resolve_survey_id_from_file_name)
 from libs.s3 import s3_retrieve
+
 
 """########################## Hourly Update Tasks ###########################"""
 
@@ -88,7 +90,6 @@ def process_file_chunks():
         FileProcessLock.unlock()
 
     error_handler.raise_errors()
-    # raise EverythingWentFine(DATA_PROCESSING_NO_ERROR_STRING)
 
 
 def do_process_user_file_chunks(

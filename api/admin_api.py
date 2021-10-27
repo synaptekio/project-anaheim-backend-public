@@ -5,8 +5,8 @@ from django.views.decorators.http import require_POST
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login)
-from config.constants import ResearcherRole
 from config.settings import DOMAIN_NAME, DOWNLOADABLE_APK_URL
+from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs.internal_types import ResearcherRequest

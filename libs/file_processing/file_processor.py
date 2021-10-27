@@ -4,6 +4,7 @@ from multiprocessing.pool import ThreadPool
 from config.settings import CONCURRENT_NETWORK_OPS, FILE_PROCESS_PAGE_SIZE
 from database.user_models import Participant
 
+
 class FileProcessor():
 
     skip_count = FILE_PROCESS_PAGE_SIZE

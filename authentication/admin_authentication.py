@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.timezone import is_naive
 
-from config.constants import ALL_RESEARCHER_TYPES, ResearcherRole
+from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.session_constants import EXPIRY_NAME, SESSION_NAME, SESSION_UUID
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation

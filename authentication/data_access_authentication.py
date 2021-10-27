@@ -3,7 +3,7 @@ from typing import Tuple
 
 from django.http.request import HttpRequest
 
-from constants.study_constants import BASE64_GENERIC_ALLOWED_CHARACTERS, OBJECT_ID_ALLOWED_CHARS
+from constants.security_constants import BASE64_GENERIC_ALLOWED_CHARACTERS, OBJECT_ID_ALLOWED_CHARS
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs.internal_types import ApiResearcherRequest, ApiStudyResearcherRequest, ResearcherRequest

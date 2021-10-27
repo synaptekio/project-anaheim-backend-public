@@ -6,9 +6,8 @@ from typing import List
 from Crypto.PublicKey import RSA
 from Cryptodome.Cipher import AES
 
-from config.constants import ASYMMETRIC_KEY_LENGTH
 from config.settings import STORE_DECRYPTION_KEY_ERRORS, STORE_DECRYPTION_LINE_ERRORS
-from constants.mobile_api import URLSAFE_BASE64_CHARACTERS
+from constants.security_constants import ASYMMETRIC_KEY_LENGTH, URLSAFE_BASE64_CHARACTERS
 from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetadata,
     LineEncryptionError)
 from database.study_models import Study

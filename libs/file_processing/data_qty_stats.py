@@ -1,9 +1,11 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
-from pytz import utc
 from typing import Optional
 
-from config.constants import ALL_DATA_STREAMS, CHUNK_TIMESLICE_QUANTUM
+from pytz import utc
+
+from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM
+from constants.data_stream_constants import ALL_DATA_STREAMS
 from database.data_access_models import ChunkRegistry
 from database.tableau_api_models import SummaryStatisticDaily
 from database.user_models import Participant

@@ -5,8 +5,7 @@ path.insert(0, abspath(__file__).rsplit('/', 2)[0])
 import itertools
 import requests
 
-from config.constants import ResearcherRole
-from pprint import pprint
+from constants.researcher_constants import ResearcherRole
 from data_access_api_reference import download_data
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation

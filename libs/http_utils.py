@@ -3,7 +3,7 @@ import functools
 from django.http.request import HttpRequest
 
 from database.user_models import Participant
-from libs.internal_types import ParticipantRequest, ResearcherRequest
+from libs.internal_types import ParticipantRequest
 
 
 def checkbox_to_boolean(list_checkbox_params, dict_all_params):

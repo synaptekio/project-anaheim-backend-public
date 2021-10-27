@@ -1,7 +1,7 @@
 from django import forms
 from werkzeug.datastructures import MultiDict
 
-from constants.forest_integration import ForestTree
+from constants.forest_constants import ForestTree
 from constants.tableau_api_constants import (HEADER_IS_REQUIRED, SERIALIZABLE_FIELD_NAMES,
     SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS, X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET)
 from database.tableau_api_models import ForestTask
@@ -19,7 +19,7 @@ class NewApiKeyForm(forms.Form):
 
 class DisableApiKeyForm(forms.Form):
     api_key_id = forms.CharField()
-    
+
 
 class AuthenticationForm(forms.Form):
     """ Form for fetching request headers """

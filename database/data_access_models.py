@@ -4,8 +4,10 @@ from django.db import models
 from django.utils import timezone
 from django_extensions.db.fields.json import JSONField
 
-from config.constants import (API_TIME_FORMAT, CHUNK_TIMESLICE_QUANTUM, CHUNKABLE_FILES,
-    CHUNKS_FOLDER, IDENTIFIERS, REVERSE_UPLOAD_FILE_TYPE_MAPPING)
+from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM, CHUNKS_FOLDER
+from constants.data_stream_constants import (CHUNKABLE_FILES, IDENTIFIERS,
+    REVERSE_UPLOAD_FILE_TYPE_MAPPING)
+from constants.datetime_constants import API_TIME_FORMAT
 from database.models import TimestampedModel
 from database.study_models import Study
 from database.user_models import Participant
@@ -16,6 +18,8 @@ from libs.security import chunk_hash
 
 class UnchunkableDataTypeError(Exception): pass
 class ChunkableDataTypeError(Exception): pass
+
+
 
 
 class PipelineRegistry(TimestampedModel):

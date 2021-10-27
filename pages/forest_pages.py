@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from api.data_access_api import chunk_fields
 from authentication.admin_authentication import (authenticate_admin,
     authenticate_researcher_study_access, forest_enabled)
-from constants.forest_integration import ForestTree
+from constants.forest_constants import ForestTree
 from database.data_access_models import ChunkRegistry
 from database.study_models import Study
 from database.tableau_api_models import ForestTask

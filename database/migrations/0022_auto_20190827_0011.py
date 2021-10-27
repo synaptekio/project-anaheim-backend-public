@@ -3,7 +3,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-from config.constants import ResearcherRole
+from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 

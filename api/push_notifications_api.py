@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from firebase_admin import messaging
 
 from authentication.user_authentication import authenticate_user
-from config import constants
+from constants.datetime_constants import API_TIME_FORMAT
 from database.user_models import ParticipantFCMHistory
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import ParticipantRequest
@@ -81,7 +81,7 @@ def send_survey_notification(request: ParticipantRequest):
         data={
             'type': 'survey',
             'survey_ids': json.dumps(survey_ids),
-            'sent_time': datetime.now().strftime(constants.API_TIME_FORMAT),
+            'sent_time': datetime.now().strftime(API_TIME_FORMAT),
         },
         token=participant.get_fcm_token().token,
     )

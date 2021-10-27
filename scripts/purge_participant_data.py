@@ -16,17 +16,17 @@ _imp.load_source("__init__", _current_folder_init)
 
 
 from config.settings import S3_BUCKET
-from config.constants import CHUNKS_FOLDER, API_TIME_FORMAT
+from constants.data_processing_constants import CHUNKS_FOLDER
+from constants.datetime_constants import API_TIME_FORMAT
 from database.user_models import Participant
 from database.data_access_models import ChunkRegistry
 from libs.s3 import s3_list_files, s3_list_versions, conn as s3_conn
-
 
 UNIX_EPOCH_START = datetime(1970,1,1)
 
 DOCUMENTATION = """
 This script takes a single command line argument, a file path pointing at a file containing json.
-The JSON must look like this:  
+The JSON must look like this:
     {
         "username_1": "2019-08-24",
         "username_2": "2019-08-25"

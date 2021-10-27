@@ -4,7 +4,7 @@ from collections import defaultdict
 from dateutil.tz import gettz
 from django.db import migrations
 
-from config.constants import ALL_DATA_STREAMS
+from constants.data_stream_constants import ALL_DATA_STREAMS
 
 
 def populate_historical_data_qty_stats(apps, schema_editor):

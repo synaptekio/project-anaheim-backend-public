@@ -1,6 +1,6 @@
 import functools
-from django.http.request import HttpRequest
 
+from django.http.request import HttpRequest
 from werkzeug.datastructures import MultiDict
 
 from database.user_models import Participant

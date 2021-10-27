@@ -2,9 +2,9 @@ from typing import List
 
 import zstd
 
-from config.constants import (CHUNK_TIMESLICE_QUANTUM, IDENTIFIERS, IOS_LOG_FILE,
-    UPLOAD_FILE_TYPE_MAPPING)
-from libs.file_processing.utility_functions_csvs import (clean_java_timecode, unix_time_to_string)
+from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM
+from constants.data_stream_constants import IDENTIFIERS, IOS_LOG_FILE, UPLOAD_FILE_TYPE_MAPPING
+from libs.file_processing.utility_functions_csvs import clean_java_timecode, unix_time_to_string
 
 
 def s3_file_path_to_data_type(file_path: str):

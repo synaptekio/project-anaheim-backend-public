@@ -7,7 +7,7 @@ from typing import List
 
 from collections import Counter
 
-from config.constants import CHUNKABLE_FILES
+from constants.data_stream_constants import CHUNKABLE_FILES
 from database.data_access_models import ChunkRegistry, FileToProcess
 
 print("""

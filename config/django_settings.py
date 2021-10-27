@@ -77,7 +77,7 @@ SHELL_PLUS_POST_IMPORTS = [
     ["time", ("sleep",)],
     ["libs.utils.shell_utils", "*"],
     ["dateutil", ('tz',)],
-    ['libs.dev_utils', "GlobalTimeTracker"],
+    ['libs.utils.dev_utils', "GlobalTimeTracker"],
     # ['libs.celery_control', (
     #     "get_notification_scheduled_job_ids",
     #     "get_notification_reserved_job_ids",
@@ -93,7 +93,6 @@ SHELL_PLUS_PRE_IMPORTS = []
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
 # server settings....
-
 ALLOWED_HOSTS = "*"
 PROJECT_ROOT = "."
 ROOT_URLCONF = "urls"

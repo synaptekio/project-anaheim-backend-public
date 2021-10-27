@@ -13,8 +13,8 @@ from forest.willow.log_stats import log_stats_main
 from pkg_resources import get_distribution
 
 from api.data_access_api import chunk_fields
-from config.constants import FOREST_QUEUE
-from constants.forest_integration import ForestTree
+from constants.celery_constants import FOREST_QUEUE
+from constants.forest_constants import ForestTree
 from database.data_access_models import ChunkRegistry
 from database.tableau_api_models import ForestTask
 from libs.celery_control import forest_celery_app, safe_apply_async

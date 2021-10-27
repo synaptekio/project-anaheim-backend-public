@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from config.constants import DATA_PROCESSING_CELERY_QUEUE
 from config.settings import FILE_PROCESS_PAGE_SIZE
+from constants.celery_constants import DATA_PROCESSING_CELERY_QUEUE
 from database.user_models import Participant
 from libs.celery_control import (get_processing_active_job_ids, processing_celery_app,
     safe_apply_async)
@@ -36,10 +36,10 @@ def create_file_processing_tasks():
                 .order_by("?")     # don't want a single user blocking everyone because they are at the front.
                 .values_list("id", flat=True)
         )
-        
+
         # sometimes celery just fails to exist, set should be redundant.
         active_set = set(get_processing_active_job_ids())
-        
+
         participants_to_process = participant_set - active_set
         print("Queueing these participants:", ",".join(str(p) for p in participants_to_process))
 

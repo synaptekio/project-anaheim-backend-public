@@ -3,10 +3,11 @@ from datetime import timedelta
 from typing import List
 
 from celery import Celery
-from config.constants import (CELERY_CONFIG_LOCATION, DATA_PROCESSING_CELERY_SERVICE,
-    FOREST_SERVICE, PUSH_NOTIFICATION_SEND_SERVICE)
 from django.utils import timezone
 from kombu.exceptions import OperationalError
+
+from constants.celery_constants import (CELERY_CONFIG_LOCATION, DATA_PROCESSING_CELERY_SERVICE,
+    FOREST_SERVICE, PUSH_NOTIFICATION_SEND_SERVICE)
 
 
 def safe_apply_async(a_task_for_a_celery_queue, *args, **kwargs):

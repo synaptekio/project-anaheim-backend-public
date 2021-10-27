@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Generator, List
 
-from config.constants import (API_TIME_FORMAT)
+from constants.other_constants import API_TIME_FORMAT
 from libs.file_processing.exceptions import BadTimecodeError
 
 

@@ -5,7 +5,7 @@ from markupsafe import Markup
 
 from authentication.admin_authentication import (authenticate_researcher_login,
     get_researcher_allowed_studies, get_researcher_allowed_studies_as_query_set)
-from config.constants import ALL_DATA_STREAMS
+from constants.data_stream_constants import ALL_DATA_STREAMS
 from database.data_access_models import PipelineUploadTags
 from database.user_models import Researcher
 from libs.internal_types import ResearcherRequest

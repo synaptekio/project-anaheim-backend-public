@@ -3,7 +3,8 @@ from multiprocessing.pool import ThreadPool
 from typing import Tuple
 from zipfile import ZIP_STORED, ZipFile
 
-from config.constants import IMAGE_FILE, SURVEY_ANSWERS, SURVEY_TIMINGS, VOICE_RECORDING
+from constants.data_stream_constants import (IMAGE_FILE, SURVEY_ANSWERS, SURVEY_TIMINGS,
+    VOICE_RECORDING)
 from database.study_models import Study
 from libs.s3 import s3_retrieve
 from libs.streaming_bytes_io import StreamingBytesIO

@@ -6,7 +6,7 @@ from markupsafe import Markup
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
     logout_researcher, SESSION_NAME)
-from constants.admin_pages import NEW_API_KEY_MESSAGE, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE
+from constants.message_strings import NEW_API_KEY_MESSAGE, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE
 from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher

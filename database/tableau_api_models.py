@@ -8,7 +8,7 @@ import uuid
 
 from django.db import models
 
-from constants.forest_integration import ForestTree, TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS
+from constants.forest_constants import ForestTree, TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS
 from database.common_models import TimestampedModel
 from database.user_models import Participant
 from libs.utils.date_utils import datetime_to_list

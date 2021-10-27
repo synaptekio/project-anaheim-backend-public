@@ -10,13 +10,15 @@ from markupsafe import escape, Markup
 
 from authentication.admin_authentication import (abort, assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_study_access)
-from config.constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
-    CHECKBOX_TOGGLES, IOS_FIREBASE_CREDENTIALS, ResearcherRole, TIMER_VALUES)
+from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
+    IOS_FIREBASE_CREDENTIALS)
+from constants.html_constants import CHECKBOX_TOGGLES, TIMER_VALUES
 from constants.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUCCESS_TEXT,
     ALERT_ANDROID_VALIDATION_FAILED_TEXT, ALERT_DECODE_ERROR_TEXT, ALERT_EMPTY_TEXT,
     ALERT_FIREBASE_DELETED_TEXT, ALERT_IOS_DELETED_TEXT, ALERT_IOS_SUCCESS_TEXT,
     ALERT_IOS_VALIDATION_FAILED_TEXT, ALERT_MISC_ERROR_TEXT, ALERT_SPECIFIC_ERROR_TEXT,
     ALERT_SUCCESS_TEXT)
+from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.survey_models import Survey
 from database.system_models import FileAsText

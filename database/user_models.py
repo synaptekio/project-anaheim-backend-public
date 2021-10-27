@@ -2,7 +2,7 @@ from django.core.validators import MinLengthValidator
 from django.db import models
 from django.db.models import F, Func
 
-from config.constants import ResearcherRole
+from constants.researcher_constants import ResearcherRole
 from database.common_models import UtilityModel
 from database.models import TimestampedModel
 from database.validators import ID_VALIDATOR, STANDARD_BASE_64_VALIDATOR, URL_SAFE_BASE_64_VALIDATOR

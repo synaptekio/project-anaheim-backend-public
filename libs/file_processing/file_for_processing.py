@@ -3,7 +3,7 @@
 import sys
 import traceback
 
-from config.constants import CHUNKABLE_FILES
+from constants.data_stream_constants import CHUNKABLE_FILES
 from database.data_access_models import FileToProcess
 from libs.file_processing.utility_functions_simple import s3_file_path_to_data_type
 from libs.s3 import s3_retrieve

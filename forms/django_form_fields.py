@@ -3,10 +3,11 @@ from django.core.exceptions import ValidationError
 
 
 class CommaSeparatedListFieldMixin(forms.Field):
-    """ A mixin for use with django form fields. This mixin changes the field to accept a comma separated list of
-        inputs that are individually cleaned and validated. Takes one optional parameter, list_validators, which is
-        a list of validators to be applied to the final list of values (the validator parameter still expects a single
-        value as input, and is applied to each value individually) """
+    """ A mixin for use with django form fields. This mixin changes the field to accept a comma
+        separated list of inputs that are individually cleaned and validated. Takes one optional
+        parameter, list_validators, which is a list of validators to be applied to the final list of
+        values (the validator parameter still expects a single value as input, and is applied to
+        each value individually) """
     NONSTRING_ERROR_MESSAGE = "Please supply only string arguments to a CommaSeparatedListField"
 
     def __init__(self, *args, default=None, **kwargs):

@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from api.participant_administration import add_fields_and_interventions
 from authentication.admin_authentication import authenticate_researcher_study_access
-from config.constants import API_DATE_FORMAT
+from constants.datetime_constants import API_DATE_FORMAT
 from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant

@@ -1,4 +1,4 @@
-from config.constants import ResearcherRole
+from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam

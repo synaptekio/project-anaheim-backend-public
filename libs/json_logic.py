@@ -1,6 +1,6 @@
 import json
 
-from config.constants import (COMPARATORS, FREE_RESPONSE, FREE_RESPONSE_NUMERIC,
+from constants.survey_constants import (COMPARATORS, FREE_RESPONSE, FREE_RESPONSE_NUMERIC,
     NUMERIC_COMPARATORS, NUMERIC_QUESTIONS)
 
 
@@ -34,7 +34,7 @@ def validate_survey_from_db(survey):
 def do_validate_survey(questions):
     # The existence of this key is used to distinguish validation errors from other errors
     errors = {"duplicate_uuids": []}
-    
+
     # determine duplicate question ids
     question_ids = set()
     for question in questions:
@@ -42,10 +42,10 @@ def do_validate_survey(questions):
         if question['question_id'] in question_ids:
             errors['duplicate_uuids'].append(uuid)
         question_ids.add(uuid)
-        
+
     # get mapping of uuids to questions...
     questions_dict = {question['question_id']:question for question in questions}
-    
+
     questions_validated = set()
     for question in questions:
         questions_validated.add(question['question_id'])
@@ -70,11 +70,11 @@ def validate_logic_tree(logic_entry, questions_dict, questions_validated):
     # (this case should be the same as "display if" not being in the survey object)
     if logic_entry is None:
         return
-    
+
     # case: the logic object is empty. (Pretty sure has never triggered)...
     if len(logic_entry) == 0:
         raise EmptyLogicObject(logic_entry)
-    
+
     # case: too many keys (the above case catches 0 keys)
     operators = list(logic_entry.keys())
     if len(operators) != 1:
@@ -86,49 +86,49 @@ def validate_logic_tree(logic_entry, questions_dict, questions_validated):
     # case: the operator points to an empty list or dictionary or None. That is invalid
     if not logic_entry[operator]:
         raise EmptyLogicObject(operator)
-    
+
     if operator == 'or' or operator == "and": # handle the container types "or" and "and"
         for l in logic_entry[operator]:
             validate_logic_tree(l, questions_dict, questions_validated)
         return
-    
+
     if operator == "not":  # handle the container type "not"
         validate_logic_tree(logic_entry[operator], questions_dict, questions_validated)
         return
-    
+
     if operator in COMPARATORS:  # handle the (numerical) logical operators
         validate_logic_entry(logic_entry, questions_dict, questions_validated)
         return
-    
+
     raise InvalidOperator(operator)
 
 
 def validate_logic_entry(logic_entry, questions_dict, questions_validated):
     comparator = list(logic_entry.keys())[0]
     uuid, comparator_value = list(logic_entry.values())[0]
-    
+
     # case: uuid does not exist anywhere.
     if uuid not in questions_dict:
         raise NonExistantUUIDReference(uuid)
-    
+
     # case: uuid is not in any prior question. (this + prior check = exists in future question)
     if uuid not in questions_validated:
         raise QuestionReferenceOutOfOrder(uuid)
-    
+
     # case: the numerical value entered by the admin is not a numeric.
     if comparator in NUMERIC_COMPARATORS:
         try:
             float(comparator_value)
         except ValueError:
             raise InvalidNumeric(comparator_value)
-    
+
     # case: conditional logic references another question that is not a numeric type question.
     question_type = questions_dict[uuid]['question_type']
     if (question_type not in NUMERIC_QUESTIONS
         or (question_type == FREE_RESPONSE
             and questions_dict[uuid]["text_field_type"] != FREE_RESPONSE_NUMERIC)):
         raise NumericPointerInvalid(uuid)
-        
+
 ###############################################################################################
 ##########  THIS IS NEVER GOING TO BE PRODUCTION CODE, IT IS FOR REFERENCE ONLY. ##############
 ###############################################################################################

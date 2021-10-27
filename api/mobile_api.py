@@ -11,11 +11,10 @@ from werkzeug.datastructures import FileStorage
 
 from authentication.user_authentication import (authenticate_user, authenticate_user_registration,
     minimal_validation)
-from config.constants import (ALLOWED_EXTENSIONS, ANDROID_FIREBASE_CREDENTIALS,
-    IOS_FIREBASE_CREDENTIALS)
 from config.settings import REPORT_DECRYPTION_KEY_ERRORS
-from constants.mobile_api import (DECRYPTION_KEY_ADDITIONAL_MESSAGE, DECRYPTION_KEY_ERROR_MESSAGE,
-    DEVICE_IDENTIFIERS_HEADER, INVALID_EXTENSION_ERROR, NO_FILE_ERROR,
+from constants.celery_constants import ANDROID_FIREBASE_CREDENTIALS, IOS_FIREBASE_CREDENTIALS
+from constants.message_strings import (DECRYPTION_KEY_ADDITIONAL_MESSAGE,
+    DECRYPTION_KEY_ERROR_MESSAGE, DEVICE_IDENTIFIERS_HEADER, INVALID_EXTENSION_ERROR, NO_FILE_ERROR,
     S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR, UNKNOWN_ERROR)
 from database.data_access_models import FileToProcess
 from database.profiling_models import DecryptionKeyError, UploadTracking
@@ -28,6 +27,8 @@ from libs.s3 import get_client_public_key_string, s3_upload
 from libs.sentry import make_sentry_client, SentryTypes
 from middleware.abort_middleware import abort
 
+
+ALLOWED_EXTENSIONS = {'csv', 'json', 'mp4', "wav", 'txt', 'jpg'}
 
 ################################################################################
 ################################ UPLOADS #######################################
