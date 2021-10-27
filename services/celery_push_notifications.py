@@ -10,7 +10,7 @@ from firebase_admin.messaging import (AndroidConfig, Message, Notification, Quot
 
 from config.constants import API_TIME_FORMAT, PUSH_NOTIFICATION_SEND_QUEUE, ScheduleTypes
 from config.settings import BLOCK_QUOTA_EXCEEDED_ERROR, PUSH_NOTIFICATION_ATTEMPT_COUNT
-from config.study_constants import OBJECT_ID_ALLOWED_CHARS
+from constants.study_constants import OBJECT_ID_ALLOWED_CHARS
 from database.schedule_models import ArchivedEvent, ScheduledEvent
 from database.user_models import Participant, ParticipantFCMHistory, PushNotificationDisabledEvent
 from libs.celery_control import push_send_celery_app, safe_apply_async

@@ -10,7 +10,7 @@ from os import urandom
 from django.contrib import messages
 
 from config.constants import ITERATIONS, PASSWORD_REQUIREMENT_REGEX_LIST
-from config.study_constants import EASY_ALPHANUMERIC_CHARS
+from constants.study_constants import EASY_ALPHANUMERIC_CHARS
 
 
 # seed the random number subsystem with some good entropy.

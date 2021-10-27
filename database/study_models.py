@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.timezone import localtime
 
 from config.constants import ResearcherRole
-from config.study_constants import (ABOUT_PAGE_TEXT, CONSENT_FORM_TEXT,
+from constants.study_constants import (ABOUT_PAGE_TEXT, CONSENT_FORM_TEXT,
     DEFAULT_CONSENT_SECTIONS_JSON, SURVEY_SUBMIT_SUCCESS_TOAST_TEXT)
 from database.models import JSONTextField, TimestampedModel
 from database.schedule_models import InterventionDate
@@ -40,7 +40,7 @@ class Study(TimestampedModel):
         max_length=256, default="America/New_York", null=False, blank=False
     )
     deleted = models.BooleanField(default=False)
-    
+
     forest_enabled = models.BooleanField(default=False)
     # Note: this is not nullable to prevent bugs where this is null, though if forest_enabled is
     #       False, the forest_param field isn't used
@@ -112,7 +112,7 @@ class Study(TimestampedModel):
             only_after_epoch=only_after_epoch,
             only_before_now=only_before_now,
         )
-    
+
     def get_latest_data_time_bin(self, only_after_epoch: bool = True,
                                  only_before_now: bool = True) -> Optional[datetime]:
         return self._get_data_time_bin(
@@ -120,12 +120,12 @@ class Study(TimestampedModel):
             only_after_epoch=only_after_epoch,
             only_before_now=only_before_now,
         )
-    
+
     def _get_data_time_bin(self, earliest=True, only_after_epoch: bool = True,
                            only_before_now: bool = True) -> Optional[datetime]:
         """
         Return the earliest ChunkRegistry time bin datetime for this study.
-        
+
         Note: As of 2021-07-01, running the query as a QuerySet filter or sorting the QuerySet can
               take upwards of 30 seconds. Doing the logic in python speeds this up tremendously.
         Args:

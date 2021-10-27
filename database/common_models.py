@@ -4,7 +4,7 @@ from random import choice as random_choice
 from django.db import models
 from django.db.models.fields.related import RelatedField
 
-from config.study_constants import OBJECT_ID_ALLOWED_CHARS
+from constants.study_constants import OBJECT_ID_ALLOWED_CHARS
 from middleware.abort_middleware import abort
 
 

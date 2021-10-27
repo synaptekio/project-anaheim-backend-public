@@ -2,7 +2,7 @@ import json
 
 from django.db import models
 
-from config.study_constants import AUDIO_SURVEY_SETTINGS, IMAGE_SURVEY_SETTINGS
+from constants.study_constants import AUDIO_SURVEY_SETTINGS, IMAGE_SURVEY_SETTINGS
 from database.common_models import JSONTextField, TimestampedModel
 from database.validators import LengthValidator
 
