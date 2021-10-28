@@ -11,20 +11,32 @@ class WebDataConnector(MethodView):
     path = '/api/v0/studies/<string:study_object_id>/summary-statistics/daily/wdc'
 
     def __init__(self, *args, **kwargs):
+        """ This endpoint provides a schema to Tableau of the data names and types returned by the
+        tableau data endpoint.  This schema is checked asynchronously by tableau (it is a separate
+        url) and as far as I could tell the only reliable moment is when the user loads the WDC page
+        to enter their credentials.  If this structure is out of date or missing fields / their
+        type declaration then Tableau will silently elide those fields from its interface. """
         super().__init__(*args, **kwargs)
 
         # build the columns datastructure for tableau to enumerate the format of the API data
         fields = (f for f in SummaryStatisticDaily._meta.fields if f.name in SERIALIZABLE_FIELD_NAMES)
         self.cols = '[\n'
 
+        # study_id and participant_id are not part of the SummaryStatisticDaily model, so they
+        # aren't populated. They are also related fields that both are proxies for a unique
+        # identifier field that has a different name, so we do it manually.
+        # TODO: find a good way to not do this manually.
+        self.cols += "{id: 'study_id', dataType: tableau.dataTypeEnum.string,},\n"
+        self.cols += "{id: 'participant_id', dataType: tableau.dataTypeEnum.string,},\n"
+
         for field in fields:
             for (py_type, tableau_type) in FIELD_TYPE_MAP:
                 if isinstance(field, py_type):
                     self.cols += f"{{id: '{field.name}', dataType: {tableau_type},}},\n"
-                    # ex line: {id: 'participant_id', dataType: tableau.dataTypeEnum.int,},
+                    # ex line: {id: 'distance_diameter', dataType: tableau.dataTypeEnum.float,},
                     break
             else:
-                # if the field is not recognized, supply it to tableau as a string type
+                # if the field type is not recognized, supply it to tableau as a string type
                 self.cols += f"{{id: '{field.name}', dataType: tableau.dataTypeEnum.string,}},\n"
 
         self.cols += '];'
