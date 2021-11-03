@@ -5,37 +5,29 @@ from database.tableau_api_models import ForestParam
 from database.user_models import Participant, Researcher, StudyRelation
 
 
-# this is a minor cleanup of useful components from the django transition tests, it needs to be updated.
-
 class ReferenceObjectMixin:
-
     RESEARCHER_NAME = "researcher"
     RESEARCHER_PASSWORD = "abc123"
     STUDY_NAME = "teststudy"
     SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
 
-    # in all these defaults make sure to maintain the query by a
+    # for all defaults make sure to maintain the pattern that includes the use of the save function
 
     @property
     def default_forest_params(self) -> ForestParam:
         try:
-            return ForestParam.objects.get(default=True)
-        except ForestParam.DoesNotExist:
+            return self._default_forest_params
+        except AttributeError:
             pass
-        ForestParam(
-            default=True,
-            notes="notes",
-            name="name",
-            jasmine_json_string="[]",
-            willow_json_string="[]",
-        ).save()
-        return self.default_forest_params
+        # there is an actual default ForestParams defined in a migration.
+        self._default_forest_params = ForestParam.objects.get(default=True)
+        return self._default_forest_params
 
     @property
     def default_study(self) -> Study:
         try:
-            return Study.objects.get(name=self.STUDY_NAME)
-        except Study.DoesNotExist:
+            return self._default_study
+        except AttributeError:
             pass
         study = Study(
             name=self.STUDY_NAME,
@@ -48,30 +40,28 @@ class ReferenceObjectMixin:
             forest_param=self.default_forest_params,
         )
         study.save()
+        self._default_study = study
         return study
 
     def default_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
         try:
-            return StudyRelation.objects.get(
-                researcher=self.default_researcher,
-                study=self.default_study,
-            )
-        except StudyRelation.DoesNotExist:
+            return self._default_study_relation
+        except AttributeError:
             relation = StudyRelation(
                 researcher=self.default_researcher,
                 study=self.default_study,
                 relationship=relation,
             )
             relation.save()
+            self._default_study_relation = relation
             return relation
-
 
     # Researcher
     @property
     def default_researcher(self) -> Researcher:
         try:
-            return Researcher.objects.get(username=self.RESEARCHER_NAME)
-        except Researcher.DoesNotExist:
+            return self._default_researcher
+        except AttributeError:
             pass
         researcher = Researcher(
             username=self.RESEARCHER_NAME,
@@ -85,16 +75,17 @@ class ReferenceObjectMixin:
         )
         researcher.save()
         researcher.set_password(self.RESEARCHER_PASSWORD)
+        self._default_researcher = researcher
         return researcher
 
     @property
     def default_participant(self) -> Participant:
         try:
-            return Participant.objects.get(patient_id="participant")
-        except Participant.DoesNotExist:
+            return self._default_participant
+        except AttributeError:
             pass
         participant = Participant(
-            patient_id="particip",
+            patient_id="participant",
             device_id='_xjeWARoRevoDoL9OKDwRMpYcDhuAxm4nwedUgABxWA=',
             password='2oWT7-6Su2WMDRWpclT0q2glam7AD5taUzHIWRnO490=',
             salt='1NB2kCxOOYzayIYGZYlhHw==',
@@ -105,14 +96,14 @@ class ReferenceObjectMixin:
             study=self.default_study,
         )
         participant.save()
+        self._default_participant = participant
         return participant
-
 
     @property
     def default_survey(self) -> Survey:
         try:
-            return Survey.objects.get(object_id=self.SURVEY_OBJECT_ID)
-        except Survey.DoesNotExist:
+            self._default_survey
+        except AttributeError:
             pass
         survey = Survey(
             study=self.default_study,
@@ -120,6 +111,7 @@ class ReferenceObjectMixin:
             object_id=self.SURVEY_OBJECT_ID,
         )
         survey.save()
+        self._default_survey = survey
         return survey
 
     # @property

@@ -1,14 +1,18 @@
+from pprint import pprint
+from unittest.mock import patch
+
 from django.http import response
 from django.urls import reverse
-from constants.researcher_constants import ResearcherRole
-from tests.common import CommonTestCase
-from pprint import pprint
+from database.security_models import ApiKey
+from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase
 
-from unittest.mock import patch
+from constants.researcher_constants import ResearcherRole
+
 
 class TestLoginPages(CommonTestCase):
     """ Basic authentication test, make sure that the machinery for logging a user
     in and out are functional at setting and clearing a session. """
+
     def test_load_login_page_while_not_logged_in(self):
         # make sure the login page loads without logging you in when it should not
         response = self.client.post(reverse("login_pages.login_page"))
@@ -47,23 +51,18 @@ class TestLoginPages(CommonTestCase):
         self.assertEqual(r.url, reverse("login_pages.login_page"))
 
 
-class TestViewStudy(CommonTestCase):
+class TestViewStudy(DefaultLoggedInCommonTestCase):
     """ view_study is pretty simple, no custom content in the :
     tests push_notifications_enabled, is_site_admin, study.is_test, study.forest_enabled
     populates html elements with custom field values
     populates html elements of survey buttons
     """
 
-    def setUp(self) -> None:
-        self.default_researcher
-        self.do_default_login()  # setup the default user, we always need it.
-        return super().setUp()
-
-    def testrender_view_study_no_relation(self):
+    def test_view_study_no_relation(self):
         response = self.render_view_study(None)
         self.assertEqual(response.status_code, 403)
 
-    def testrender_view_study_researcher(self):
+    def test_view_study_researcher(self):
         study = self.default_study
         study.update(is_test=True)
 
@@ -79,12 +78,12 @@ class TestViewStudy(CommonTestCase):
         self.assertNotIn(b"This is a test study.", response.content)
         self.assertIn(b"This is a production study", response.content)
 
-    def testrender_view_study_study_admin(self):
+    def test_view_study_study_admin(self):
         response = self.render_view_study(ResearcherRole.study_admin)
         self.assertEqual(response.status_code, 200)
 
     @patch('pages.admin_pages.check_firebase_instance')
-    def testrender_view_study_site_admin(self, check_firebase_instance):
+    def test_view_study_site_admin(self, check_firebase_instance):
         study = self.default_study
         researcher = self.default_researcher
         researcher.update(site_admin=True)
@@ -113,3 +112,16 @@ class TestViewStudy(CommonTestCase):
             reverse("admin_pages.view_study", kwargs={"study_id": self.default_study.id}),
         )
 
+
+class TestManageCredentials(DefaultLoggedInCommonTestCase):
+
+    def test_manage_credentials(self):
+        study = self.default_study
+        researcher = self.default_researcher
+        self.client.get(reverse("admin_pages.manage_credentials"))
+
+        api_key = ApiKey.generate(
+            researcher=researcher, has_tableau_api_permissions=True, readable_name="anyting, realy",
+        )
+        response = self.client.get(reverse("admin_pages.manage_credentials"))
+        self.assertIn(api_key.access_key_id.encode(), response.content)

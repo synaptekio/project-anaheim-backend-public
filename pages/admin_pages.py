@@ -120,7 +120,7 @@ def reset_admin_password(request: ResearcherRequest):
 def reset_download_api_credentials(request: ResearcherRequest):
     researcher = Researcher.objects.get(username=request.session[SESSION_NAME])
     access_key, secret_key = researcher.reset_access_credentials()
-    messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)), 'warning')
+    messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)))
     return redirect("admin_pages.manage_credentials")
 
 
@@ -138,9 +138,8 @@ def new_api_key(request: ResearcherRequest):
         has_tableau_api_permissions=form.cleaned_data['tableau_api_permission'],
         readable_name=form.cleaned_data['readable_name'],
     )
-    # noinspection StrFormat
     msg = NEW_API_KEY_MESSAGE % (api_key.access_key_id, api_key.access_key_secret_plaintext)
-    # messages.warning(request, Markup(msg))
+    messages.warning(request, Markup(msg))
     return redirect("admin_pages.manage_credentials")
 
 

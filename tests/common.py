@@ -33,8 +33,15 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
         )
 
 
-class TestDefaults(CommonTestCase):
+class DefaultLoggedInCommonTestCase(CommonTestCase):
+    def setUp(self) -> None:
+        self.default_researcher
+        self.do_default_login()  # setup the default user, we always need it.
+        return super().setUp()
 
+
+class TestDefaults(CommonTestCase):
+    
     def test_defaults(self):
         researcher = self.default_researcher
         participant = self.default_participant
