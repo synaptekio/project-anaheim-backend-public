@@ -58,13 +58,13 @@ SERIALIZABLE_FIELD_NAMES = [
     "text_reciprocity",
 
     # Calls
-    # "call_incoming_count",
-    # "call_incoming_degree",
-    # "call_incoming_duration",
-    # "call_incoming_responsiveness",
-    # "call_outgoing_count",
-    # "call_outgoing_degree",
-    # "call_outgoing_duration",
+    "call_incoming_count",
+    "call_incoming_degree",
+    "call_incoming_duration",
+    "call_incoming_responsiveness",
+    "call_outgoing_count",
+    "call_outgoing_degree",
+    "call_outgoing_duration",
 
     # Accelerometer
     # "acceleration_direction",
