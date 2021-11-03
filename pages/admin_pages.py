@@ -54,7 +54,7 @@ def choose_study(request: ResearcherRequest):
 @require_GET
 @authenticate_researcher_study_access
 def view_study(request: ResearcherRequest, study_id=None):
-    study = Study.objects.get(pk=study_id)
+    study: Study = Study.objects.get(pk=study_id)
 
     return render(
         request,
@@ -78,6 +78,10 @@ def view_study(request: ResearcherRequest, study_id=None):
 
 @authenticate_researcher_login
 def manage_credentials(request: ResearcherRequest):
+    # FIXME: this is an inappropriate use of a serializer.  It is a single use entity, the contents
+    #  of this database entity do not require special serialization or deserialization, and the use
+    #  of the serializer is complex enough to obscure functionality.  This use of the serializer
+    #  requires that you be an expert in the DRF.
     serializer = ApiKeySerializer(
         ApiKey.objects.filter(researcher=request.session_researcher), many=True)
     return render(
