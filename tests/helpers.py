@@ -14,13 +14,14 @@ class ReferenceObjectMixin:
     STUDY_NAME = "teststudy"
     SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
 
+    # in all these defaults make sure to maintain the query by a
+
     @property
-    def default_forest_params(self):
+    def default_forest_params(self) -> ForestParam:
         try:
             return ForestParam.objects.get(default=True)
         except ForestParam.DoesNotExist:
             pass
-
         ForestParam(
             default=True,
             notes="notes",
@@ -31,13 +32,14 @@ class ReferenceObjectMixin:
         return self.default_forest_params
 
     @property
-    def default_study(self):
+    def default_study(self) -> Study:
         try:
             return Study.objects.get(name=self.STUDY_NAME)
         except Study.DoesNotExist:
+            # raise
             pass
         study = Study(
-            name="teststudy",
+            name=self.STUDY_NAME,
             encryption_key="thequickbrownfoxjumpsoverthelazy",
             object_id="2Mwjb91zSWzHgOrQahEvlu5v",
             is_test=True,
@@ -48,6 +50,22 @@ class ReferenceObjectMixin:
         )
         study.save()
         return study
+
+    def default_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
+        try:
+            return StudyRelation.objects.get(
+                researcher=self.default_researcher,
+                study=self.default_study,
+            )
+        except StudyRelation.DoesNotExist:
+            relation = StudyRelation(
+                researcher=self.default_researcher,
+                study=self.default_study,
+                relationship=relation,
+            )
+            relation.save()
+            return relation
+
 
     # Researcher
     @property
@@ -68,9 +86,6 @@ class ReferenceObjectMixin:
         )
         researcher.save()
         researcher.set_password(self.RESEARCHER_PASSWORD)
-        StudyRelation.objects.create(
-            researcher=researcher, relationship=ResearcherRole.researcher, study=self.default_study
-        )
         return researcher
 
     @property
@@ -95,7 +110,7 @@ class ReferenceObjectMixin:
 
 
     @property
-    def default_survey(self):
+    def default_survey(self) -> Survey:
         try:
             return Survey.objects.get(object_id=self.SURVEY_OBJECT_ID)
         except Survey.DoesNotExist:

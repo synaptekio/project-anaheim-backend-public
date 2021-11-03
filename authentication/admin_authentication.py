@@ -198,10 +198,17 @@ def authenticate_researcher_study_access(some_function):
         if not Study.objects.filter(pk=study_id, deleted=False).exists():
             return abort(404)
 
-        # always allow site admins, allow all types of study relations (there is/was only one).
+        # always allow site admins, allow all types of study relations
         if not request.session_researcher.site_admin:
-            relation = StudyRelation.objects.filter(study_id=study_id, researcher=request.session_researcher)
-            if relation.values_list("relationship").get() not in ALL_RESEARCHER_TYPES:
+            try:
+                relation = StudyRelation.objects \
+                    .filter(study_id=study_id, researcher=request.session_researcher) \
+                    .values_list("relationship", flat=True).get()
+            except StudyRelation.DoesNotExist:
+                log("no study relationship for researcher")
+                return abort(403)
+
+            if relation not in ALL_RESEARCHER_TYPES:
                 log("invalid study relationship for researcher")
                 return abort(403)
 

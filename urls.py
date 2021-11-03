@@ -451,7 +451,7 @@ urlpatterns = [
     path(
         'studies/<str:study_id>/forest/tasks',
         forest_pages.task_log,
-        "forest_pages.task_log",
+        name="forest_pages.task_log",
     ),
     path(
         'forest/tasks/download',
@@ -474,12 +474,12 @@ urlpatterns = [
         # "summary_statistics_daily_study_view",
         "api/v0/studies/<str:study_object_id>/summary-statistics/daily",
         tableau_api.get_tableau_daily,
-        "tableau_api.get_tableau_daily",
+        name="tableau_api.get_tableau_daily",
     ),
     path(
         'api/v0/studies/<str:study_object_id>/summary-statistics/daily/wdc',
         tableau_api.web_data_connector,
-        "tableau_api.web_data_connector",
+        name="tableau_api.web_data_connector",
     )
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -15,6 +15,12 @@ def environment(**options):
     env = Environment(**options)
     env.globals.update({
         "static": staticfiles_storage.url,
-        "url": reverse
+        "url": reverse,
+        "easy_url": easy_url,
     })
     return env
+
+
+def easy_url(url: str, *args, **kwargs):
+    """ Shortcut for use in Jinja templates, useful in the django port, mimics syntax of Flask. """
+    return reverse(url, args=args, kwargs=kwargs)
