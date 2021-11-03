@@ -4,8 +4,11 @@ from constants.researcher_constants import ResearcherRole
 from tests.common import CommonTestCase
 from pprint import pprint
 
-class TestAuthentication(CommonTestCase):
+from unittest.mock import patch
 
+class TestLoginPages(CommonTestCase):
+    """ Basic authentication test, make sure that the machinery for logging a user
+    in and out are functional at setting and clearing a session. """
     def test_load_login_page_while_not_logged_in(self):
         # make sure the login page loads without logging you in when it should not
         response = self.client.post(reverse("login_pages.login_page"))
@@ -44,36 +47,69 @@ class TestAuthentication(CommonTestCase):
         self.assertEqual(r.url, reverse("login_pages.login_page"))
 
 
-class TestAdminPages(CommonTestCase):
+class TestViewStudy(CommonTestCase):
+    """ view_study is pretty simple, no custom content in the :
+    tests push_notifications_enabled, is_site_admin, study.is_test, study.forest_enabled
+    populates html elements with custom field values
+    populates html elements of survey buttons
+    """
 
     def setUp(self) -> None:
         self.default_researcher
         self.do_default_login()  # setup the default user, we always need it.
         return super().setUp()
 
-    def test_render_view_study_researcher(self):
-        response = self._render_view_study(ResearcherRole.researcher)
-        self.assertEqual(response.status_code, 200)
-
-    def test_render_view_study_site_admin(self):
-        researcher = self.default_researcher
-        researcher.site_admin = True
-        researcher.save()
-        response = self._render_view_study(None)
-        self.assertEqual(response.status_code, 200)
-
-    def test_render_view_study_study_admin(self):
-        response = self._render_view_study(ResearcherRole.study_admin)
-        self.assertEqual(response.status_code, 200)
-
-    def test_render_view_study_no_relation(self):
-        response = self._render_view_study(None)
+    def testrender_view_study_no_relation(self):
+        response = self.render_view_study(None)
         self.assertEqual(response.status_code, 403)
 
-    def _render_view_study(self, relation) -> response.HttpResponse:
+    def testrender_view_study_researcher(self):
+        study = self.default_study
+        study.update(is_test=True)
+
+        response = self.render_view_study(ResearcherRole.researcher)
+        self.assertEqual(response.status_code, 200)
+
+        # template has several customizations, test for some relevant strings
+        self.assertIn(b"This is a test study.", response.content)
+        self.assertNotIn(b"This is a production study", response.content)
+        study.update(is_test=False)
+
+        response = self.render_view_study(ResearcherRole.researcher)
+        self.assertNotIn(b"This is a test study.", response.content)
+        self.assertIn(b"This is a production study", response.content)
+
+    def testrender_view_study_study_admin(self):
+        response = self.render_view_study(ResearcherRole.study_admin)
+        self.assertEqual(response.status_code, 200)
+
+    @patch('pages.admin_pages.check_firebase_instance')
+    def testrender_view_study_site_admin(self, check_firebase_instance):
+        study = self.default_study
+        researcher = self.default_researcher
+        researcher.update(site_admin=True)
+
+        # test rendering with several specifc values set to observe the rendering changes
+        study.update(forest_enabled=False)
+        check_firebase_instance.return_value = False
+        response = self.render_view_study(None)  # must be None
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b"Edit interventions for this study", response.content)
+        self.assertNotIn(b"View Forest Task Log", response.content)
+
+        check_firebase_instance.return_value = True
+        study.update(forest_enabled=True)
+        response = self.render_view_study(None)
+        self.assertIn(b"Edit interventions for this study", response.content)
+        self.assertIn(b"View Forest Task Log", response.content)
+        # assertInHTML is several hundred times slower but has much better output when it fails...
+        # self.assertInHTML("Edit interventions for this study", response.content.decode())
+
+    def render_view_study(self, relation) -> response.HttpResponse:
         self.default_researcher
         if relation:
             self.default_study_relation(relation)
         return self.client.get(
             reverse("admin_pages.view_study", kwargs={"study_id": self.default_study.id}),
         )
+

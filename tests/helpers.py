@@ -36,7 +36,6 @@ class ReferenceObjectMixin:
         try:
             return Study.objects.get(name=self.STUDY_NAME)
         except Study.DoesNotExist:
-            # raise
             pass
         study = Study(
             name=self.STUDY_NAME,
