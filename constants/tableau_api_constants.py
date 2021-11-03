@@ -1,4 +1,6 @@
-from django.db.models.fields import IntegerField, FloatField, DateTimeField, DateField, BooleanField
+from django.db.models.fields import (BooleanField, CharField, DateField, DateTimeField, FloatField,
+    IntegerField, TextField)
+
 
 SERIALIZABLE_FIELD_NAMES = [
     # Metadata
@@ -103,6 +105,8 @@ FIELD_TYPE_MAP = [
     (DateTimeField, 'tableau.dataTypeEnum.datetime'),
     (DateField, 'tableau.dataTypeEnum.date'),
     (BooleanField, 'tableau.dataTypeEnum.bool'),
+    (CharField, 'tableau.dataTypeEnum.string'),
+    (TextField, 'tableau.dataTypeEnum.string'),
 ]
 
 

@@ -181,12 +181,13 @@ def decrypt_device_file(original_data: bytes, participant: Participant) -> bytes
                 # implies an interrupted write operation (or read)
                 continue
 
-            if "Input strings must be a multiple of 16 in length" in error_string:
-                error_message += "Line was of incorrect length, dropping it and continuing."
-                create_line_error_db_entry(LineEncryptionError.INVALID_LENGTH)
-                error_types.append(LineEncryptionError.INVALID_LENGTH)
-                bad_lines.append(line)
-                continue
+            # This error had a new error string, solution is now tested, we pad and then trunate.
+            # if "Input strings must be a multiple of 16 in length" in error_string:
+            #     error_message += "Line was of incorrect length, dropping it and continuing."
+            #     create_line_error_db_entry(LineEncryptionError.INVALID_LENGTH)
+            #     error_types.append(LineEncryptionError.INVALID_LENGTH)
+            #     bad_lines.append(line)
+            #     continue
 
             if isinstance(error_orig, InvalidData):
                 error_message += "Line contained no data, skipping: " + str(line)
@@ -328,13 +329,27 @@ def decrypt_device_line(patient_id, key, data: bytes) -> bytes:
         value 1 is the symmetric key, encrypted with the patient's public key.
         value 2 is the initialization vector for the AES CBC cipher.
         value 3 is the config, encrypted using AES CBC, with the provided key and iv. """
+    # orig_data = data
     iv, data = data.split(b":")
-    iv = decode_base64(iv)  # handle non-ascii encoding garbage...
+    iv = decode_base64(iv)
     data = decode_base64(data)
-    if not data:
+
+    # handle cases of no data, and less than 16 bytes of data, which is an equivalent scenario.
+    if not data or len(data) < 16:
         raise InvalidData()
-    if not iv:
+    if not iv or len(iv) < 16:
         raise InvalidIV()
+
+    # CBC data encryption requires alignment to a 16 bytes, we lose any data that overflows that length.
+    # FIXME: how does this even happen on the device.  Two sources discovered were Android.
+    overflow_bytes = len(data) % 16
+
+    if overflow_bytes:
+        print("\n\nFOUND OVERFLOWED DATA\n\n")
+        print("device os:", Participant.objects.get(patient_id=patient_id).os_type)
+        print("\n\n")
+        data = data[:-overflow_bytes]
+
     try:
         decipherer = AES.new(key, mode=AES.MODE_CBC, IV=iv)
         decrypted = decipherer.decrypt(data)
@@ -355,7 +370,7 @@ def decrypt_device_line(patient_id, key, data: bytes) -> bytes:
         # statement will print to an ascii formatted log file on the server, which causes
         # ascii encoding error.  Enable them for debugging only. (leave uncommented for Sentry.)
         # print("length iv: %s, length data: %s, length key: %s" % (len_iv, len_data, len_key))
-        # print('%s %s %s' % (patient_id, key, data))
+        # print('%s %s %s' % (patient_id, key, orig_data))
         raise
 
     # PKCS5 Padding: The last byte of the byte-string contains the number of bytes at the end of the

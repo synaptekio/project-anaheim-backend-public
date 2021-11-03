@@ -61,6 +61,7 @@ def view_study(request: ResearcherRequest, study_id=None):
         template_name='view_study.html',
         context=dict(
             study=study,
+            participants_ever_registered_count=study.participants.exclude(os_type='').count(),
             audio_survey_ids=study.get_survey_ids_and_object_ids('audio_survey'),
             image_survey_ids=study.get_survey_ids_and_object_ids('image_survey'),
             tracking_survey_ids=study.get_survey_ids_and_object_ids('tracking_survey'),

@@ -35,6 +35,12 @@ def get_tableau_daily(request: TableauRequest):
 def web_data_connector(request: TableauRequest, study_object_id: str):
     # build the columns datastructure for tableau to enumerate the format of the API data
     columns = ['[\n']
+    # study_id and participant_id are not part of the SummaryStatisticDaily model, so they
+    # aren't populated. They are also related fields that both are proxies for a unique
+    # identifier field that has a different name, so we do it manually.
+    # TODO: this could be less messy.
+    columns.append("{id: 'study_id', dataType: tableau.dataTypeEnum.string,},\n")
+    columns.append("{id: 'participant_id', dataType: tableau.dataTypeEnum.string,},\n")
     for field in FINAL_SERIALIZABLE_FIELD_NAMES:
         for (py_type, tableau_type) in FIELD_TYPE_MAP:
             if isinstance(field, py_type):

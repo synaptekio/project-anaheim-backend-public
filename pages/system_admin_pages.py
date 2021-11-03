@@ -19,6 +19,7 @@ from constants.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID
     ALERT_IOS_VALIDATION_FAILED_TEXT, ALERT_MISC_ERROR_TEXT, ALERT_SPECIFIC_ERROR_TEXT,
     ALERT_SUCCESS_TEXT)
 from constants.researcher_constants import ResearcherRole
+from database.data_access_models import FileToProcess
 from database.study_models import Study
 from database.survey_models import Survey
 from database.system_models import FileAsText
@@ -239,10 +240,18 @@ def create_new_researcher(request: ResearcherRequest):
 @require_GET
 @authenticate_admin
 def manage_studies(request: ResearcherRequest):
-    return render(request, 'manage_studies.html',
-        context={"studies": [study.as_unpacked_native_python()
-                             for study in get_administerable_studies_by_name(request)]}
+    studies = [
+        study.as_unpacked_native_python() for study in get_administerable_studies_by_name(request)
+    ]
+    return render(
+        request,
+        'manage_studies.html',
+        context=dict(
+            studies=studies,
+            unprocessed_files_count=FileToProcess.objects.count(),
+        )
     )
+
 
 
 @require_GET
