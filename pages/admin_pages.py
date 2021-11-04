@@ -96,7 +96,7 @@ def manage_credentials(request: ResearcherRequest):
 @require_POST
 @authenticate_researcher_login
 def reset_admin_password(request: ResearcherRequest):
-    username = request.session[SESSION_NAME]
+    username = request.session_researcher.username
     current_password = request.POST['current_password']
     new_password = request.POST['new_password']
     confirm_new_password = request.POST['confirm_new_password']
