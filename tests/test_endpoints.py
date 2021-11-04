@@ -1,12 +1,13 @@
-from pprint import pprint
 from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
-from database.security_models import ApiKey
 from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase
 
+from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
+    NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ResearcherRole
+from database.security_models import ApiKey
 
 
 class TestLoginPages(CommonTestCase):
@@ -18,7 +19,7 @@ class TestLoginPages(CommonTestCase):
         response = self.client.post(reverse("login_pages.login_page"))
         self.assertEqual(response.status_code, 200)
         # this should uniquely identify the login page
-        assert b'<form method="POST" action="/validate_login">' in response.content
+        self.assertIn(b'<form method="POST" action="/validate_login">', response.content)
 
     def test_load_login_page_while_logged_in(self):
         # make sure the login page loads without logging you in when it should not
@@ -28,7 +29,7 @@ class TestLoginPages(CommonTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("admin_pages.choose_study"))
         # this should uniquely identify the login page
-        assert b'<form method="POST" action="/validate_login">' not in response.content
+        self.assertNotIn(b'<form method="POST" action="/validate_login">', response.content)
 
     def test_logging_in_success(self):
         self.default_researcher  # create the default researcher
@@ -116,7 +117,7 @@ class TestViewStudy(DefaultLoggedInCommonTestCase):
 class TestManageCredentials(DefaultLoggedInCommonTestCase):
 
     def test_manage_credentials(self):
-        study = self.default_study
+        self.default_study
         researcher = self.default_researcher
         self.client.get(reverse("admin_pages.manage_credentials"))
 
@@ -124,4 +125,82 @@ class TestManageCredentials(DefaultLoggedInCommonTestCase):
             researcher=researcher, has_tableau_api_permissions=True, readable_name="anyting, realy",
         )
         response = self.client.get(reverse("admin_pages.manage_credentials"))
-        self.assertIn(api_key.access_key_id.encode(), response.content)
+        self.assertPresentIn(api_key.access_key_id, response.content)
+
+
+class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
+
+    def test_reset_admin_password_success(self):
+        self.do_post(
+            current_password=self.DEFAULT_RESEARCHER_PASSWORD,
+            new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+            confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+        )
+        # we are ... teleologically correct here mimicking the code...
+        researcher = self.default_researcher
+        self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
+        self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
+        # Always stick the check for the string after the check for the db mutation.
+        self.assertPresentIn(PASSWORD_RESET_SUCCESS, self.manage_credentials.content)
+
+    def test_reset_admin_password_wrong(self):
+        self.do_post(
+            current_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+            new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+            confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+        )
+        researcher = self.default_researcher
+        self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
+        self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
+        self.assertPresentIn(WRONG_CURRENT_PASSWORD, self.manage_credentials.content)
+
+    def test_reset_admin_password_rules_fail(self):
+        non_default = "abcdefghijklmnop"
+        self.do_post(
+            current_password=self.DEFAULT_RESEARCHER_PASSWORD,
+            new_password=non_default,
+            confirm_new_password=non_default,
+        )
+        researcher = self.default_researcher
+        self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
+        self.assertFalse(researcher.check_password(researcher.username, non_default))
+        self.assertPresentIn(NEW_PASSWORD_RULES_FAIL, self.manage_credentials.content)
+
+    def test_reset_admin_password_too_short(self):
+        non_default = "a1#"
+        self.do_post(
+            current_password=self.DEFAULT_RESEARCHER_PASSWORD,
+            new_password=non_default,
+            confirm_new_password=non_default,
+        )
+        researcher = self.default_researcher
+        self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
+        self.assertFalse(researcher.check_password(researcher.username, non_default))
+        self.assertPresentIn(NEW_PASSWORD_8_LONG, self.manage_credentials.content)
+
+    def test_reset_admin_password_mismatch(self):
+        #has to pass the length and character checks
+        self.do_post(
+            current_password=self.DEFAULT_RESEARCHER_PASSWORD,
+            new_password="aA1#aA1#aA1#",
+            confirm_new_password="aA1#aA1#aA1#aA1#",
+        )
+        researcher = self.default_researcher
+        self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
+        self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#"))
+        self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#aA1#"))
+        self.assertPresentIn(NEW_PASSWORD_MISMATCH, self.manage_credentials.content)
+
+    def do_post(self, **post_params):
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.default_researcher
+        response = self.client.post(reverse("admin_pages.reset_admin_password"), data=post_params)
+        self.default_researcher.refresh_from_db()
+        # this is an api call, it should return a 302 back to the messages page, not an error or page.
+        self.assertEqual(response.status_code, 302)
+        return response
+
+    @property
+    def manage_credentials(self):
+        return self.client.get(reverse("admin_pages.manage_credentials"))
+

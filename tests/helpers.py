@@ -6,10 +6,10 @@ from database.user_models import Participant, Researcher, StudyRelation
 
 
 class ReferenceObjectMixin:
-    RESEARCHER_NAME = "researcher"
-    RESEARCHER_PASSWORD = "abc123"
-    STUDY_NAME = "teststudy"
-    SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
+    DEFAULT_RESEARCHER_NAME = "researcher"
+    DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
+    DEFAULT_STUDY_NAME = "teststudy"
+    DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
 
     # for all defaults make sure to maintain the pattern that includes the use of the save function
 
@@ -30,7 +30,7 @@ class ReferenceObjectMixin:
         except AttributeError:
             pass
         study = Study(
-            name=self.STUDY_NAME,
+            name=self.DEFAULT_STUDY_NAME,
             encryption_key="thequickbrownfoxjumpsoverthelazy",
             object_id="2Mwjb91zSWzHgOrQahEvlu5v",
             is_test=True,
@@ -64,7 +64,7 @@ class ReferenceObjectMixin:
         except AttributeError:
             pass
         researcher = Researcher(
-            username=self.RESEARCHER_NAME,
+            username=self.DEFAULT_RESEARCHER_NAME,
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
             site_admin=False,
@@ -74,7 +74,7 @@ class ReferenceObjectMixin:
             access_key_secret_salt='GmI_vejug29uZz4WpDofcA==',
         )
         researcher.save()
-        researcher.set_password(self.RESEARCHER_PASSWORD)
+        researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
         self._default_researcher = researcher
         return researcher
 
@@ -108,7 +108,7 @@ class ReferenceObjectMixin:
         survey = Survey(
             study=self.default_study,
             survey_type=Survey.TRACKING_SURVEY,
-            object_id=self.SURVEY_OBJECT_ID,
+            object_id=self.DEFAULT_SURVEY_OBJECT_ID,
         )
         survey.save()
         self._default_survey = survey

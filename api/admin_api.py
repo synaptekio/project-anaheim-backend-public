@@ -96,8 +96,11 @@ def set_researcher_password(request: ResearcherRequest, ):
     researcher = Researcher.objects.get(pk=request.POST.get('researcher_id', None))
     assert_researcher_under_admin(request, researcher)
     new_password = request.POST.get('password', '')
-    if check_password_requirements(new_password, flash_message=True):
+    success, msg = check_password_requirements(new_password)
+    if success:
         researcher.set_password(new_password)
+    else:
+        messages.warning(request, msg)
     return redirect(f'/edit_researcher/{researcher.pk}')
 
 

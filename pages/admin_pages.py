@@ -6,7 +6,8 @@ from markupsafe import Markup
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
     logout_researcher, SESSION_NAME)
-from constants.message_strings import NEW_API_KEY_MESSAGE, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE
+from constants.message_strings import (NEW_PASSWORD_MISMATCH, NEW_API_KEY_MESSAGE,
+    PASSWORD_RESET_SUCCESS, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE, WRONG_CURRENT_PASSWORD)
 from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher
@@ -102,17 +103,21 @@ def reset_admin_password(request: ResearcherRequest):
     confirm_new_password = request.POST['confirm_new_password']
 
     if not Researcher.check_password(username, current_password):
-        messages.warning(request, "The Current Password you have entered is invalid")
+        messages.warning(request, WRONG_CURRENT_PASSWORD)
         return redirect('admin_pages.manage_credentials')
-    if not check_password_requirements(new_password, flash_message=True):
+
+    success, msg = check_password_requirements(new_password)
+    if msg:
+        messages.warning(request, msg)
+    if not success:
         return redirect("admin_pages.manage_credentials")
     if new_password != confirm_new_password:
-        messages.warning(request, "New Password does not match Confirm New Password")
+        messages.warning(request, NEW_PASSWORD_MISMATCH)
         return redirect('admin_pages.manage_credentials')
 
     # todo: sanitize password?
     Researcher.objects.get(username=username).set_password(new_password)
-    messages.warning(request, "Your password has been reset!")
+    messages.warning(request, PASSWORD_RESET_SUCCESS)
     return redirect('admin_pages.manage_credentials')
 
 

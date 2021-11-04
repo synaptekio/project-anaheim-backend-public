@@ -62,11 +62,6 @@ class UtilityModel(models.Model):
         return self.as_dict()
 
     @property
-    def _uncached_instance(self):
-        """ convenience for grabbing a new, different model object. Not intended for use in production. """
-        return self._meta.model.objects.get(id=self.id)
-
-    @property
     def _related(self):
         """ Gets all related objects for this database object (warning: probably huge).
             This is intended for debugging only. """

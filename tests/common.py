@@ -26,22 +26,41 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             print("==")
         return super().tearDown()
 
+    def assertPresentIn(self, test_str, corpus):
+        # does a test for "in" and also handles the type coersion for bytes and strings, which is
+        # common due to response.content being a bytes object.
+        t_test = type(test_str)
+        t_corpus = type(corpus)
+        if t_test == t_corpus:
+            return self.assertIn(test_str, corpus)
+        elif t_test == str and t_corpus == bytes:
+            return self.assertIn(test_str.encode(), corpus)
+        elif t_test == bytes and t_corpus == str:
+            return self.assertIn(test_str.decode(), corpus)
+        else:
+            raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
+
+    # common client operations
     def do_default_login(self):
+        # logs in the default researcher user, assumes it has been instantiated.
+        return self.do_login(self.DEFAULT_RESEARCHER_NAME, self.DEFAULT_RESEARCHER_PASSWORD)
+
+    def do_login(self, username, password):
         return self.client.post(
             reverse("login_pages.validate_login"),
-            data={"username": self.RESEARCHER_NAME, "password": self.RESEARCHER_PASSWORD}
+            data={"username": username, "password": password}
         )
 
 
 class DefaultLoggedInCommonTestCase(CommonTestCase):
     def setUp(self) -> None:
-        self.default_researcher
-        self.do_default_login()  # setup the default user, we always need it.
+        self.default_researcher  # setup the default user, we always need it.
+        self.do_default_login()
         return super().setUp()
 
 
 class TestDefaults(CommonTestCase):
-    
+
     def test_defaults(self):
         researcher = self.default_researcher
         participant = self.default_participant

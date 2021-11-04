@@ -8,6 +8,7 @@ from hashlib import pbkdf2_hmac as pbkdf2
 from os import urandom
 
 from django.contrib import messages
+from constants.message_strings import NEW_PASSWORD_8_LONG, NEW_PASSWORD_RULES_FAIL
 
 from constants.security_constants import (EASY_ALPHANUMERIC_CHARS, ITERATIONS,
     PASSWORD_REQUIREMENT_REGEX_LIST)
@@ -139,17 +140,10 @@ def generate_random_string() -> bytes:
     return encode_generic_base64(hashlib.sha512(urandom(16)).digest())
 
 
-def check_password_requirements(password, flash_message=False) -> bool:
+def check_password_requirements(password) -> (bool, str):
     if len(password) < 8:
-        if flash_message:
-            messages.warning("Your New Password must be at least 8 characters long.")
-        return False
+        return False, NEW_PASSWORD_8_LONG
     for regex in PASSWORD_REQUIREMENT_REGEX_LIST:
         if not re.search(regex, password):
-            if flash_message:
-                messages.warning(
-                    "Your New Password must contain at least one symbol, one number, "
-                    "one lowercase, and one uppercase character."
-                )
-            return False
-    return True
+            return False, NEW_PASSWORD_RULES_FAIL
+    return True, None
