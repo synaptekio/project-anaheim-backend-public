@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
-from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin
+from tests.common import (CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin,
+    GeneralPageMixin)
 
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
@@ -260,3 +261,14 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         api_key.refresh_from_db()
         self.assertFalse(api_key.is_active)
         self.assertPresentIn(TABLEAU_API_KEY_IS_DISABLED, self.manage_credentials_content)
+
+
+class TestDashboard(DefaultLoggedInCommonTestCase, GeneralPageMixin):
+    ENDPOINT_NAME = "dashboard_api.dashboard_page"
+
+    def test_dashboard(self):
+        # default user and default study already instantiated
+        self.default_study_relation(ResearcherRole.researcher)
+        resp = self.do_get(str(self.default_study.id))
+        self.assertEqual(resp.status_code, 200)
+

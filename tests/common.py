@@ -88,6 +88,15 @@ class GeneralApiMixin:
         return self.client.get(reverse("admin_pages.manage_credentials")).content
 
 
+class GeneralPageMixin(CommonTestCase):
+    def do_get(self, *get_params):
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.default_researcher
+        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params))
+        self.default_researcher.refresh_from_db()
+        return response
+
+
 def compare_dictionaries(reference, comparee, ignore=None):
     if not isinstance(reference, dict):
         raise Exception("reference was %s, not dictionary" % type(reference))
