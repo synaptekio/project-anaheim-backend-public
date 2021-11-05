@@ -9,6 +9,8 @@ from database.user_models import Participant
 from forms.django_form_fields import CommaSeparatedListCharField, CommaSeparatedListChoiceField
 
 
+# FIXME: this form provides no apparent validation or sanitization, and the hardcoded
+# tableau_api_permission detail is... bad?
 class NewApiKeyForm(forms.Form):
     readable_name = forms.CharField(required=False)
 

@@ -207,7 +207,7 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiM
 
 class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
-
+    # FIXME: when NewApiKeyForm does anything develop a test for naming the key.
     def test_reset(self):
         self.assertIsNone(self.default_researcher.api_keys.first())
         self.do_post()

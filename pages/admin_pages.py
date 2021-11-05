@@ -129,17 +129,16 @@ def reset_download_api_credentials(request: ResearcherRequest):
     return redirect("admin_pages.manage_credentials")
 
 
-# @admin_pages.route('/new_api_key', methods=['POST'])
 @require_POST
 @authenticate_researcher_login
 def new_tableau_api_key(request: ResearcherRequest):
+    # FIXME: This form is naive
     form = NewApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")
-    researcher = Researcher.objects.get(username=request.session[SESSION_NAME])
 
     api_key = ApiKey.generate(
-        researcher=researcher,
+        researcher=request.session_researcher,
         has_tableau_api_permissions=form.cleaned_data['tableau_api_permission'],
         readable_name=form.cleaned_data['readable_name'],
     )
