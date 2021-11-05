@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
-from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase
+from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin
 
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, WRONG_CURRENT_PASSWORD)
@@ -128,7 +128,9 @@ class TestManageCredentials(DefaultLoggedInCommonTestCase):
         self.assertPresentIn(api_key.access_key_id, response.content)
 
 
-class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
+class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+    # test for every case and messages present on the page
+    ENDPOINT_NAME = "admin_pages.reset_admin_password"
 
     def test_reset_admin_password_success(self):
         self.do_post(
@@ -141,7 +143,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
         # Always stick the check for the string after the check for the db mutation.
-        self.assertPresentIn(PASSWORD_RESET_SUCCESS, self.manage_credentials.content)
+        self.assertPresentIn(PASSWORD_RESET_SUCCESS, self.manage_credentials_content)
 
     def test_reset_admin_password_wrong(self):
         self.do_post(
@@ -152,7 +154,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
-        self.assertPresentIn(WRONG_CURRENT_PASSWORD, self.manage_credentials.content)
+        self.assertPresentIn(WRONG_CURRENT_PASSWORD, self.manage_credentials_content)
 
     def test_reset_admin_password_rules_fail(self):
         non_default = "abcdefghijklmnop"
@@ -164,7 +166,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assertPresentIn(NEW_PASSWORD_RULES_FAIL, self.manage_credentials.content)
+        self.assertPresentIn(NEW_PASSWORD_RULES_FAIL, self.manage_credentials_content)
 
     def test_reset_admin_password_too_short(self):
         non_default = "a1#"
@@ -176,7 +178,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assertPresentIn(NEW_PASSWORD_8_LONG, self.manage_credentials.content)
+        self.assertPresentIn(NEW_PASSWORD_8_LONG, self.manage_credentials_content)
 
     def test_reset_admin_password_mismatch(self):
         #has to pass the length and character checks
@@ -189,18 +191,15 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase):
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#"))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#aA1#"))
-        self.assertPresentIn(NEW_PASSWORD_MISMATCH, self.manage_credentials.content)
+        self.assertPresentIn(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
 
-    def do_post(self, **post_params):
-        # instantiate the default researcher, pass through params, refresh default researcher.
-        self.default_researcher
-        response = self.client.post(reverse("admin_pages.reset_admin_password"), data=post_params)
-        self.default_researcher.refresh_from_db()
-        # this is an api call, it should return a 302 back to the messages page, not an error or page.
-        self.assertEqual(response.status_code, 302)
-        return response
 
-    @property
-    def manage_credentials(self):
-        return self.client.get(reverse("admin_pages.manage_credentials"))
+class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+    ENDPOINT_NAME = "admin_pages.reset_download_api_credentials"
+
+    def test_reset(self):
+        self.assertIsNone(self.default_researcher.access_key_id)
+        self.do_post()
+        self.assertPresentIn("Your Data-Download API access credentials have been reset",
+                             self.manage_credentials_content)
 

@@ -124,8 +124,7 @@ def reset_admin_password(request: ResearcherRequest):
 @require_POST
 @authenticate_researcher_login
 def reset_download_api_credentials(request: ResearcherRequest):
-    researcher = Researcher.objects.get(username=request.session[SESSION_NAME])
-    access_key, secret_key = researcher.reset_access_credentials()
+    access_key, secret_key = request.session_researcher.reset_access_credentials()
     messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)))
     return redirect("admin_pages.manage_credentials")
 

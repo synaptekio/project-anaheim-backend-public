@@ -72,6 +72,22 @@ class TestDefaults(CommonTestCase):
         assert Survey.objects.filter(pk=survey.pk).exists()
 
 
+class GeneralApiMixin:
+    def do_post(self, **post_params):
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.default_researcher
+        response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
+        self.default_researcher.refresh_from_db()
+        # this is an api call, it should return a 302, not an error or page.
+        self.assertEqual(response.status_code, 302)
+        return response
+
+    @property
+    def manage_credentials_content(self) -> bytes:
+        # we need a page, manage credentials works
+        return self.client.get(reverse("admin_pages.manage_credentials")).content
+
+
 def compare_dictionaries(reference, comparee, ignore=None):
     if not isinstance(reference, dict):
         raise Exception("reference was %s, not dictionary" % type(reference))

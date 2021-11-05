@@ -69,9 +69,6 @@ class ReferenceObjectMixin:
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
             site_admin=False,
             is_batch_user=False,
-            access_key_id='gVsTj58RsUqPkA8P7YiIyJhLLdjSdty6VvFkPo3/cerMqaB1/l8Q4j6MhE5suRW7',
-            access_key_secret='J2mld58erwwdY60bcUE6ItrViimeEJFLO_xDJZ-kqOE=',
-            access_key_secret_salt='GmI_vejug29uZz4WpDofcA==',
         )
         researcher.save()
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
