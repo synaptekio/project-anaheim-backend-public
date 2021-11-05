@@ -3,8 +3,8 @@ import requests
 from app import app
 from django.test import TestCase
 
-from api.tableau_api.base import AuthenticationFailed, PermissionDenied, TableauApiView
-from api.tableau_api.views import SummaryStatisticDailySerializer
+from authentication.tableau_authentication import (TableauAuthenticationFailed,
+    TableauPermissionDenied)
 from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
 from constants.testing_constants import (BASE_URL, TEST_PASSWORD, TEST_STUDY_ENCRYPTION_KEY,
     TEST_STUDY_NAME, TEST_USERNAME)
@@ -12,12 +12,13 @@ from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.tableau_api_models import ForestParam
 from database.user_models import Researcher, StudyRelation
+from serializers.tableau_serializers import SummaryStatisticDailySerializer
 
+
+# FIXME: TableauApiView has been removed, rebuild this test.
 
 class TableauApiAuthTests(TestCase):
-    """
-    Test methods of the api authentication system
-    """
+    """ Test methods of the api authentication system """
 
     def setup(self, researcher=True, apikey=True, study=True):
         """
@@ -125,14 +126,14 @@ class TableauApiAuthTests(TestCase):
 
     def test_check_permissions_none(self):
         self.setup(researcher=True, apikey=True, study=True)
-        with self.assertRaises(AuthenticationFailed) as cm:
+        with self.assertRaises(TableauAuthenticationFailed) as cm:
             with app.test_request_context(headers={}):
                 TableauApiView().check_permissions(study_object_id=self.study.object_id)
 
     def test_check_permissions_inactive(self):
         self.setup(researcher=True, apikey=True, study=True)
         self.api_key.update(is_active=False)
-        with self.assertRaises(AuthenticationFailed) as cm:
+        with self.assertRaises(TableauAuthenticationFailed) as cm:
             with app.test_request_context(headers=self.default_header):
                 TableauApiView().check_permissions(study_object_id=self.study.object_id)
 
@@ -144,7 +145,7 @@ class TableauApiAuthTests(TestCase):
             X_ACCESS_KEY_ID: self.api_key_public,
             X_ACCESS_KEY_SECRET: ":::" + self.api_key_private[3:],
         }
-        with self.assertRaises(AuthenticationFailed) as cm:
+        with self.assertRaises(TableauAuthenticationFailed) as cm:
             with app.test_request_context(headers=headers):
                 TableauApiView().check_permissions(study_object_id=self.study.object_id)
 
@@ -153,14 +154,14 @@ class TableauApiAuthTests(TestCase):
         ApiKey.objects.filter(access_key_id=self.api_key_public).update(
             has_tableau_api_permissions=False
         )
-        with self.assertRaises(PermissionDenied) as cm:
+        with self.assertRaises(TableauPermissionDenied) as cm:
             with app.test_request_context(headers=self.default_header):
                 TableauApiView().check_permissions(study_object_id=self.study.object_id)
 
     def test_check_permissions_bad_study(self):
         self.setup(researcher=True, apikey=True, study=True)
         self.assertFalse(ApiKey.objects.filter(access_key_id=" bad study id ").exists())
-        with self.assertRaises(PermissionDenied) as cm:
+        with self.assertRaises(TableauPermissionDenied) as cm:
             with app.test_request_context(headers=self.default_header):
                 TableauApiView().check_permissions(study_object_id=" bad study id ")
 
@@ -169,7 +170,7 @@ class TableauApiAuthTests(TestCase):
         StudyRelation.objects.filter(
             study=self.study, researcher=self.researcher
         ).delete()
-        with self.assertRaises(PermissionDenied) as cm:
+        with self.assertRaises(TableauPermissionDenied) as cm:
             with app.test_request_context(headers=self.default_header):
                 TableauApiView().check_permissions(study_object_id=self.study.object_id)
 

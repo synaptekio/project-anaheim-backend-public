@@ -16,7 +16,7 @@ from libs.internal_types import TableauRequest
 
 
 class TableauAuthenticationFailed(Exception): pass
-class PermissionDenied(Exception): pass
+class TableauPermissionDenied(Exception): pass
 
 
 def authenticate_tableau(some_function):
@@ -32,7 +32,7 @@ def authenticate_tableau(some_function):
             check_tableau_permissions(request)
         except TableauAuthenticationFailed as error:
             return HttpResponse(json.dumps({"errors": error.args}), status_code=400)
-        except PermissionDenied:
+        except TableauPermissionDenied:
             # Prefer 404 over 403 to hide information about validity of these resource identifiers
             return HttpResponse(json.dumps({"errors": RESOURCE_NOT_FOUND}), status_code=404)
 
@@ -60,18 +60,18 @@ def check_tableau_permissions(request, study_object_id=None):
     if not api_key.proposed_secret_key_is_valid(form.cleaned_data[X_ACCESS_KEY_SECRET]):
         raise TableauAuthenticationFailed(CREDENTIALS_NOT_VALID_ERROR_MESSAGE)
     if not api_key.has_tableau_api_permissions:
-        raise PermissionDenied(APIKEY_NO_ACCESS_MESSAGE)
+        raise TableauPermissionDenied(APIKEY_NO_ACCESS_MESSAGE)
     # existence errors
     if study_object_id is None:
-        raise PermissionDenied(NO_STUDY_PROVIDED_MESSAGE)
+        raise TableauPermissionDenied(NO_STUDY_PROVIDED_MESSAGE)
     if not Study.objects.filter(object_id=study_object_id).exists():
-        raise PermissionDenied(NO_STUDY_FOUND_MESSAGE)
+        raise TableauPermissionDenied(NO_STUDY_FOUND_MESSAGE)
     if not Study.objects.get(object_id=study_object_id).forest_enabled:
-        raise PermissionDenied(STUDY_HAS_FOREST_DISABLED_MESSAGE)
+        raise TableauPermissionDenied(STUDY_HAS_FOREST_DISABLED_MESSAGE)
 
     if not api_key.researcher.site_admin:
         try:
             StudyRelation.objects.filter(study__object_id=study_object_id) \
                 .get(researcher=api_key.researcher)
         except ObjectDoesNotExist:
-            raise PermissionDenied(RESEARCHER_NOT_ALLOWED)
+            raise TableauPermissionDenied(RESEARCHER_NOT_ALLOWED)
