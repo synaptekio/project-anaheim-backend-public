@@ -88,7 +88,7 @@ class TableauApiAuthTests(TestCase):
         session = self.login()
         api_key_count = ApiKey.objects.count()
         response = session.post(
-            self.url_for("admin_pages.new_api_key"),
+            self.url_for("admin_pages.new_tableau_api_key"),
             data={"readable_name": "test_generated_api_key"},
         )
         self.assertEqual(api_key_count + 1, ApiKey.objects.count())

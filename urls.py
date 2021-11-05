@@ -38,8 +38,8 @@ urlpatterns = [
     ),
     path(
         "new_api_key",
-        admin_pages.new_api_key,
-        name="admin_pages.new_api_key",
+        admin_pages.new_tableau_api_key,
+        name="admin_pages.new_tableau_api_key",
     ),
     path(
         "disable_api_key",

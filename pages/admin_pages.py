@@ -132,7 +132,7 @@ def reset_download_api_credentials(request: ResearcherRequest):
 # @admin_pages.route('/new_api_key', methods=['POST'])
 @require_POST
 @authenticate_researcher_login
-def new_api_key(request: ResearcherRequest):
+def new_tableau_api_key(request: ResearcherRequest):
     form = NewApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")

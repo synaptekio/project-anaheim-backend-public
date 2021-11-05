@@ -200,6 +200,20 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiM
     def test_reset(self):
         self.assertIsNone(self.default_researcher.access_key_id)
         self.do_post()
+        self.assertIsNotNone(self.default_researcher.access_key_id)
         self.assertPresentIn("Your Data-Download API access credentials have been reset",
                              self.manage_credentials_content)
+
+
+class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+    ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
+
+    def test_reset(self):
+        self.assertIsNone(self.default_researcher.api_keys.first())
+        self.do_post()
+        self.assertIsNotNone(self.default_researcher.api_keys.first())
+        self.assertPresentIn("New Tableau API credentials have been generated for you",
+                             self.manage_credentials_content)
+
+
 
