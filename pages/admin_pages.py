@@ -5,9 +5,10 @@ from markupsafe import Markup
 
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
-    logout_researcher, SESSION_NAME)
-from constants.message_strings import (NEW_PASSWORD_MISMATCH, NEW_API_KEY_MESSAGE,
-    PASSWORD_RESET_SUCCESS, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE, WRONG_CURRENT_PASSWORD)
+    logout_researcher)
+from constants.message_strings import (NEW_API_KEY_MESSAGE, NEW_PASSWORD_MISMATCH,
+    PASSWORD_RESET_SUCCESS, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE, TABLEAU_API_KEY_IS_DISABLED,
+    TABLEAU_API_KEY_NOW_DISABLED, TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher
@@ -149,21 +150,24 @@ def new_tableau_api_key(request: ResearcherRequest):
 
 @require_POST
 @authenticate_researcher_login
-def disable_api_key(request: ResearcherRequest):
+def disable_tableau_api_key(request: ResearcherRequest):
     form = DisableApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")
-
     api_key_id = request.POST["api_key_id"]
-    api_key_query = ApiKey.objects.filter(access_key_id=api_key_id).filter(researcher=request.session_researcher)
+    api_key_query = ApiKey.objects.filter(access_key_id=api_key_id) \
+        .filter(researcher=request.session_researcher)
+
     if not api_key_query.exists():
-        messages.warning(request, Markup("No matching API key found to disable"))
+        messages.warning(request, Markup(TABLEAU_NO_MATCHING_API_KEY))
         return redirect("admin_pages.manage_credentials")
+
     api_key = api_key_query[0]
     if not api_key.is_active:
-        messages.warning(request, f"That API key has already been disabled: {api_key_id}")
+        messages.warning(request, TABLEAU_API_KEY_IS_DISABLED + f" {api_key_id}")
         return redirect("admin_pages.manage_credentials")
+
     api_key.is_active = False
     api_key.save()
-    # messages.warning(request, "The API key %s is now disabled" % str(api_key.access_key_id))
+    messages.success(request, TABLEAU_API_KEY_NOW_DISABLED.format(key=api_key.access_key_id))
     return redirect("admin_pages.manage_credentials")

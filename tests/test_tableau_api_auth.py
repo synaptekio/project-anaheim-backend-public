@@ -99,7 +99,7 @@ class TableauApiAuthTests(TestCase):
         self.assertTrue(api_key.has_tableau_api_permissions)
         return True
 
-    def test_disable_api_key(self):
+    def test_disable_tableau_api_key(self):
         """
         Asserts that:
             -exactly one fewer active api key is present in the database
@@ -109,7 +109,7 @@ class TableauApiAuthTests(TestCase):
         session = self.login()
         api_key_count = ApiKey.objects.filter(is_active=True).count()
         response = session.post(
-            self.url_for("admin_pages.disable_api_key"),
+            self.url_for("admin_pages.disable_tableau_api_key"),
             data={"api_key_id": self.api_key_public},
         )
         key = ApiKey.objects.get(access_key_id=self.api_key_public)

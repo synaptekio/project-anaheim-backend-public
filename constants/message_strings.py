@@ -118,6 +118,10 @@ NEW_PASSWORD_MISMATCH = "New Password does not match Confirm New Password"
 NEW_PASSWORD_8_LONG = "Your New Password must be at least 8 characters long."
 NEW_PASSWORD_RULES_FAIL = "Your New Password must contain at least one symbol, one number, one lowercase, and one uppercase character."
 
+# tableau key messages
+TABLEAU_NO_MATCHING_API_KEY = "No matching API key found to disable"
+TABLEAU_API_KEY_IS_DISABLED = "This API key has already been disabled:"
+TABLEAU_API_KEY_NOW_DISABLED = "The API key {key} is now disabled"
 
 ## Mobile API
 DECRYPTION_KEY_ERROR_MESSAGE = "This file did not contain a valid decryption key and could not be processed."

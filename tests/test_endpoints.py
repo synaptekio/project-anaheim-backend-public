@@ -5,7 +5,8 @@ from django.urls import reverse
 from tests.common import CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin
 
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
-    NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, WRONG_CURRENT_PASSWORD)
+    NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
+    TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ResearcherRole
 from database.security_models import ApiKey
 
@@ -207,7 +208,8 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiM
 
 class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
-    # FIXME: when NewApiKeyForm does anything develop a test for naming the key.
+    # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
+    #  (need to review the tableau tests)
     def test_reset(self):
         self.assertIsNone(self.default_researcher.api_keys.first())
         self.do_post()
@@ -216,4 +218,45 @@ class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
                              self.manage_credentials_content)
 
 
+# admin_pages.disable_tableau_api_key
+class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+    ENDPOINT_NAME = "admin_pages.disable_tableau_api_key"
 
+    def test_disable_success(self):
+        # basic test
+        api_key = ApiKey.generate(
+            researcher=self.default_researcher,
+            has_tableau_api_permissions=True,
+            readable_name="something",
+        )
+        self.do_post(api_key_id=api_key.access_key_id)
+        self.assertFalse(self.default_researcher.api_keys.first().is_active)
+        content = self.manage_credentials_content
+        self.assertPresentIn(api_key.access_key_id, content)
+        self.assertPresentIn("is now disabled", content)
+
+    def test_no_match(self):
+        # fail with empty and fail with success
+        self.do_post(api_key_id="abc")
+        self.assertPresentIn(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+        api_key = ApiKey.generate(
+            researcher=self.default_researcher,
+            has_tableau_api_permissions=True,
+            readable_name="something",
+        )
+        self.do_post(api_key_id="abc")
+        api_key.refresh_from_db()
+        self.assertTrue(api_key.is_active)
+        self.assertPresentIn(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+
+    def test_already_disabled(self):
+        api_key = ApiKey.generate(
+            researcher=self.default_researcher,
+            has_tableau_api_permissions=True,
+            readable_name="something",
+        )
+        api_key.update(is_active=False)
+        self.do_post(api_key_id=api_key.access_key_id)
+        api_key.refresh_from_db()
+        self.assertFalse(api_key.is_active)
+        self.assertPresentIn(TABLEAU_API_KEY_IS_DISABLED, self.manage_credentials_content)
