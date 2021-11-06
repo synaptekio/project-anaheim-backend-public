@@ -17,11 +17,11 @@ from libs.security import generate_easy_alphanumeric_string
 from middleware.abort_middleware import abort
 
 
-DEBUG_ADMIN_NAUTHENTICATION = False
+DEBUG_ADMIN_AUTHENTICATION = False
 
 
 def log(*args, **kwargs):
-    if DEBUG_ADMIN_NAUTHENTICATION:
+    if DEBUG_ADMIN_AUTHENTICATION:
         print(*args, **kwargs)
 
 
@@ -117,10 +117,11 @@ def assert_researcher_under_admin(request: ResearcherRequest, researcher: Resear
         for admin status anywhere. """
     session_researcher = request.session_researcher
     if session_researcher.site_admin:
+        log("site admin checking for researcher")
         return
 
     if researcher.site_admin:
-        messages.warning("This user is a site administrator, action rejected.")
+        messages.warning(request, "This user is a site administrator, action rejected.")
         log("target researcher is a site admin")
         return abort(403)
 
@@ -129,7 +130,7 @@ def assert_researcher_under_admin(request: ResearcherRequest, researcher: Resear
         kwargs['study'] = study
 
     if researcher.study_relations.filter(**kwargs).exists():
-        messages.warning("This user is a study administrator, action rejected.")
+        messages.warning(request, "This user is a study administrator, action rejected.")
         log("target researcher is a study administrator")
         return abort(403)
 
@@ -137,7 +138,7 @@ def assert_researcher_under_admin(request: ResearcherRequest, researcher: Resear
     researcher_studies = set(researcher.get_researcher_study_relations().values_list("study_id", flat=True))
 
     if not session_studies.intersection(researcher_studies):
-        messages.warning("You are not an administrator for that researcher, action rejected.")
+        messages.warning(request, "You are not an administrator for that researcher, action rejected.")
         log("session researcher is not an administrator of target researcher")
         return abort(403)
 
@@ -188,6 +189,7 @@ def authenticate_researcher_study_access(some_function):
             # get studies for a survey, fail with 404 if study does not exist
             studies = Study.objects.filter(surveys=survey_id)
             if not studies.exists():
+                log("no such study 1")
                 return abort(404)
 
             # Check that researcher is either a researcher on the study or a site admin,
@@ -196,6 +198,7 @@ def authenticate_researcher_study_access(some_function):
 
         # assert that such a study exists
         if not Study.objects.filter(pk=study_id, deleted=False).exists():
+            log("no such study 2")
             return abort(404)
 
         # always allow site admins, allow all types of study relations
@@ -263,13 +266,14 @@ def authenticate_admin(some_function):
         # Check for regular login requirement
         if not check_is_logged_in(request):
             return redirect("/")
-        
+
         populate_session_researcher(request)
         session_researcher = request.session_researcher
         # if researcher is not a site admin assert that they are a study admin somewhere, then test
         # the special case of a the study id, if it is present.
         if not session_researcher.site_admin:
             if not session_researcher.study_relations.filter(relationship=ResearcherRole.study_admin).exists():
+                log("not study admin anywhere")
                 return abort(403)
 
             # fail if there is a study_id and it either does not exist or the researcher is not an
@@ -280,6 +284,7 @@ def authenticate_admin(some_function):
                     study_id=kwargs['study_id'],
                     relationship=ResearcherRole.study_admin,
                 ).exists():
+                    log("not study admin on study")
                     return abort(403)
 
         return some_function(*args, **kwargs)

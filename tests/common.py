@@ -8,21 +8,40 @@ from database.study_models import Study
 from database.survey_models import Survey
 from database.user_models import Participant, Researcher
 
-
+from django.contrib import messages
 # this makes print statements during debugging easier to read by bracketting the statement of which
 # test is running with some separater.
-MAKE_PRINTING_LESS_AWFUL = ("-v2" in argv or "-v3" in argv) and "-v1" not in argv
+VERBOSE_2_OR_3 = ("-v2" in argv or "-v3" in argv) and "-v1" not in argv
+
+
+if VERBOSE_2_OR_3:
+
+    def monkeypatch_messages(function: callable):
+        """ This function wraps the messages library and directs it to the terminal for easy
+        behavior identification. """
+
+        def intercepted(request, message, extra_tags='', fail_silently=False):
+            print(f"from messages.{function.__name__}(): '{message}'")
+            return function(request, message, extra_tags=extra_tags, fail_silently=fail_silently)
+
+        return intercepted
+
+    messages.debug = monkeypatch_messages(messages.debug)
+    messages.info = monkeypatch_messages(messages.info)
+    messages.success = monkeypatch_messages(messages.success)
+    messages.warning = monkeypatch_messages(messages.warning)
+    messages.error = monkeypatch_messages(messages.error)
 
 
 class CommonTestCase(TestCase, ReferenceObjectMixin):
 
     def setUp(self) -> None:
-        if MAKE_PRINTING_LESS_AWFUL:
+        if VERBOSE_2_OR_3:
             print("\n==")
         return super().setUp()
 
     def tearDown(self) -> None:
-        if MAKE_PRINTING_LESS_AWFUL:
+        if VERBOSE_2_OR_3:
             print("==")
         return super().tearDown()
 
@@ -81,7 +100,8 @@ class TestDefaults(CommonTestCase):
         assert Survey.objects.filter(pk=survey.pk).exists()
 
 
-class GeneralApiMixin:
+class ApiRedirectMixin:
+    # some api calls only come from pages, which means they need to return 302 in all cases
     def do_post(self, **post_params):
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.default_researcher
@@ -97,7 +117,17 @@ class GeneralApiMixin:
         return self.client.get(reverse("admin_pages.manage_credentials")).content
 
 
-class GeneralPageMixin(CommonTestCase):
+class ApiSessionMixin:
+    # some api calls return real 400 codes
+    def do_post(self, **post_params):
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.default_researcher
+        response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
+        self.default_researcher.refresh_from_db()
+        return response
+
+
+class GeneralPageMixin:
     def do_get(self, *get_params):
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.default_researcher

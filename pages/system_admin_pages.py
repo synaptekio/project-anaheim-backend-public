@@ -184,17 +184,18 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
 
 @require_POST
 @authenticate_admin
-def elevate_researcher_to_study_admin(request: ResearcherRequest):
+def elevate_researcher(request: ResearcherRequest):
     researcher_pk = request.POST.get("researcher_id", None)
     study_pk = request.POST.get("study_id", None)
     assert_admin(request, study_pk)
-    edit_researcher = Researcher.objects.get(pk=researcher_pk)
-    study = Study.objects.get(pk=study_pk)
+    edit_researcher = Researcher.get_or_404(pk=researcher_pk)
+    study = Study.get_or_404(pk=study_pk)
     assert_researcher_under_admin(request, edit_researcher, study)
-
-    StudyRelation.objects.filter(researcher=edit_researcher, study=study)\
+    if edit_researcher.site_admin:
+        return abort(403)
+    StudyRelation.objects.filter(researcher=edit_researcher, study=study) \
         .update(relationship=ResearcherRole.study_admin)
-
+    # FIXME:sanitize this redirect url
     return redirect(
         request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )

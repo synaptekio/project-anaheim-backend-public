@@ -77,7 +77,7 @@ urlpatterns = [
     ),
     path(
         "elevate_researcher",
-        system_admin_pages.elevate_researcher_to_study_admin,
+        system_admin_pages.elevate_researcher,
         name="system_admin_pages.elevate_researcher",
     ),
     path(
@@ -371,7 +371,7 @@ urlpatterns = [
         name="data_access_api.get_pipeline",
     ),
 
-
+    # Mobile api
     path(
         'upload',
         mobile_api.upload,
@@ -481,5 +481,4 @@ urlpatterns = [
         tableau_api.web_data_connector,
         name="tableau_api.web_data_connector",
     )
-
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

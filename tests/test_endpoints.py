@@ -2,10 +2,10 @@ from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
-from constants.data_stream_constants import ALL_DATA_STREAMS
-from tests.common import (CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin,
-    GeneralPageMixin)
+from tests.common import (ApiRedirectMixin, ApiSessionMixin, CommonTestCase,
+    DefaultLoggedInCommonTestCase, GeneralPageMixin)
 
+from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
@@ -131,7 +131,7 @@ class TestManageCredentials(DefaultLoggedInCommonTestCase):
         self.assert_present(api_key.access_key_id, response.content)
 
 
-class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     # test for every case and messages present on the page
     ENDPOINT_NAME = "admin_pages.reset_admin_password"
 
@@ -197,7 +197,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.assert_present(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
 
 
-class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     ENDPOINT_NAME = "admin_pages.reset_download_api_credentials"
 
     def test_reset(self):
@@ -208,7 +208,7 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiM
                              self.manage_credentials_content)
 
 
-class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
     # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
     #  (need to review the tableau tests)
@@ -221,7 +221,7 @@ class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
 
 
 # admin_pages.disable_tableau_api_key
-class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
+class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     ENDPOINT_NAME = "admin_pages.disable_tableau_api_key"
 
     def test_disable_success(self):
@@ -371,3 +371,126 @@ class TestManageResearchers(DefaultLoggedInCommonTestCase, GeneralPageMixin):
         self.assert_present(r2.username, resp.content)
         self.assert_present(r3.username, resp.content)
         self.assertEqual(resp.status_code, 200)
+
+
+
+class TestEditResearcher(DefaultLoggedInCommonTestCase, GeneralPageMixin):
+    ENDPOINT_NAME = "system_admin_pages.edit_researcher"
+
+    # render self
+    def test_render_for_self_as_researcher(self):
+        # should fail
+        self.default_study_relation()
+        resp = self.do_get(self.default_researcher.id)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_render_for_self_as_study_admin(self):
+        # ensure it renders (buttons will be disabled)
+        self.default_study_relation(ResearcherRole.study_admin)
+        resp = self.do_get(self.default_researcher.id)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_render_for_self_as_site_admin(self):
+        # ensure it renders (buttons will be disabled)
+        self.default_researcher.update(site_admin=True)
+        resp = self.do_get(self.default_researcher.id)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_render_for_researcher_as_researcher(self):
+        # should fail
+        self.default_study_relation()
+        # set up, test when not on study
+        r2 = self.generate_researcher()
+        resp = self.do_get(r2.id)
+        self.assertEqual(resp.status_code, 403)
+        self.assert_not_present(r2.username, resp.content)
+        # attach other researcher and try again
+        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        self.assertEqual(resp.status_code, 403)
+        self.assert_not_present(r2.username, resp.content)
+
+    # study admin, renders
+    def test_render_valid_researcher_as_study_admin(self):
+        self.default_study_relation(ResearcherRole.study_admin)
+        self._test_render_generic_under_study()
+
+    def test_render_researcher_with_no_study_as_study_admin(self):
+        self.default_study_relation(ResearcherRole.study_admin)
+        self._test_render_researcher_with_no_study()
+
+    # site admin, renders
+    def test_render_valid_researcher_as_site_admin(self):
+        self.default_researcher.update(site_admin=True)
+        self._test_render_generic_under_study()
+
+    def test_render_researcher_with_no_study_as_site_admin(self):
+        self.default_researcher.update(site_admin=True)
+        self._test_render_researcher_with_no_study()
+
+    def _test_render_generic_under_study(self):
+        r2 = self.generate_researcher()
+        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        resp = self.do_get(r2.id)
+        self.assertEqual(resp.status_code, 200)
+        self.assert_present(r2.username, resp.content)
+
+    def _test_render_researcher_with_no_study(self):
+        r2 = self.generate_researcher()
+        resp = self.do_get(r2.id)
+        self.assertEqual(resp.status_code, 200)
+        self.assert_present(r2.username, resp.content)
+
+
+class TestElevateResearcher(DefaultLoggedInCommonTestCase, ApiSessionMixin):
+    ENDPOINT_NAME = "system_admin_pages.elevate_researcher"
+    # this one is tedious.
+    
+    def test_self_as_researcher_on_study(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.researcher)
+        resp = self.do_post(researcher_id=self.default_researcher.id, study_id=self.default_study.id)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_self_as_study_admin_on_study(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        resp = self.do_post(researcher_id=self.default_researcher.id, study_id=self.default_study.id)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_researcher_as_study_admin_on_study(self):
+        # this is the only case that succeeds.
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher()
+        relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        relation.refresh_from_db()
+        self.assertEqual(relation.relationship, ResearcherRole.study_admin)
+        self.assertEqual(resp.status_code, 302)
+
+    def test_study_admin_as_study_admin_on_study(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher()
+        relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.study_admin)
+        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        relation.refresh_from_db()
+        self.assertEqual(relation.relationship, ResearcherRole.study_admin)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_site_admin_as_study_admin_on_study(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher()
+        r2.update(site_admin=True)
+        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
+        self.assertEqual(resp.status_code, 403)
+
+    def test_site_admin_as_site_admin(self):
+        self.default_researcher.update(site_admin=True)
+        r2 = self.generate_researcher()
+        r2.update(site_admin=True)
+        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
+        self.assertEqual(resp.status_code, 403)

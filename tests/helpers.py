@@ -55,7 +55,7 @@ class ReferenceObjectMixin:
             )
             return self._default_study_relation
 
-    def generate_study_relation(self, researcher: Researcher, study: Study, relation: str):
+    def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()
         return relation
@@ -70,7 +70,7 @@ class ReferenceObjectMixin:
         self._default_researcher = self.generate_researcher(self.DEFAULT_RESEARCHER_NAME)
         return self._default_researcher
 
-    def generate_researcher(self, name: Optional[str] = None):    
+    def generate_researcher(self, name: Optional[str] = None) -> Researcher:
         researcher = Researcher(
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
