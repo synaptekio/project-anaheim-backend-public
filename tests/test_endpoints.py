@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
+from database.user_models import Researcher
 from tests.common import (ApiRedirectMixin, ApiSessionMixin, CommonTestCase,
     DefaultLoggedInCommonTestCase, GeneralPageMixin)
 
@@ -444,18 +445,16 @@ class TestEditResearcher(DefaultLoggedInCommonTestCase, GeneralPageMixin):
 class TestElevateResearcher(DefaultLoggedInCommonTestCase, ApiSessionMixin):
     ENDPOINT_NAME = "system_admin_pages.elevate_researcher"
     # this one is tedious.
-    
+
     def test_self_as_researcher_on_study(self):
         self.default_researcher
         self.default_study_relation(ResearcherRole.researcher)
-        resp = self.do_post(researcher_id=self.default_researcher.id, study_id=self.default_study.id)
-        self.assertEqual(resp.status_code, 403)
+        self.do_basic_test(self.default_researcher, 403)
 
     def test_self_as_study_admin_on_study(self):
         self.default_researcher
         self.default_study_relation(ResearcherRole.study_admin)
-        resp = self.do_post(researcher_id=self.default_researcher.id, study_id=self.default_study.id)
-        self.assertEqual(resp.status_code, 403)
+        self.do_basic_test(self.default_researcher, 403)
 
     def test_researcher_as_study_admin_on_study(self):
         # this is the only case that succeeds.
@@ -463,34 +462,32 @@ class TestElevateResearcher(DefaultLoggedInCommonTestCase, ApiSessionMixin):
         self.default_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
         relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
-        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.do_basic_test(r2, 302)
         relation.refresh_from_db()
         self.assertEqual(relation.relationship, ResearcherRole.study_admin)
-        self.assertEqual(resp.status_code, 302)
 
     def test_study_admin_as_study_admin_on_study(self):
         self.default_researcher
         self.default_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
         relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.study_admin)
-        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.do_basic_test(r2, 403)
         relation.refresh_from_db()
         self.assertEqual(relation.relationship, ResearcherRole.study_admin)
-        self.assertEqual(resp.status_code, 403)
 
     def test_site_admin_as_study_admin_on_study(self):
         self.default_researcher
         self.default_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
         r2.update(site_admin=True)
-        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.do_basic_test(r2, 403)
         self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
-        self.assertEqual(resp.status_code, 403)
 
     def test_site_admin_as_site_admin(self):
         self.default_researcher.update(site_admin=True)
         r2 = self.generate_researcher()
         r2.update(site_admin=True)
-        resp = self.do_post(researcher_id=r2.id, study_id=self.default_study.id)
+        self.do_basic_test(r2, 403)
         self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
-        self.assertEqual(resp.status_code, 403)
+
+

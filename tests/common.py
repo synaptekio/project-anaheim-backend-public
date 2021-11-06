@@ -126,6 +126,11 @@ class ApiSessionMixin:
         self.default_researcher.refresh_from_db()
         return response
 
+    def do_basic_test(self, researcher: Researcher, status_code: int):
+        resp = self.do_post(researcher_id=researcher.id, study_id=self.default_study.id)
+        self.assertEqual(resp.status_code, status_code)
+        return resp
+
 
 class GeneralPageMixin:
     def do_get(self, *get_params):
