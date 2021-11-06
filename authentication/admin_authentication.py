@@ -245,14 +245,13 @@ def get_researcher_allowed_studies(request: ResearcherRequest) -> List[Dict]:
 ################################################################################
 
 def authenticate_admin(some_function):
-#    """ Authenticate site admin, checks whether a user is a system admin before allowing access
-#    to pages marked with this decorator.  If a study_id variable is supplied as a keyword
-#    argument, the decorator will automatically grab the ObjectId in place of the string provided
-#    in a route.
-#
-#    NOTE: if you are using this function along with the authenticate_researcher_study_access decorator
-#    you must place this decorator below it, otherwise behavior is undefined and probably causes a
-#    500 error inside the authenticate_researcher_study_access decorator. """
+    """ Authenticate site admin, checks whether a user is a system admin before allowing access to
+    pages marked with this decorator.  If a study_id variable is supplied as a keyword argument, the
+    decorator will automatically grab the ObjectId in place of the string provided in a route.
+
+    NOTE: if you are using this function along with the authenticate_researcher_study_access
+    decorator you must place this decorator below it, otherwise behavior is undefined and probably
+    causes a 500 error inside the authenticate_researcher_study_access decorator. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
         request: ResearcherRequest = args[0]
@@ -264,7 +263,8 @@ def authenticate_admin(some_function):
         # Check for regular login requirement
         if not check_is_logged_in(request):
             return redirect("/")
-
+        
+        populate_session_researcher(request)
         session_researcher = request.session_researcher
         # if researcher is not a site admin assert that they are a study admin somewhere, then test
         # the special case of a the study id, if it is present.
