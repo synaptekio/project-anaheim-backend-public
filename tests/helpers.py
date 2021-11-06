@@ -27,7 +27,7 @@ class ReferenceObjectMixin:
         return self._default_forest_params
 
     @property
-    def default_study(self) -> Study:
+    def session_study(self) -> Study:
         try:
             return self._default_study
         except AttributeError:
@@ -46,12 +46,12 @@ class ReferenceObjectMixin:
         self._default_study = study
         return study
 
-    def default_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
+    def session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
         try:
             return self._default_study_relation
         except AttributeError:
             self._default_study_relation = self.generate_study_relation(
-                self.default_researcher, self.default_study, relation
+                self.session_researcher, self.session_study, relation
             )
             return self._default_study_relation
 
@@ -62,7 +62,7 @@ class ReferenceObjectMixin:
 
     # Researcher
     @property
-    def default_researcher(self) -> Researcher:
+    def session_researcher(self) -> Researcher:
         try:
             return self._default_researcher
         except AttributeError:
@@ -97,25 +97,25 @@ class ReferenceObjectMixin:
             timezone_name="America/New_York",
             push_notification_unreachable_count=0,
             deleted=False,
-            study=self.default_study,
+            study=self.session_study,
         )
         participant.save()
         self._default_participant = participant
         return participant
 
     @property
-    def default_survey(self) -> Survey:
+    def session_survey(self) -> Survey:
         try:
-            self._default_survey
+            self._session_survey
         except AttributeError:
             pass
         survey = Survey(
-            study=self.default_study,
+            study=self.session_study,
             survey_type=Survey.TRACKING_SURVEY,
             object_id=self.DEFAULT_SURVEY_OBJECT_ID,
         )
         survey.save()
-        self._default_survey = survey
+        self._session_survey = survey
         return survey
 
     # @property

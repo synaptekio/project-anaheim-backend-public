@@ -82,7 +82,7 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
 
 class DefaultLoggedInCommonTestCase(CommonTestCase):
     def setUp(self) -> None:
-        self.default_researcher  # setup the default user, we always need it.
+        self.session_researcher  # setup the default user, we always need it.
         self.do_default_login()
         return super().setUp()
 
@@ -90,10 +90,10 @@ class DefaultLoggedInCommonTestCase(CommonTestCase):
 class TestDefaults(CommonTestCase):
 
     def test_defaults(self):
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         participant = self.default_participant
-        study = self.default_study
-        survey = self.default_survey
+        study = self.session_study
+        survey = self.session_survey
         assert Researcher.objects.filter(pk=researcher.pk).exists()
         assert Participant.objects.filter(pk=participant.pk).exists()
         assert Study.objects.filter(pk=study.pk).exists()
@@ -104,9 +104,9 @@ class ApiRedirectMixin:
     # some api calls only come from pages, which means they need to return 302 in all cases
     def do_post(self, **post_params):
         # instantiate the default researcher, pass through params, refresh default researcher.
-        self.default_researcher
+        self.session_researcher
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
-        self.default_researcher.refresh_from_db()
+        self.session_researcher.refresh_from_db()
         # this is an api call, it should return a 302, not an error or page.
         self.assertEqual(response.status_code, 302)
         return response
@@ -121,13 +121,13 @@ class ApiSessionMixin:
     # some api calls return real 400 codes
     def do_post(self, **post_params):
         # instantiate the default researcher, pass through params, refresh default researcher.
-        self.default_researcher
+        self.session_researcher
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
-        self.default_researcher.refresh_from_db()
+        self.session_researcher.refresh_from_db()
         return response
 
     def do_basic_test(self, researcher: Researcher, status_code: int):
-        resp = self.do_post(researcher_id=researcher.id, study_id=self.default_study.id)
+        resp = self.do_post(researcher_id=researcher.id, study_id=self.session_study.id)
         self.assertEqual(resp.status_code, status_code)
         return resp
 
@@ -135,9 +135,9 @@ class ApiSessionMixin:
 class GeneralPageMixin:
     def do_get(self, *get_params):
         # instantiate the default researcher, pass through params, refresh default researcher.
-        self.default_researcher
+        self.session_researcher
         response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params))
-        self.default_researcher.refresh_from_db()
+        self.session_researcher.refresh_from_db()
         return response
 
 

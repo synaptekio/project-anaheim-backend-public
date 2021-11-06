@@ -27,7 +27,7 @@ class TestLoginPages(CommonTestCase):
 
     def test_load_login_page_while_logged_in(self):
         # make sure the login page loads without logging you in when it should not
-        self.default_researcher  # create the default researcher
+        self.session_researcher  # create the default researcher
         self.do_default_login()
         response = self.client.post(reverse("login_pages.login_page"))
         self.assertEqual(response.status_code, 302)
@@ -36,7 +36,7 @@ class TestLoginPages(CommonTestCase):
         self.assertNotIn(b'<form method="POST" action="/validate_login">', response.content)
 
     def test_logging_in_success(self):
-        self.default_researcher  # create the default researcher
+        self.session_researcher  # create the default researcher
         r = self.do_default_login()
         self.assertEqual(r.status_code, 302)
         self.assertEqual(r.url, reverse("admin_pages.choose_study"))
@@ -48,7 +48,7 @@ class TestLoginPages(CommonTestCase):
 
     def test_logging_out(self):
         # create the default researcher, login, logout, attempt going to main page,
-        self.default_researcher
+        self.session_researcher
         self.do_default_login()
         self.client.get(reverse("admin_pages.logout_admin"))
         r = self.client.get(reverse("admin_pages.choose_study"))
@@ -68,7 +68,7 @@ class TestViewStudy(DefaultLoggedInCommonTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_view_study_researcher(self):
-        study = self.default_study
+        study = self.session_study
         study.update(is_test=True)
 
         response = self.render_view_study(ResearcherRole.researcher)
@@ -89,8 +89,8 @@ class TestViewStudy(DefaultLoggedInCommonTestCase):
 
     @patch('pages.admin_pages.check_firebase_instance')
     def test_view_study_site_admin(self, check_firebase_instance):
-        study = self.default_study
-        researcher = self.default_researcher
+        study = self.session_study
+        researcher = self.session_researcher
         researcher.update(site_admin=True)
 
         # test rendering with several specifc values set to observe the rendering changes
@@ -110,19 +110,19 @@ class TestViewStudy(DefaultLoggedInCommonTestCase):
         # self.assertInHTML("Edit interventions for this study", response.content.decode())
 
     def render_view_study(self, relation) -> response.HttpResponse:
-        self.default_researcher
+        self.session_researcher
         if relation:
-            self.default_study_relation(relation)
+            self.session_study_relation(relation)
         return self.client.get(
-            reverse("admin_pages.view_study", kwargs={"study_id": self.default_study.id}),
+            reverse("admin_pages.view_study", kwargs={"study_id": self.session_study.id}),
         )
 
 
 class TestManageCredentials(DefaultLoggedInCommonTestCase):
 
     def test_manage_credentials(self):
-        self.default_study
-        researcher = self.default_researcher
+        self.session_study
+        researcher = self.session_researcher
         self.client.get(reverse("admin_pages.manage_credentials"))
 
         api_key = ApiKey.generate(
@@ -143,7 +143,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
             confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
         )
         # we are ... teleologically correct here mimicking the code...
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
         # Always stick the check for the string after the check for the db mutation.
@@ -155,7 +155,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
             new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
             confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
         )
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
         self.assert_present(WRONG_CURRENT_PASSWORD, self.manage_credentials_content)
@@ -167,7 +167,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
             new_password=non_default,
             confirm_new_password=non_default,
         )
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
         self.assert_present(NEW_PASSWORD_RULES_FAIL, self.manage_credentials_content)
@@ -179,7 +179,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
             new_password=non_default,
             confirm_new_password=non_default,
         )
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
         self.assert_present(NEW_PASSWORD_8_LONG, self.manage_credentials_content)
@@ -191,7 +191,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
             new_password="aA1#aA1#aA1#",
             confirm_new_password="aA1#aA1#aA1#aA1#",
         )
-        researcher = self.default_researcher
+        researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#"))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#aA1#"))
@@ -202,9 +202,9 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, ApiRedirect
     ENDPOINT_NAME = "admin_pages.reset_download_api_credentials"
 
     def test_reset(self):
-        self.assertIsNone(self.default_researcher.access_key_id)
+        self.assertIsNone(self.session_researcher.access_key_id)
         self.do_post()
-        self.assertIsNotNone(self.default_researcher.access_key_id)
+        self.assertIsNotNone(self.session_researcher.access_key_id)
         self.assert_present("Your Data-Download API access credentials have been reset",
                              self.manage_credentials_content)
 
@@ -214,9 +214,9 @@ class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
     #  (need to review the tableau tests)
     def test_reset(self):
-        self.assertIsNone(self.default_researcher.api_keys.first())
+        self.assertIsNone(self.session_researcher.api_keys.first())
         self.do_post()
-        self.assertIsNotNone(self.default_researcher.api_keys.first())
+        self.assertIsNotNone(self.session_researcher.api_keys.first())
         self.assert_present("New Tableau API credentials have been generated for you",
                              self.manage_credentials_content)
 
@@ -228,12 +228,12 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
     def test_disable_success(self):
         # basic test
         api_key = ApiKey.generate(
-            researcher=self.default_researcher,
+            researcher=self.session_researcher,
             has_tableau_api_permissions=True,
             readable_name="something",
         )
         self.do_post(api_key_id=api_key.access_key_id)
-        self.assertFalse(self.default_researcher.api_keys.first().is_active)
+        self.assertFalse(self.session_researcher.api_keys.first().is_active)
         content = self.manage_credentials_content
         self.assert_present(api_key.access_key_id, content)
         self.assert_present("is now disabled", content)
@@ -243,7 +243,7 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
         self.do_post(api_key_id="abc")
         self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
         api_key = ApiKey.generate(
-            researcher=self.default_researcher,
+            researcher=self.session_researcher,
             has_tableau_api_permissions=True,
             readable_name="something",
         )
@@ -254,7 +254,7 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, ApiRedirectMixin):
 
     def test_already_disabled(self):
         api_key = ApiKey.generate(
-            researcher=self.default_researcher,
+            researcher=self.session_researcher,
             has_tableau_api_permissions=True,
             readable_name="something",
         )
@@ -270,8 +270,8 @@ class TestDashboard(DefaultLoggedInCommonTestCase, GeneralPageMixin):
 
     def test_dashboard(self):
         # default user and default study already instantiated
-        self.default_study_relation(ResearcherRole.researcher)
-        resp = self.do_get(str(self.default_study.id))
+        self.session_study_relation(ResearcherRole.researcher)
+        resp = self.do_get(str(self.session_study.id))
         self.assertEqual(resp.status_code, 200)
         self.assert_present("Choose a participant or data stream to view", resp.content)
 
@@ -282,12 +282,12 @@ class TestDashboardStream(DefaultLoggedInCommonTestCase):
     # dashboard_api.get_data_for_dashboard_datastream_display
     def test_data_streams(self):
         # test is currently limited to rendering the page for each data stream but with no data in it
-        self.default_researcher
-        self.default_study_relation()
+        self.session_researcher
+        self.session_study_relation()
         for data_stream in ALL_DATA_STREAMS:
             url = reverse(
                 "dashboard_api.get_data_for_dashboard_datastream_display",
-                kwargs=dict(study_id=self.default_study.id, data_stream=data_stream),
+                kwargs=dict(study_id=self.session_study.id, data_stream=data_stream),
             )
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)
@@ -295,11 +295,11 @@ class TestDashboardStream(DefaultLoggedInCommonTestCase):
     # dashboard_api.get_data_for_dashboard_patient_display
     def test_patient_display(self):
         # this page renders with almost no data
-        self.default_researcher
-        self.default_study_relation()
+        self.session_researcher
+        self.session_study_relation()
         url = reverse(
             "dashboard_api.get_data_for_dashboard_patient_display",
-            kwargs=dict(study_id=self.default_study.id, patient_id=self.default_participant.patient_id),
+            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant.patient_id),
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -310,25 +310,25 @@ class TestManageResearchers(DefaultLoggedInCommonTestCase, GeneralPageMixin):
     ENDPOINT_NAME = "system_admin_pages.manage_researchers"
 
     def test_researcher(self):
-        self.default_researcher
-        self.default_study_relation
+        self.session_researcher
+        self.session_study_relation
         resp = self.do_get()
         self.assertEqual(resp.status_code, 403)
 
     def test_study_admin(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
         resp = self.do_get()
         self.assertEqual(resp.status_code, 200)
 
     def test_site_admin(self):
-        self.default_researcher.update(site_admin=True)
+        self.session_researcher.update(site_admin=True)
         resp = self.do_get()
         self.assertEqual(resp.status_code, 200)
 
     def test_render_study_admin(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
         self._test_render_with_researchers()
         # make sure that site admins are not present
         r4 = self.generate_researcher()
@@ -343,7 +343,7 @@ class TestManageResearchers(DefaultLoggedInCommonTestCase, GeneralPageMixin):
         self.assertEqual(resp.status_code, 200)
 
     def test_render_site_admin(self):
-        self.default_researcher.update(site_admin=True)
+        self.session_researcher.update(site_admin=True)
         self._test_render_with_researchers()
         # make sure that site admins ARE present
         r4 = self.generate_researcher()
@@ -360,14 +360,14 @@ class TestManageResearchers(DefaultLoggedInCommonTestCase, GeneralPageMixin):
     def _test_render_with_researchers(self):
         # render the page with a regular user
         r2 = self.generate_researcher()
-        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        self.generate_study_relation(r2, self.session_study, ResearcherRole.researcher)
         resp = self.do_get()
         self.assertEqual(resp.status_code, 200)
         self.assert_present(r2.username, resp.content)
 
         # render with 2 reseaorchers
         r3 = self.generate_researcher()
-        self.generate_study_relation(r3, self.default_study, ResearcherRole.researcher)
+        self.generate_study_relation(r3, self.session_study, ResearcherRole.researcher)
         resp = self.do_get()
         self.assert_present(r2.username, resp.content)
         self.assert_present(r3.username, resp.content)
@@ -381,56 +381,56 @@ class TestEditResearcher(DefaultLoggedInCommonTestCase, GeneralPageMixin):
     # render self
     def test_render_for_self_as_researcher(self):
         # should fail
-        self.default_study_relation()
-        resp = self.do_get(self.default_researcher.id)
+        self.session_study_relation()
+        resp = self.do_get(self.session_researcher.id)
         self.assertEqual(resp.status_code, 403)
 
     def test_render_for_self_as_study_admin(self):
         # ensure it renders (buttons will be disabled)
-        self.default_study_relation(ResearcherRole.study_admin)
-        resp = self.do_get(self.default_researcher.id)
+        self.session_study_relation(ResearcherRole.study_admin)
+        resp = self.do_get(self.session_researcher.id)
         self.assertEqual(resp.status_code, 200)
 
     def test_render_for_self_as_site_admin(self):
         # ensure it renders (buttons will be disabled)
-        self.default_researcher.update(site_admin=True)
-        resp = self.do_get(self.default_researcher.id)
+        self.session_researcher.update(site_admin=True)
+        resp = self.do_get(self.session_researcher.id)
         self.assertEqual(resp.status_code, 200)
 
     def test_render_for_researcher_as_researcher(self):
         # should fail
-        self.default_study_relation()
+        self.session_study_relation()
         # set up, test when not on study
         r2 = self.generate_researcher()
         resp = self.do_get(r2.id)
         self.assertEqual(resp.status_code, 403)
         self.assert_not_present(r2.username, resp.content)
         # attach other researcher and try again
-        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        self.generate_study_relation(r2, self.session_study, ResearcherRole.researcher)
         self.assertEqual(resp.status_code, 403)
         self.assert_not_present(r2.username, resp.content)
 
     # study admin, renders
     def test_render_valid_researcher_as_study_admin(self):
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_study_relation(ResearcherRole.study_admin)
         self._test_render_generic_under_study()
 
     def test_render_researcher_with_no_study_as_study_admin(self):
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_study_relation(ResearcherRole.study_admin)
         self._test_render_researcher_with_no_study()
 
     # site admin, renders
     def test_render_valid_researcher_as_site_admin(self):
-        self.default_researcher.update(site_admin=True)
+        self.session_researcher.update(site_admin=True)
         self._test_render_generic_under_study()
 
     def test_render_researcher_with_no_study_as_site_admin(self):
-        self.default_researcher.update(site_admin=True)
+        self.session_researcher.update(site_admin=True)
         self._test_render_researcher_with_no_study()
 
     def _test_render_generic_under_study(self):
         r2 = self.generate_researcher()
-        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        self.generate_study_relation(r2, self.session_study, ResearcherRole.researcher)
         resp = self.do_get(r2.id)
         self.assertEqual(resp.status_code, 200)
         self.assert_present(r2.username, resp.content)
@@ -447,47 +447,45 @@ class TestElevateResearcher(DefaultLoggedInCommonTestCase, ApiSessionMixin):
     # this one is tedious.
 
     def test_self_as_researcher_on_study(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.researcher)
-        self.do_basic_test(self.default_researcher, 403)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.researcher)
+        self.do_basic_test(self.session_researcher, 403)
 
     def test_self_as_study_admin_on_study(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
-        self.do_basic_test(self.default_researcher, 403)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
+        self.do_basic_test(self.session_researcher, 403)
 
     def test_researcher_as_study_admin_on_study(self):
         # this is the only case that succeeds.
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
-        relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        relation = self.generate_study_relation(r2, self.session_study, ResearcherRole.researcher)
         self.do_basic_test(r2, 302)
         relation.refresh_from_db()
         self.assertEqual(relation.relationship, ResearcherRole.study_admin)
 
     def test_study_admin_as_study_admin_on_study(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
-        relation = self.generate_study_relation(r2, self.default_study, ResearcherRole.study_admin)
+        relation = self.generate_study_relation(r2, self.session_study, ResearcherRole.study_admin)
         self.do_basic_test(r2, 403)
         relation.refresh_from_db()
         self.assertEqual(relation.relationship, ResearcherRole.study_admin)
 
     def test_site_admin_as_study_admin_on_study(self):
-        self.default_researcher
-        self.default_study_relation(ResearcherRole.study_admin)
+        self.session_researcher
+        self.session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher()
         r2.update(site_admin=True)
         self.do_basic_test(r2, 403)
-        self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
+        self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
 
     def test_site_admin_as_site_admin(self):
-        self.default_researcher.update(site_admin=True)
+        self.session_researcher.update(site_admin=True)
         r2 = self.generate_researcher()
         r2.update(site_admin=True)
         self.do_basic_test(r2, 403)
-        self.assertFalse(r2.study_relations.filter(study=self.default_study).exists())
-
-
+        self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
