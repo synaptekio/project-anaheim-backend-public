@@ -46,7 +46,7 @@ class ReferenceObjectMixin:
         self._default_study = study
         return study
 
-    def session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
+    def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
         try:
             return self._default_study_relation
         except AttributeError:
@@ -70,16 +70,22 @@ class ReferenceObjectMixin:
         self._default_researcher = self.generate_researcher(self.DEFAULT_RESEARCHER_NAME)
         return self._default_researcher
 
-    def generate_researcher(self, name: Optional[str] = None) -> Researcher:
+    def generate_researcher(self,
+                            name: str = None,
+                            relation_to_session_study: str = None,
+                            site_admin: bool = False) -> Researcher:
         researcher = Researcher(
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
-            site_admin=False,
+            site_admin=site_admin,
             is_batch_user=False,
         )
         # set password saves
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
+        if relation_to_session_study is not None:
+            self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
+            
         return researcher
 
     @property

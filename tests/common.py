@@ -1,5 +1,6 @@
 from sys import argv
 
+from django.contrib import messages
 from django.test import TestCase
 from django.urls import reverse
 from tests.helpers import ReferenceObjectMixin
@@ -8,7 +9,7 @@ from database.study_models import Study
 from database.survey_models import Survey
 from database.user_models import Participant, Researcher
 
-from django.contrib import messages
+
 # this makes print statements during debugging easier to read by bracketting the statement of which
 # test is running with some separater.
 VERBOSE_2_OR_3 = ("-v2" in argv or "-v3" in argv) and "-v1" not in argv
@@ -80,7 +81,7 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
         )
 
 
-class DefaultLoggedInCommonTestCase(CommonTestCase):
+class PopulatedSessionTestCase(CommonTestCase):
     def setUp(self) -> None:
         self.session_researcher  # setup the default user, we always need it.
         self.do_default_login()
@@ -133,12 +134,19 @@ class ApiSessionMixin:
 
 
 class GeneralPageMixin:
-    def do_get(self, *get_params):
+    def do_get(self, *get_params, **kwargs):
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
-        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params))
+        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
         self.session_researcher.refresh_from_db()
         return response
+    
+    def do_basic_test(self, status_code: int, *params, **kwargs):
+        if not isinstance(status_code, int):
+            raise TypeError(f"received a {type(status_code)} for 'status_code', did you get the order wrong?")
+        resp = self.do_get(*params)
+        self.assertEqual(resp.status_code, status_code)
+        return resp
 
 
 def compare_dictionaries(reference, comparee, ignore=None):

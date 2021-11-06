@@ -84,7 +84,7 @@ urlpatterns = [
     path(
         "demote_researcher",
         system_admin_pages.demote_study_admin,
-        name="system_admin_pages.demote_researcher"),
+        name="system_admin_pages.demote_study_admin"),
     path(
         "create_new_researcher",
         system_admin_pages.create_new_researcher,
