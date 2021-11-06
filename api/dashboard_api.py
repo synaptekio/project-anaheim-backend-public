@@ -24,8 +24,7 @@ DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be form
 def dashboard_page(request: ResearcherRequest, study_id: int):
     """ information for the general dashboard view for a study"""
     study = Study.get_or_404(pk=study_id)
-    participants = list(
-        Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
+    participants = list(Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
     return render(
         request,
         'dashboard/dashboard.html',

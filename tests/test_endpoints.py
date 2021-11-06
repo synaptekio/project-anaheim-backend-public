@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.http import response
 from django.urls import reverse
+from constants.data_stream_constants import ALL_DATA_STREAMS
 from tests.common import (CommonTestCase, DefaultLoggedInCommonTestCase, GeneralApiMixin,
     GeneralPageMixin)
 
@@ -271,4 +272,33 @@ class TestDashboard(DefaultLoggedInCommonTestCase, GeneralPageMixin):
         self.default_study_relation(ResearcherRole.researcher)
         resp = self.do_get(str(self.default_study.id))
         self.assertEqual(resp.status_code, 200)
+        self.assertPresentIn("Choose a participant or data stream to view", resp.content)
 
+
+# FIXME: dashboard is going to require a fixture to populate data.
+class TestDashboardStream(DefaultLoggedInCommonTestCase):
+
+    # dashboard_api.get_data_for_dashboard_datastream_display
+    def test_data_streams(self):
+        # test is currently limited to rendering the page for each data stream but with no data in it
+        self.default_researcher
+        self.default_study_relation()
+        for data_stream in ALL_DATA_STREAMS:
+            url = reverse(
+                "dashboard_api.get_data_for_dashboard_datastream_display",
+                kwargs=dict(study_id=self.default_study.id, data_stream=data_stream),
+            )
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, 200)
+
+    # dashboard_api.get_data_for_dashboard_patient_display
+    def test_patient_display(self):
+        # this page renders with almost no data
+        self.default_researcher
+        self.default_study_relation()
+        url = reverse(
+            "dashboard_api.get_data_for_dashboard_patient_display",
+            kwargs=dict(study_id=self.default_study.id, patient_id=self.default_participant.patient_id),
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)

@@ -82,14 +82,14 @@ class ReferenceObjectMixin:
         except AttributeError:
             pass
         participant = Participant(
-            patient_id="participant",
+            patient_id="particip",
             device_id='_xjeWARoRevoDoL9OKDwRMpYcDhuAxm4nwedUgABxWA=',
             password='2oWT7-6Su2WMDRWpclT0q2glam7AD5taUzHIWRnO490=',
             salt='1NB2kCxOOYzayIYGZYlhHw==',
             os_type="ANDROID",
             timezone_name="America/New_York",
             push_notification_unreachable_count=0,
-            deleted=True,
+            deleted=False,
             study=self.default_study,
         )
         participant.save()
@@ -153,5 +153,3 @@ class ReferenceObjectMixin:
     #         'wifi': True,
     #         'wifi_log_frequency_seconds': 300
     #     }
-
-
