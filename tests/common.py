@@ -127,7 +127,9 @@ class ApiSessionMixin:
         self.session_researcher.refresh_from_db()
         return response
 
-    def do_basic_test(self, researcher: Researcher, status_code: int):
+    def do_test_status_code(self, status_code: int, researcher: Researcher):
+        if not isinstance(status_code, int):
+            raise TypeError(f"received {type(status_code)} for status_code?")
         resp = self.do_post(researcher_id=researcher.id, study_id=self.session_study.id)
         self.assertEqual(resp.status_code, status_code)
         return resp
@@ -138,13 +140,13 @@ class GeneralPageMixin:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
         response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
-        self.session_researcher.refresh_from_db()
+        self.session_researcher.refresh_from_db()  # just in case
         return response
     
-    def do_basic_test(self, status_code: int, *params, **kwargs):
+    def do_test_status_code(self, status_code: int, *params, **kwargs):
         if not isinstance(status_code, int):
-            raise TypeError(f"received a {type(status_code)} for 'status_code', did you get the order wrong?")
-        resp = self.do_get(*params)
+            raise TypeError(f"received {type(status_code)} for status_code?")
+        resp = self.do_get(*params, **kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp
 
