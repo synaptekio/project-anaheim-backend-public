@@ -26,17 +26,26 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             print("==")
         return super().tearDown()
 
-    def assertPresentIn(self, test_str, corpus):
+    def assert_not_present(self, test_str, corpus):
         # does a test for "in" and also handles the type coersion for bytes and strings, which is
         # common due to response.content being a bytes object.
+        return self._assert_present(False, test_str, corpus)
+
+    def assert_present(self, test_str, corpus):
+        return self._assert_present(True, test_str, corpus)
+
+    def _assert_present(self, the_test: bool, test_str, corpus):
+        # True does a test for "in", False does a test for "not in", and we handle the type coersion
+        # for bytes and strings, which is common due to response.content being a bytes object.
         t_test = type(test_str)
         t_corpus = type(corpus)
+        the_test_function = self.assertIn if the_test else self.assertNotIn
         if t_test == t_corpus:
-            return self.assertIn(test_str, corpus)
+            return the_test_function(test_str, corpus)
         elif t_test == str and t_corpus == bytes:
-            return self.assertIn(test_str.encode(), corpus)
+            return the_test_function(test_str.encode(), corpus)
         elif t_test == bytes and t_corpus == str:
-            return self.assertIn(test_str.decode(), corpus)
+            return the_test_function(test_str.decode(), corpus)
         else:
             raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
 

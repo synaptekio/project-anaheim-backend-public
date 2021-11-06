@@ -114,8 +114,7 @@ def manage_researchers(request: ResearcherRequest):
     researcher_list = []
     for researcher in get_administerable_researchers(request):
         allowed_studies = Study.get_all_studies_by_name().filter(
-            study_relations__researcher=researcher,
-            study_relations__study__in=session_ids,
+            study_relations__researcher=researcher, study_relations__study__in=session_ids,
         ).values_list('name', flat=True)
         researcher_list.append((researcher.as_unpacked_native_python(), list(allowed_studies)))
 

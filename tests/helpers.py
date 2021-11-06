@@ -1,8 +1,11 @@
+from typing import Optional
+
 from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
 from database.user_models import Participant, Researcher, StudyRelation
+from libs.security import generate_easy_alphanumeric_string
 
 
 class ReferenceObjectMixin:
@@ -47,14 +50,15 @@ class ReferenceObjectMixin:
         try:
             return self._default_study_relation
         except AttributeError:
-            relation = StudyRelation(
-                researcher=self.default_researcher,
-                study=self.default_study,
-                relationship=relation,
+            self._default_study_relation = self.generate_study_relation(
+                self.default_researcher, self.default_study, relation
             )
-            relation.save()
-            self._default_study_relation = relation
-            return relation
+            return self._default_study_relation
+
+    def generate_study_relation(self, researcher: Researcher, study: Study, relation: str):
+        relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
+        relation.save()
+        return relation
 
     # Researcher
     @property
@@ -63,16 +67,19 @@ class ReferenceObjectMixin:
             return self._default_researcher
         except AttributeError:
             pass
+        self._default_researcher = self.generate_researcher(self.DEFAULT_RESEARCHER_NAME)
+        return self._default_researcher
+
+    def generate_researcher(self, name: Optional[str] = None):    
         researcher = Researcher(
-            username=self.DEFAULT_RESEARCHER_NAME,
+            username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
             site_admin=False,
             is_batch_user=False,
         )
-        researcher.save()
+        # set password saves
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
-        self._default_researcher = researcher
         return researcher
 
     @property

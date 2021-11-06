@@ -128,7 +128,7 @@ class TestManageCredentials(DefaultLoggedInCommonTestCase):
             researcher=researcher, has_tableau_api_permissions=True, readable_name="anyting, realy",
         )
         response = self.client.get(reverse("admin_pages.manage_credentials"))
-        self.assertPresentIn(api_key.access_key_id, response.content)
+        self.assert_present(api_key.access_key_id, response.content)
 
 
 class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
@@ -146,7 +146,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
         # Always stick the check for the string after the check for the db mutation.
-        self.assertPresentIn(PASSWORD_RESET_SUCCESS, self.manage_credentials_content)
+        self.assert_present(PASSWORD_RESET_SUCCESS, self.manage_credentials_content)
 
     def test_reset_admin_password_wrong(self):
         self.do_post(
@@ -157,7 +157,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
-        self.assertPresentIn(WRONG_CURRENT_PASSWORD, self.manage_credentials_content)
+        self.assert_present(WRONG_CURRENT_PASSWORD, self.manage_credentials_content)
 
     def test_reset_admin_password_rules_fail(self):
         non_default = "abcdefghijklmnop"
@@ -169,7 +169,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assertPresentIn(NEW_PASSWORD_RULES_FAIL, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_RULES_FAIL, self.manage_credentials_content)
 
     def test_reset_admin_password_too_short(self):
         non_default = "a1#"
@@ -181,7 +181,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         researcher = self.default_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assertPresentIn(NEW_PASSWORD_8_LONG, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_8_LONG, self.manage_credentials_content)
 
     def test_reset_admin_password_mismatch(self):
         #has to pass the length and character checks
@@ -194,7 +194,7 @@ class TestResetAdminPassword(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#"))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#aA1#"))
-        self.assertPresentIn(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
 
 
 class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiMixin):
@@ -204,7 +204,7 @@ class TestResetDownloadApiCredentials(DefaultLoggedInCommonTestCase, GeneralApiM
         self.assertIsNone(self.default_researcher.access_key_id)
         self.do_post()
         self.assertIsNotNone(self.default_researcher.access_key_id)
-        self.assertPresentIn("Your Data-Download API access credentials have been reset",
+        self.assert_present("Your Data-Download API access credentials have been reset",
                              self.manage_credentials_content)
 
 
@@ -216,7 +216,7 @@ class TestNewTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.assertIsNone(self.default_researcher.api_keys.first())
         self.do_post()
         self.assertIsNotNone(self.default_researcher.api_keys.first())
-        self.assertPresentIn("New Tableau API credentials have been generated for you",
+        self.assert_present("New Tableau API credentials have been generated for you",
                              self.manage_credentials_content)
 
 
@@ -234,13 +234,13 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.do_post(api_key_id=api_key.access_key_id)
         self.assertFalse(self.default_researcher.api_keys.first().is_active)
         content = self.manage_credentials_content
-        self.assertPresentIn(api_key.access_key_id, content)
-        self.assertPresentIn("is now disabled", content)
+        self.assert_present(api_key.access_key_id, content)
+        self.assert_present("is now disabled", content)
 
     def test_no_match(self):
         # fail with empty and fail with success
         self.do_post(api_key_id="abc")
-        self.assertPresentIn(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
         api_key = ApiKey.generate(
             researcher=self.default_researcher,
             has_tableau_api_permissions=True,
@@ -249,7 +249,7 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.do_post(api_key_id="abc")
         api_key.refresh_from_db()
         self.assertTrue(api_key.is_active)
-        self.assertPresentIn(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
 
     def test_already_disabled(self):
         api_key = ApiKey.generate(
@@ -261,7 +261,7 @@ class TestDisableTableauApiKey(DefaultLoggedInCommonTestCase, GeneralApiMixin):
         self.do_post(api_key_id=api_key.access_key_id)
         api_key.refresh_from_db()
         self.assertFalse(api_key.is_active)
-        self.assertPresentIn(TABLEAU_API_KEY_IS_DISABLED, self.manage_credentials_content)
+        self.assert_present(TABLEAU_API_KEY_IS_DISABLED, self.manage_credentials_content)
 
 
 class TestDashboard(DefaultLoggedInCommonTestCase, GeneralPageMixin):
@@ -272,7 +272,7 @@ class TestDashboard(DefaultLoggedInCommonTestCase, GeneralPageMixin):
         self.default_study_relation(ResearcherRole.researcher)
         resp = self.do_get(str(self.default_study.id))
         self.assertEqual(resp.status_code, 200)
-        self.assertPresentIn("Choose a participant or data stream to view", resp.content)
+        self.assert_present("Choose a participant or data stream to view", resp.content)
 
 
 # FIXME: dashboard is going to require a fixture to populate data.
@@ -301,4 +301,73 @@ class TestDashboardStream(DefaultLoggedInCommonTestCase):
             kwargs=dict(study_id=self.default_study.id, patient_id=self.default_participant.patient_id),
         )
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+
+# system_admin_pages.manage_researchers
+class TestManageResearchers(DefaultLoggedInCommonTestCase, GeneralPageMixin):
+    ENDPOINT_NAME = "system_admin_pages.manage_researchers"
+
+    def test_researcher(self):
+        self.default_researcher
+        self.default_study_relation
+        resp = self.do_get()
+        self.assertEqual(resp.status_code, 403)
+
+    def test_study_admin(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        resp = self.do_get()
+        self.assertEqual(resp.status_code, 200)
+
+    def test_site_admin(self):
+        self.default_researcher.update(site_admin=True)
+        resp = self.do_get()
+        self.assertEqual(resp.status_code, 200)
+
+    def test_render_study_admin(self):
+        self.default_researcher
+        self.default_study_relation(ResearcherRole.study_admin)
+        self._test_render_with_researchers()
+        # make sure that site admins are not present
+        r4 = self.generate_researcher()
+        r4.update(site_admin=True)
+        resp = self.do_get()
+        self.assert_not_present(r4.username, resp.content)
+        self.assertEqual(resp.status_code, 200)
+        # make sure that unaffiliated researchers are not present
+        r5 = self.generate_researcher()
+        resp = self.do_get()
+        self.assert_not_present(r5.username, resp.content)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_render_site_admin(self):
+        self.default_researcher.update(site_admin=True)
+        self._test_render_with_researchers()
+        # make sure that site admins ARE present
+        r4 = self.generate_researcher()
+        r4.update(site_admin=True)
+        resp = self.do_get()
+        self.assert_present(r4.username, resp.content)
+        self.assertEqual(resp.status_code, 200)
+        # make sure that unaffiliated researchers ARE present
+        r5 = self.generate_researcher()
+        resp = self.do_get()
+        self.assert_present(r5.username, resp.content)
+        self.assertEqual(resp.status_code, 200)
+
+    def _test_render_with_researchers(self):
+        # render the page with a regular user
+        r2 = self.generate_researcher()
+        self.generate_study_relation(r2, self.default_study, ResearcherRole.researcher)
+        resp = self.do_get()
+        self.assertEqual(resp.status_code, 200)
+        self.assert_present(r2.username, resp.content)
+
+        # render with 2 reseaorchers
+        r3 = self.generate_researcher()
+        self.generate_study_relation(r3, self.default_study, ResearcherRole.researcher)
+        resp = self.do_get()
+        self.assert_present(r2.username, resp.content)
+        self.assert_present(r3.username, resp.content)
         self.assertEqual(resp.status_code, 200)
