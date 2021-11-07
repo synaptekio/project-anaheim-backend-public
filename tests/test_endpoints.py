@@ -423,13 +423,13 @@ class TestElevateResearcher(PopulatedSessionTestCase, ApiSessionMixin):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
         self.do_test_status_code(302, r2)
-        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
+        self.assertEqual(r2.study_relations.get().relationshipship, ResearcherRole.study_admin)
     
     def test_study_admin_as_study_admin_on_study(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.study_admin)
         self.do_test_status_code(403, r2)
-        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
+        self.assertEqual(r2.study_relations.get().relationshipship, ResearcherRole.study_admin)
     
     def test_site_admin_as_study_admin_on_study(self):
         self.session_researcher
@@ -440,6 +440,45 @@ class TestElevateResearcher(PopulatedSessionTestCase, ApiSessionMixin):
     
     def test_site_admin_as_site_admin(self):
         self.session_researcher.update(site_admin=True)
-        r2 = self.generate_researcher(site_admin=True)        
+        r2 = self.generate_researcher(site_admin=True)
         self.do_test_status_code(403, r2)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
+
+
+# not done
+class TestDemoteStudyAdmin(PopulatedSessionTestCase, ApiSessionMixin):
+    ENDPOINT_NAME = "system_admin_pages.demote_study_admin"
+    
+    def test_researcher_as_researcher(self):
+        r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
+        self.do_test_status_code(403, r2)
+        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
+    
+    def test_researcher_as_study_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
+        self.do_test_status_code(302, r2)
+        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
+    
+    def test_study_admin_as_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.study_admin)
+        self.do_test_status_code(302, r2)
+        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
+    
+    def test_site_admin_as_study_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher(site_admin=True)
+        self.do_test_status_code(302, r2)
+        self.assertFalse(r2.study_relations.exists())
+        r2.refresh_from_db()
+        self.assertTrue(r2.site_admin)
+    
+    def test_site_admin_as_site_admin(self):
+        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        r2 = self.generate_researcher(site_admin=True)
+        self.do_test_status_code(302, r2)
+        self.assertFalse(r2.study_relations.exists())
+        r2.refresh_from_db()
+        self.assertTrue(r2.site_admin)
