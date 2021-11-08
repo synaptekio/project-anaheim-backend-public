@@ -8,7 +8,7 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('database', '0059_devicesettings_ambient_audio'),
+        ('database', '0061_historical_data_qty_stats'),
     ]
 
     operations = [

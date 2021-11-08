@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('database', '0061_participantfcmhistory_failure_count'),
+        ('database', '0063_participantfcmhistory_failure_count'),
     ]
 
     operations = [
