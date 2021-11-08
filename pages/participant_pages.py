@@ -188,8 +188,8 @@ def schedule_message(study_object_id, participant_patient_id):
     )
     return redirect(
         url_for(
-            "study_api.edit_participant",
-            participant_id=participant.id,
+            "participant_pages.participant",
+            patient_id=participant.patient_id,
             study_id=participant.study_id,
         )
     )
@@ -234,8 +234,8 @@ def cancel_message(study_object_id, participant_message_uuid):
                 flash("The message was successfully cancelled.", "success")
     return redirect(
         url_for(
-            "study_api.edit_participant",
-            participant_id=participant_message.participant.id,
+            "participant_pages.participant",
+            patient_id=participant_message.participant.patient_id,
             study_id=participant_message.participant.study_id,
         )
     )
