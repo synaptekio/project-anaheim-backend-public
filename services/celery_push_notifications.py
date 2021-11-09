@@ -42,7 +42,8 @@ def queue_message_tasks(now):
     ).values_list("id", flat=True)
     for participant_message_id in participant_message_ids:
         queue_celery_task(
-            celery_send_message_push_notification
+            celery_send_message_push_notification,
+            args=[participant_message_id]
         )
 
 
@@ -91,6 +92,7 @@ def queue_celery_task(func, *args, **kwargs):
 
 @push_send_celery_app.task(queue=PUSH_NOTIFICATION_SEND_QUEUE)
 def celery_send_message_push_notification(participant_message_id: int):
+    print("Here's this")
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
         participant_message = ParticipantMessage.objects.get(pk=participant_message_id)
         data_kwargs = {
@@ -129,7 +131,7 @@ def send_push_notification(
         participant: Participant,
         notification_data: Dict,
         display_message: str,
-        schedule_pks: List[int]
+        schedule_pks: List[int] = None,
 ):
     ''' Celery task that sends push notifications. Note that this list of pks may contain duplicates.'''
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
@@ -139,7 +141,8 @@ def send_push_notification(
 
         # use the earliest timed schedule as our reference for the sent_time parameter.  (why?)
         fcm_token = participant.get_fcm_token().token
-        schedules = participant.scheduled_events.filter(id__in=schedule_pks).prefetch_related('survey')
+        if schedule_pks is not None:
+            schedules = participant.scheduled_events.filter(id__in=schedule_pks).prefetch_related('survey')
 
         try:
             if participant.os_type == Participant.ANDROID_API:
@@ -167,14 +170,16 @@ def send_push_notification(
             # sysadmin attention and probably new development to allow multiple firebase
             # credentials. Read comments in settings.py if toggling.
             if BLOCK_QUOTA_EXCEEDED_ERROR:
-                failed_send_handler(participant, fcm_token, str(e), schedules)
+                if schedule_pks:
+                    failed_send_handler(participant, fcm_token, str(e), schedules)
                 return
             else:
                 raise
 
         except ThirdPartyAuthError as e:
             print("\nThirdPartyAuthError\n")
-            failed_send_handler(participant, fcm_token, str(e), schedules)
+            if schedule_pks:
+                failed_send_handler(participant, fcm_token, str(e), schedules)
             # This means the credentials used were wrong for the target app instance.  This can occur
             # both with bad server credentials, and with bad device credentials.
             # We have only seen this error statement, error name is generic so there may be others.
@@ -187,7 +192,8 @@ def send_push_notification(
             # (but behavior shouldn't be broken anymore, failed_send_handler executes.)
             print("\nSenderIdMismatchError:\n")
             print(e)
-            failed_send_handler(participant, fcm_token, str(e), schedules)
+            if schedule_pks:
+                failed_send_handler(participant, fcm_token, str(e), schedules)
             return
 
         except ValueError as e:
@@ -196,16 +202,18 @@ def send_push_notification(
             # This case occurs ever? is tested for in check_firebase_instance... weird race condition?
             # Error should be transient, and like all other cases we enqueue the next weekly surveys regardless.
             if "The default Firebase app does not exist" in str(e):
-                enqueue_weekly_surveys(participant, schedules)
+                if schedule_pks:
+                    enqueue_weekly_surveys(participant, schedules)
                 return
             else:
                 raise
 
         except Exception as e:
-            failed_send_handler(participant, fcm_token, str(e), schedules)
+            if schedule_pks:
+                failed_send_handler(participant, fcm_token, str(e), schedules)
             return
-
-        success_send_handler(participant, fcm_token, schedules)
+        if schedule_pks:
+            success_send_handler(participant, fcm_token, schedules)
 
 
 def success_send_handler(participant: Participant, fcm_token: str, schedules: List[ScheduledEvent]):
