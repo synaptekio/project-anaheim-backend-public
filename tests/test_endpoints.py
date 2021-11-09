@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
 from django.urls import reverse
-from tests.common import (ApiRedirectMixin, ApiSessionMixin, CommonTestCase, GeneralPageMixin,
-    PopulatedSessionTestCase)
+from tests.common import (BasicDefaultTestCase, GeneralPageMixin, PopulatedSessionTestCase,
+    RedirectSessionApiMixin, SessionApiMixin)
 
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
@@ -12,7 +12,7 @@ from constants.researcher_constants import ResearcherRole
 from database.security_models import ApiKey
 
 
-class TestLoginPages(CommonTestCase):
+class TestLoginPages(BasicDefaultTestCase):
     """ Basic authentication test, make sure that the machinery for logging a user
     in and out are functional at setting and clearing a session. """
     
@@ -121,7 +121,7 @@ class TestManageCredentials(PopulatedSessionTestCase, GeneralPageMixin):
         self.assert_present(api_key.access_key_id, response.content)
 
 
-class TestResetAdminPassword(PopulatedSessionTestCase, ApiRedirectMixin):
+class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
     # test for every case and messages present on the page
     ENDPOINT_NAME = "admin_pages.reset_admin_password"
     
@@ -187,7 +187,7 @@ class TestResetAdminPassword(PopulatedSessionTestCase, ApiRedirectMixin):
         self.assert_present(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
 
 
-class TestResetDownloadApiCredentials(PopulatedSessionTestCase, ApiRedirectMixin):
+class TestResetDownloadApiCredentials(PopulatedSessionTestCase, RedirectSessionApiMixin):
     ENDPOINT_NAME = "admin_pages.reset_download_api_credentials"
     
     def test_reset(self):
@@ -198,7 +198,7 @@ class TestResetDownloadApiCredentials(PopulatedSessionTestCase, ApiRedirectMixin
                              self.manage_credentials_content)
 
 
-class TestNewTableauApiKey(PopulatedSessionTestCase, ApiRedirectMixin):
+class TestNewTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
     # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
     #  (need to review the tableau tests)
@@ -211,7 +211,7 @@ class TestNewTableauApiKey(PopulatedSessionTestCase, ApiRedirectMixin):
 
 
 # admin_pages.disable_tableau_api_key
-class TestDisableTableauApiKey(PopulatedSessionTestCase, ApiRedirectMixin):
+class TestDisableTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin):
     ENDPOINT_NAME = "admin_pages.disable_tableau_api_key"
     
     def test_disable_success(self):
@@ -406,7 +406,7 @@ class TestEditResearcher(PopulatedSessionTestCase, GeneralPageMixin):
         self.assert_present(r2.username, resp.content)
 
 
-class TestElevateResearcher(PopulatedSessionTestCase, ApiSessionMixin):
+class TestElevateResearcher(PopulatedSessionTestCase, SessionApiMixin):
     ENDPOINT_NAME = "system_admin_pages.elevate_researcher"
     # this one is tedious.
     
@@ -419,17 +419,17 @@ class TestElevateResearcher(PopulatedSessionTestCase, ApiSessionMixin):
         self.do_test_status_code(403, self.session_researcher)
     
     def test_researcher_as_study_admin_on_study(self):
-        # this is the only case that succeeds (default session researcher)
+        # this is the only case that succeeds
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
         self.do_test_status_code(302, r2)
-        self.assertEqual(r2.study_relations.get().relationshipship, ResearcherRole.study_admin)
+        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
     
     def test_study_admin_as_study_admin_on_study(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.study_admin)
         self.do_test_status_code(403, r2)
-        self.assertEqual(r2.study_relations.get().relationshipship, ResearcherRole.study_admin)
+        self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
     
     def test_site_admin_as_study_admin_on_study(self):
         self.session_researcher
@@ -446,7 +446,7 @@ class TestElevateResearcher(PopulatedSessionTestCase, ApiSessionMixin):
 
 
 # not done
-class TestDemoteStudyAdmin(PopulatedSessionTestCase, ApiSessionMixin):
+class TestDemoteStudyAdmin(PopulatedSessionTestCase, SessionApiMixin):
     ENDPOINT_NAME = "system_admin_pages.demote_study_admin"
     
     def test_researcher_as_researcher(self):

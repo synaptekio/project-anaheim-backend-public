@@ -1,4 +1,3 @@
-from typing import Optional
 
 from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
@@ -13,9 +12,9 @@ class ReferenceObjectMixin:
     DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
     DEFAULT_STUDY_NAME = "teststudy"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
-
+    
     # for all defaults make sure to maintain the pattern that includes the use of the save function
-
+    
     @property
     def default_forest_params(self) -> ForestParam:
         try:
@@ -25,7 +24,7 @@ class ReferenceObjectMixin:
         # there is an actual default ForestParams defined in a migration.
         self._default_forest_params = ForestParam.objects.get(default=True)
         return self._default_forest_params
-
+    
     @property
     def session_study(self) -> Study:
         try:
@@ -45,7 +44,7 @@ class ReferenceObjectMixin:
         study.save()
         self._default_study = study
         return study
-
+    
     def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
         try:
             return self._default_study_relation
@@ -54,12 +53,12 @@ class ReferenceObjectMixin:
                 self.session_researcher, self.session_study, relation
             )
             return self._default_study_relation
-
+    
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()
         return relation
-
+    
     # Researcher
     @property
     def session_researcher(self) -> Researcher:
@@ -69,7 +68,7 @@ class ReferenceObjectMixin:
             pass
         self._default_researcher = self.generate_researcher(self.DEFAULT_RESEARCHER_NAME)
         return self._default_researcher
-
+    
     def generate_researcher(self,
                             name: str = None,
                             relation_to_session_study: str = None,
@@ -85,9 +84,9 @@ class ReferenceObjectMixin:
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
         if relation_to_session_study is not None:
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
-            
+        
         return researcher
-
+    
     @property
     def default_participant(self) -> Participant:
         try:
@@ -108,7 +107,7 @@ class ReferenceObjectMixin:
         participant.save()
         self._default_participant = participant
         return participant
-
+    
     @property
     def session_survey(self) -> Survey:
         try:
@@ -123,7 +122,7 @@ class ReferenceObjectMixin:
         survey.save()
         self._session_survey = survey
         return survey
-
+    
     # @property
     # def default_device_settings(self):
     #     # TODO: this should go off of the defaults in the database table
@@ -166,3 +165,38 @@ class ReferenceObjectMixin:
     #         'wifi': True,
     #         'wifi_log_frequency_seconds': 300
     #     }
+
+def compare_dictionaries(reference, comparee, ignore=None):
+    if not isinstance(reference, dict):
+        raise Exception("reference was %s, not dictionary" % type(reference))
+    if not isinstance(comparee, dict):
+        raise Exception("comparee was %s, not dictionary" % type(comparee))
+    
+    if ignore is None:
+        ignore = []
+    
+    b = set((x, y) for x, y in comparee.items() if x not in ignore)
+    a = set((x, y) for x, y in reference.items() if x not in ignore)
+    differences_a = a - b
+    differences_b = b - a
+    
+    if len(differences_a) == 0 and len(differences_b) == 0:
+        return True
+    
+    try:
+        differences_a = sorted(differences_a)
+        differences_b = sorted(differences_b)
+    except Exception:
+        pass
+    
+    print("These dictionaries are not identical:")
+    if differences_a:
+        print("in reference, not in comparee:")
+        for x, y in differences_a:
+            print("\t", x, y)
+    if differences_b:
+        print("in comparee, not in reference:")
+        for x, y in differences_b:
+            print("\t", x, y)
+    
+    return False
