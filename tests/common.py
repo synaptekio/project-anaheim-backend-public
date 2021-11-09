@@ -61,7 +61,7 @@ ALL_ROLE_PERMUTATIONS = (
 
 REAL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher)
 ALL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, "site_admin", None)
-
+ADMIN_ROLES = (ResearcherRole.study_admin, "site_admin")
 
 class CommonTestCase(TestCase, ReferenceObjectMixin):
     
@@ -119,16 +119,16 @@ class PopulatedSessionTestCase(BasicDefaultTestCase):
         self.do_default_login()
         return super().setUp()
     
-    def assign_role(self, researcher, role):
+    def assign_role(self, researcher: Researcher, role: str):
         if role in REAL_ROLES:
-            researcher.study_relations.delete()
-            self.generate_study_relation(researcher, role)
+            researcher.study_relations.all().delete()
+            self.generate_study_relation(researcher, self.session_study, role)
             researcher.update(site_admin=False)
         elif role is None:
-            researcher.study_relations.delete()
+            researcher.study_relations.all().delete()
             researcher.update(site_admin=False)
         elif role == "site_admin":
-            researcher.study_relations.delete()
+            researcher.study_relations.all().delete()
             researcher.update(site_admin=True)
     
     def iterate_researcher_permutations(self):
