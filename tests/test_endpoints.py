@@ -523,4 +523,17 @@ class TestCreateNewResearcher(PopulatedSessionTestCase):
                 self.assertEqual(resp.status_code, 403)
                 self.assertEqual(prior_researcher_count, Researcher.objects.count())
 
+
+class TestManageStudies(GeneralPageTest):
+    ENDPOINT_NAME = "system_admin_pages.manage_studies"
     
+    def test(self):
+        for user_role in ALL_RESEARCHER_TYPES:
+            self.assign_role(self.session_researcher, user_role)
+            resp = self.client.get(reverse(self.ENDPOINT_NAME))
+            if user_role in ADMIN_ROLES:
+                self.assertEqual(resp.status_code, 200)
+            else:
+                self.assertEqual(resp.status_code, 403)
+                
+                
