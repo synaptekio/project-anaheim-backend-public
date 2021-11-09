@@ -65,8 +65,8 @@ urlpatterns = [
         name="dashboard_api.get_data_for_dashboard_datastream_display"),
     path(
         "dashboard/<int:study_id>/patient/<str:patient_id>",
-        dashboard_api.get_data_for_dashboard_patient_display,
-        name="dashboard_api.get_data_for_dashboard_patient_display"),
+        dashboard_api.dashboard_participant_page,
+        name="dashboard_api.dashboard_participant_page"),
 
     # system admin pages
     path(

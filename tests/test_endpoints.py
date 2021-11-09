@@ -284,13 +284,13 @@ class TestDashboardStream(PopulatedSessionTestCase):
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)
     
-    # dashboard_api.get_data_for_dashboard_patient_display
+    # dashboard_api.dashboard_participant_page
     def test_patient_display(self):
         # this page renders with almost no data
         self.session_researcher
         self.set_session_study_relation()
         url = reverse(
-            "dashboard_api.get_data_for_dashboard_patient_display",
+            "dashboard_api.dashboard_participant_page",
             kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant.patient_id),
         )
         resp = self.client.get(url)

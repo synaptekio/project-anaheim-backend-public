@@ -16,7 +16,10 @@
   </ol>
 
   {# Go to Dashboard button  #}
-  <a class="btn btn-info" href='/dashboard/{{ study.id }}/patient/{{ participant.patient_id }}'>Go to Participant Dashboard</a>&nbsp;
+  <a class="btn btn-info"
+    href={{ easy_url('dashboard_api.dashboard_participant_page', study_id=study.id, patient_id=participant.patient_id) }}>
+    Go to Participant Dashboard
+  </a>&nbsp;
 
   <br><br><br><br>
 
@@ -187,4 +190,3 @@
     {% endif %}
   </form>
 {%  endblock %}
-

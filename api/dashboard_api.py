@@ -177,7 +177,7 @@ def get_data_for_dashboard_datastream_display(
 
 
 @authenticate_researcher_study_access
-def get_data_for_dashboard_patient_display(request: ResearcherRequest, study_id, patient_id):
+def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id):
     """ parses data to be displayed for the singular participant dashboard view """
     study = Study.get_or_404(pk=study_id)
     participant = get_participant(patient_id, study_id)
@@ -670,4 +670,3 @@ def get_participant(patient_id, study_id):
             return abort(400, "No such user exists.")
         else:
             return abort(400, "No such user exists in this study.")
-
