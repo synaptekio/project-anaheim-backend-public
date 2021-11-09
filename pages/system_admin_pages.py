@@ -1,6 +1,7 @@
 import json
 import plistlib
 from collections import defaultdict
+from typing import List
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -39,7 +40,7 @@ SITE_ADMIN = "Site Admin"
 ####################################################################################################
 
 
-def get_administerable_studies_by_name(request: ResearcherRequest):
+def get_administerable_studies_by_name(request: ResearcherRequest) -> List[Study]:
     """ Site admins see all studies, study admins see only studies they are admins on. """
     if request.session_researcher.site_admin:
         return Study.get_all_studies_by_name()
@@ -47,7 +48,7 @@ def get_administerable_studies_by_name(request: ResearcherRequest):
         return request.session_researcher.get_administered_studies_by_name()
 
 
-def get_administerable_researchers(request: ResearcherRequest):
+def get_administerable_researchers(request: ResearcherRequest) -> List[Researcher]:
     """ Site admins see all researchers, study admins see researchers on their studies. """
     if request.session_researcher.site_admin:
         return Researcher.filter_alphabetical()
@@ -225,10 +226,12 @@ def create_new_researcher(request: ResearcherRequest):
         return render(request, 'create_new_researcher.html')
     
     # Drop any whitespace or special characters from the username
+    # FIXME: add bleach library here
     username = ''.join(e for e in request.POST.get('admin_id', '') if e.isalnum())
     password = request.POST.get('password', '')
     
     if Researcher.objects.filter(username=username).exists():
+        # FIXME: again, bleach
         messages.error(request, f"There is already a researcher with username {username}")
         return redirect('/create_new_researcher')
     else:
