@@ -1,8 +1,10 @@
 from sys import argv
 
 from django.contrib import messages
+from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
+from django.urls.base import resolve
 from tests.helpers import ReferenceObjectMixin
 
 from constants.researcher_constants import ResearcherRole
@@ -137,46 +139,47 @@ class PopulatedSessionTestCase(BasicDefaultTestCase):
             yield session_researcher, r2
 
 
-# These mixin classes ~expect the PopulatedSessionTestCase class, I want them maintained separately
-# from those classes, in order to be a little more clear about the use of otherwise opaque functions
-# like "do_post", "do_get", "do_test_status_code".
+# These mixin classes implement some common patterns, please educate yourself on what the 
+# "do_post", "do_get", and "do_test_status_code", functions do, and use them.
 
 
-class RedirectSessionApiMixin:
+class RedirectSessionApiTest(PopulatedSessionTestCase):
     ENDPOINT_NAME = None
+    REDIRECT_ENDPOINT_NAME = None
     
     # some api calls only come from pages, which means they need to return 302 in all cases.
-    def do_post(self, **post_params):
+    def do_post(self, **post_params) -> HttpResponseRedirect:
         # instantiate the default researcher, pass through params, reverse the enpoint and pass in
         # post params, then refresh default researcher just in case it has mutated during the call.
         self.session_researcher
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
         self.session_researcher.refresh_from_db()
         self.assertEqual(response.status_code, 302)
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
         return response
     
-    @property
-    def manage_credentials_content(self) -> bytes:
+    def get_redirect_content(self, *args, **kwargs) -> bytes:
         # these tests usually need a page to test for content messages.  We use the Edit Credentials
         # page (admin_pages.manage_credentials) because this page should be accessible by all user
         # types, takes no arguments, and a bunch of these commands work on this page anyway.
-        resp = self.client.get(reverse("admin_pages.manage_credentials"))
+        resp = self.client.get(reverse(self.REDIRECT_ENDPOINT_NAME), *args, **kwargs)
         self.assertEqual(resp.status_code, 200)  # if it is not a 200 something has gone wrong.
         return resp.content
 
 
-class SessionApiMixin:
+class SessionApiTest(PopulatedSessionTestCase):
     ENDPOINT_NAME = None
     
     # some api calls return real 400 codes
-    def do_post(self, **post_params):
+    def do_post(self, **post_params) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
         self.session_researcher.refresh_from_db()
         return response
     
-    def do_test_status_code(self, status_code: int, researcher: Researcher):
+    def do_test_status_code(self, status_code: int, researcher: Researcher) -> HttpResponse:
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
         resp = self.do_post(researcher_id=researcher.id, study_id=self.session_study.id)
@@ -184,7 +187,7 @@ class SessionApiMixin:
         return resp
 
 
-class GeneralPageMixin:
+class GeneralPageTest(PopulatedSessionTestCase):
     ENDPOINT_NAME = None
     
     def do_get(self, *get_params, **kwargs):

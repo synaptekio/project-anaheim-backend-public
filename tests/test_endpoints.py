@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
 from django.urls import reverse
-from tests.common import (BasicDefaultTestCase, GeneralPageMixin, PopulatedSessionTestCase,
-    RedirectSessionApiMixin, SessionApiMixin)
+from tests.common import (BasicDefaultTestCase, GeneralPageTest, PopulatedSessionTestCase,
+    RedirectSessionApiTest, SessionApiTest)
 
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
@@ -54,7 +54,7 @@ class TestLoginPages(BasicDefaultTestCase):
         self.assertEqual(r.url, reverse("login_pages.login_page"))
 
 
-class TestViewStudy(PopulatedSessionTestCase, GeneralPageMixin):
+class TestViewStudy(GeneralPageTest):
     """ view_study is pretty simple, no custom content in the :
     tests push_notifications_enabled, is_site_admin, study.is_test, study.forest_enabled
     populates html elements with custom field values
@@ -106,7 +106,7 @@ class TestViewStudy(PopulatedSessionTestCase, GeneralPageMixin):
         # self.assertInHTML("Edit interventions for this study", response.content.decode())
 
 
-class TestManageCredentials(PopulatedSessionTestCase, GeneralPageMixin):
+class TestManageCredentials(GeneralPageTest):
     ENDPOINT_NAME = "admin_pages.manage_credentials"
     
     def test_manage_credentials(self):
@@ -121,9 +121,10 @@ class TestManageCredentials(PopulatedSessionTestCase, GeneralPageMixin):
         self.assert_present(api_key.access_key_id, response.content)
 
 
-class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
+class TestResetAdminPassword(RedirectSessionApiTest):
     # test for every case and messages present on the page
     ENDPOINT_NAME = "admin_pages.reset_admin_password"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
     
     def test_reset_admin_password_success(self):
         self.do_post(
@@ -136,7 +137,7 @@ class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
         # Always stick the check for the string after the check for the db mutation.
-        self.assert_present(PASSWORD_RESET_SUCCESS, self.manage_credentials_content)
+        self.assert_present(PASSWORD_RESET_SUCCESS, self.get_redirect_content())
     
     def test_reset_admin_password_wrong(self):
         self.do_post(
@@ -147,7 +148,7 @@ class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
         researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD + "1"))
-        self.assert_present(WRONG_CURRENT_PASSWORD, self.manage_credentials_content)
+        self.assert_present(WRONG_CURRENT_PASSWORD, self.get_redirect_content())
     
     def test_reset_admin_password_rules_fail(self):
         non_default = "abcdefghijklmnop"
@@ -159,7 +160,7 @@ class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
         researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assert_present(NEW_PASSWORD_RULES_FAIL, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_RULES_FAIL, self.get_redirect_content())
     
     def test_reset_admin_password_too_short(self):
         non_default = "a1#"
@@ -171,7 +172,7 @@ class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
         researcher = self.session_researcher
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, non_default))
-        self.assert_present(NEW_PASSWORD_8_LONG, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_8_LONG, self.get_redirect_content())
     
     def test_reset_admin_password_mismatch(self):
         #has to pass the length and character checks
@@ -184,22 +185,25 @@ class TestResetAdminPassword(PopulatedSessionTestCase, RedirectSessionApiMixin):
         self.assertTrue(researcher.check_password(researcher.username, self.DEFAULT_RESEARCHER_PASSWORD))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#"))
         self.assertFalse(researcher.check_password(researcher.username, "aA1#aA1#aA1#aA1#"))
-        self.assert_present(NEW_PASSWORD_MISMATCH, self.manage_credentials_content)
+        self.assert_present(NEW_PASSWORD_MISMATCH, self.get_redirect_content())
 
 
-class TestResetDownloadApiCredentials(PopulatedSessionTestCase, RedirectSessionApiMixin):
+class TestResetDownloadApiCredentials(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_pages.reset_download_api_credentials"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
     
     def test_reset(self):
         self.assertIsNone(self.session_researcher.access_key_id)
         self.do_post()
         self.assertIsNotNone(self.session_researcher.access_key_id)
         self.assert_present("Your Data-Download API access credentials have been reset",
-                             self.manage_credentials_content)
+                             self.get_redirect_content())
 
 
-class TestNewTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin):
+class TestNewTableauApiKey(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
+    
     # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
     #  (need to review the tableau tests)
     def test_reset(self):
@@ -207,12 +211,13 @@ class TestNewTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin):
         self.do_post()
         self.assertIsNotNone(self.session_researcher.api_keys.first())
         self.assert_present("New Tableau API credentials have been generated for you",
-                             self.manage_credentials_content)
+                             self.get_redirect_content())
 
 
 # admin_pages.disable_tableau_api_key
-class TestDisableTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin):
+class TestDisableTableauApiKey(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_pages.disable_tableau_api_key"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
     
     def test_disable_success(self):
         # basic test
@@ -223,14 +228,14 @@ class TestDisableTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin
         )
         self.do_post(api_key_id=api_key.access_key_id)
         self.assertFalse(self.session_researcher.api_keys.first().is_active)
-        content = self.manage_credentials_content
+        content = self.get_redirect_content()
         self.assert_present(api_key.access_key_id, content)
         self.assert_present("is now disabled", content)
     
     def test_no_match(self):
         # fail with empty and fail with success
         self.do_post(api_key_id="abc")
-        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.get_redirect_content())
         api_key = ApiKey.generate(
             researcher=self.session_researcher,
             has_tableau_api_permissions=True,
@@ -239,7 +244,7 @@ class TestDisableTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin
         self.do_post(api_key_id="abc")
         api_key.refresh_from_db()
         self.assertTrue(api_key.is_active)
-        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.manage_credentials_content)
+        self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.get_redirect_content())
     
     def test_already_disabled(self):
         api_key = ApiKey.generate(
@@ -251,10 +256,10 @@ class TestDisableTableauApiKey(PopulatedSessionTestCase, RedirectSessionApiMixin
         self.do_post(api_key_id=api_key.access_key_id)
         api_key.refresh_from_db()
         self.assertFalse(api_key.is_active)
-        self.assert_present(TABLEAU_API_KEY_IS_DISABLED, self.manage_credentials_content)
+        self.assert_present(TABLEAU_API_KEY_IS_DISABLED, self.get_redirect_content())
 
 
-class TestDashboard(PopulatedSessionTestCase, GeneralPageMixin):
+class TestDashboard(GeneralPageTest):
     ENDPOINT_NAME = "dashboard_api.dashboard_page"
     
     def test_dashboard(self):
@@ -293,7 +298,7 @@ class TestDashboardStream(PopulatedSessionTestCase):
 
 
 # system_admin_pages.manage_researchers
-class TestManageResearchers(PopulatedSessionTestCase, GeneralPageMixin):
+class TestManageResearchers(GeneralPageTest):
     ENDPOINT_NAME = "system_admin_pages.manage_researchers"
     
     def test_researcher(self):
@@ -346,7 +351,7 @@ class TestManageResearchers(PopulatedSessionTestCase, GeneralPageMixin):
         self.assert_present(r3.username, resp.content)
 
 
-class TestEditResearcher(PopulatedSessionTestCase, GeneralPageMixin):
+class TestEditResearcher(GeneralPageTest):
     ENDPOINT_NAME = "system_admin_pages.edit_researcher"
     
     # render self
@@ -406,7 +411,7 @@ class TestEditResearcher(PopulatedSessionTestCase, GeneralPageMixin):
         self.assert_present(r2.username, resp.content)
 
 
-class TestElevateResearcher(PopulatedSessionTestCase, SessionApiMixin):
+class TestElevateResearcher(SessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.elevate_researcher"
     # this one is tedious.
     
@@ -446,7 +451,7 @@ class TestElevateResearcher(PopulatedSessionTestCase, SessionApiMixin):
 
 
 # not done
-class TestDemoteStudyAdmin(PopulatedSessionTestCase, SessionApiMixin):
+class TestDemoteStudyAdmin(SessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.demote_study_admin"
     
     def test_researcher_as_researcher(self):
