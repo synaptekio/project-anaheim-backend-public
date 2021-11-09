@@ -63,7 +63,7 @@ def celery_run_forest(forest_task_id):
             return
         
         # Get the chronologically earliest task that's queued
-        task = (
+        task: ForestTask = (
             tasks
                 .filter(status=ForestTask.Status.queued)
                 .order_by("-data_date_start")
@@ -147,10 +147,11 @@ def enqueue_forest_task(**kwargs):
     safe_apply_async(celery_run_forest, **updated_kwargs)
 
 
-def save_cached_files(task):
+def save_cached_files(task: ForestTask):
     if os.path.exists(task.all_bv_set_path):
         with open(task.all_bv_set_path, "rb") as f:
             task.save_all_bv_set_bytes(f.read())
+            
     if os.path.exists(task.all_memory_dict_path):
         with open(task.all_memory_dict_path, "rb") as f:
             task.save_all_memory_dict_bytes(f.read())
