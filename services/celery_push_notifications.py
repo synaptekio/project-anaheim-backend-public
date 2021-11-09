@@ -2,16 +2,16 @@ import json
 import random
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import List
-
+from django.db.models import Q
 from django.utils import timezone
 from firebase_admin.messaging import (AndroidConfig, Message, Notification, QuotaExceededError,
     send as send_notification, SenderIdMismatchError, ThirdPartyAuthError, UnregisteredError)
+from typing import Dict, List
 
 from config.constants import API_TIME_FORMAT, PUSH_NOTIFICATION_SEND_QUEUE, ScheduleTypes
 from config.settings import BLOCK_QUOTA_EXCEEDED_ERROR, PUSH_NOTIFICATION_ATTEMPT_COUNT
 from config.study_constants import OBJECT_ID_ALLOWED_CHARS
-from database.schedule_models import ArchivedEvent, ScheduledEvent
+from database.schedule_models import ArchivedEvent, ParticipantMessage, ParticipantMessageStatus, ParticipantMessageScheduleType, ScheduledEvent
 from database.user_models import Participant, ParticipantFCMHistory, PushNotificationDisabledEvent
 from libs.celery_control import push_send_celery_app, safe_apply_async
 from libs.firebase_config import check_firebase_instance
@@ -27,6 +27,23 @@ def create_push_notification_tasks():
             print("Firebase is not configured, cannot queue notifications.")
             return
         queue_survey_tasks(now)
+        queue_message_tasks(now)
+
+
+def queue_message_tasks(now):
+    asap_filter = Q(schedule_type=ParticipantMessageScheduleType.asap)
+    absolute_filter = (
+        Q(schedule_type=ParticipantMessageScheduleType.absolute) &
+        Q(scheduled_send_datetime__lte=now)
+    )
+    participant_message_ids = ParticipantMessage.objects.filter(
+        asap_filter | absolute_filter,
+        status=ParticipantMessageStatus.scheduled,
+    ).values_list("id", flat=True)
+    for participant_message_id in participant_message_ids:
+        queue_celery_task(
+            celery_send_message_push_notification
+        )
 
 
 def queue_survey_tasks(now):
@@ -54,23 +71,66 @@ def queue_survey_tasks(now):
             f"Queuing up survey push notification for participant {participant_id} for schedules "
             f"{schedule_ids}"
         )
-        queue_celery_task(participant_id, schedule_ids)
+        queue_celery_task(
+            celery_send_survey_push_notification,
+            args=[participant_id, schedule_ids]
+        )
 
 
-def queue_celery_task(participant_id: int, schedule_pks: List[int]):
-    safe_apply_async(
-        celery_send_push_notification,
-        args=[participant_id, schedule_pks],
-        max_retries=0,
-        expires=(datetime.utcnow() + timedelta(minutes=5)).replace(second=30, microsecond=0),
-        task_track_started=True,
-        task_publish_retry=False,
-        retry=False,
-    )
+def queue_celery_task(func, *args, **kwargs):
+    default_kwargs = {
+        "max_retries": 0,
+        "expires": (datetime.utcnow() + timedelta(minutes=5)).replace(second=30, microsecond=0),
+        "task_track_started": True,
+        "task_publish_retry": False,
+        "retry": False,
+    }
+    combined_kwargs = {**default_kwargs, **kwargs}
+    return safe_apply_async(func, *args, **combined_kwargs)
 
 
 @push_send_celery_app.task(queue=PUSH_NOTIFICATION_SEND_QUEUE)
-def celery_send_push_notification(participant_id: int, schedule_pks: List[int]):
+def celery_send_message_push_notification(participant_message_id: int):
+    with make_error_sentry(sentry_type=SentryTypes.data_processing):
+        participant_message = ParticipantMessage.objects.get(pk=participant_message_id)
+        data_kwargs = {
+            'message': participant_message.message,
+            'type': 'message',
+        }
+        send_push_notification(
+            participant_message.participant,
+            data_kwargs,
+            display_message="You have a new message."
+        )
+        participant_message.record_successful_send()
+
+
+@push_send_celery_app.task(queue=PUSH_NOTIFICATION_SEND_QUEUE)
+def celery_send_survey_push_notification(participant_id: int, schedule_pks: List[int]):
+    participant = Participant.objects.get(pk=participant_id)
+    schedules = participant.scheduled_events.filter(id__in=schedule_pks).prefetch_related('survey')
+    patient_id = participant.patient_id  # patient_id helps with debugging
+    reference_schedule = schedules.order_by("scheduled_time").first()
+    survey_obj_ids = list(schedules.values_list('survey__object_id', flat=True).distinct())
+
+    # we include a nonce in case of notification deduplication.
+    data_kwargs = {
+        'nonce': ''.join(random.choice(OBJECT_ID_ALLOWED_CHARS) for _ in range(32)),
+        'sent_time': reference_schedule.scheduled_time.strftime(API_TIME_FORMAT),
+        'type': 'survey',
+        'survey_ids': json.dumps(list(set(survey_obj_ids))),  # Dedupe.
+    }
+    display_message = "You have a survey to take." if len(survey_obj_ids) == 1 else "You have surveys to take."
+    print(f"Sending push notification to {patient_id} for {survey_obj_ids}...")
+    send_push_notification(participant, data_kwargs, display_message, schedule_pks)
+
+
+def send_push_notification(
+        participant: Participant,
+        notification_data: Dict,
+        display_message: str,
+        schedule_pks: List[int]
+):
     ''' Celery task that sends push notifications. Note that this list of pks may contain duplicates.'''
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
         if not check_firebase_instance():
@@ -78,16 +138,22 @@ def celery_send_push_notification(participant_id: int, schedule_pks: List[int]):
             return
 
         # use the earliest timed schedule as our reference for the sent_time parameter.  (why?)
-        participant = Participant.objects.get(pk=participant_id)
-        patient_id = participant.patient_id  # patient_id helps with debugging
         fcm_token = participant.get_fcm_token().token
         schedules = participant.scheduled_events.filter(id__in=schedule_pks).prefetch_related('survey')
-        reference_schedule = schedules.order_by("scheduled_time").first()
-        survey_obj_ids = list(schedules.values_list('survey__object_id', flat=True).distinct())
 
-        print(f"Sending push notification to {patient_id} for {survey_obj_ids}...")
         try:
-            send_push_notification(participant, reference_schedule, survey_obj_ids, fcm_token)
+            if participant.os_type == Participant.ANDROID_API:
+                message = Message(
+                    android=AndroidConfig(data=notification_data, priority='high'), token=fcm_token,
+                )
+            else:
+                display_message = display_message
+                message = Message(
+                    data=notification_data,
+                    token=fcm_token,
+                    notification=Notification(title="Beiwe", body=display_message),
+                )
+            send_notification(message)
         # error types are documented at firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
         except UnregisteredError:
             print("\nUnregisteredError\n")
@@ -140,36 +206,6 @@ def celery_send_push_notification(participant_id: int, schedule_pks: List[int]):
             return
 
         success_send_handler(participant, fcm_token, schedules)
-
-
-def send_push_notification(
-        participant: Participant,
-        reference_schedule: ScheduledEvent,
-        survey_obj_ids: List[str],
-        fcm_token: str
-):
-    """ Contains the body of the code to send a notification  """
-    # we include a nonce in case of notification deduplication.
-    data_kwargs = {
-        'nonce': ''.join(random.choice(OBJECT_ID_ALLOWED_CHARS) for _ in range(32)),
-        'sent_time': reference_schedule.scheduled_time.strftime(API_TIME_FORMAT),
-        'type': 'survey',
-        'survey_ids': json.dumps(list(set(survey_obj_ids))),  # Dedupe.
-    }
-
-    if participant.os_type == Participant.ANDROID_API:
-        message = Message(
-            android=AndroidConfig(data=data_kwargs, priority='high'), token=fcm_token,
-        )
-    else:
-        display_message = \
-            "You have a survey to take." if len(survey_obj_ids) == 1 else "You have surveys to take."
-        message = Message(
-            data=data_kwargs,
-            token=fcm_token,
-            notification=Notification(title="Beiwe", body=display_message),
-        )
-    send_notification(message)
 
 
 def success_send_handler(participant: Participant, fcm_token: str, schedules: List[ScheduledEvent]):
@@ -240,4 +276,5 @@ def enqueue_weekly_surveys(participant: Participant, schedules: List[ScheduledEv
             set_next_weekly(participant, schedule.survey)
 
 
-celery_send_push_notification.max_retries = 0  # requires the celerytask function object.
+celery_send_survey_push_notification.max_retries = 0  # requires the celerytask function object.
+celery_send_message_push_notification.max_retries = 0  # requires the celerytask function object.
