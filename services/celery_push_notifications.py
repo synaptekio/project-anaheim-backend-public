@@ -19,90 +19,71 @@ from libs.push_notification_helpers import set_next_weekly
 from libs.sentry import make_error_sentry, SentryTypes
 
 
-################################################################E###############
-############################# PUSH NOTIFICATIONS ###############################
-################################################################################
-
-def get_surveys_and_schedules(now):
-    """ Mostly this function exists to reduce namespace clutter. """
-    # get: schedule time is in the past for participants that have fcm tokens.
-    # need to filter out unregistered fcms, database schema sucks for that, do it in python. its fine.
-    query = ScheduledEvent.objects.filter(
-        # core
-        scheduled_time__lte=now, participant__fcm_tokens__isnull=False,
-        # safety
-        participant__deleted=False, survey__deleted=False,
-        # Shouldn't be necessary, placeholder containing correct lte count.
-        # participant__push_notification_unreachable_count__lte=PUSH_NOTIFICATION_ATTEMPT_COUNT
-    ).values_list(
-        "survey__object_id",
-        "participant__fcm_tokens__token",
-        "pk",
-        "participant__patient_id",
-        "participant__fcm_tokens__unregistered",
-    )
-
-    # defaultdicts = clean code, convert to dicts at end.
-    # we need a mapping of fcm tokens (a proxy for participants) to surveys and schedule ids (pks)
-    surveys = defaultdict(list)
-    schedules = defaultdict(list)
-    patient_ids = {}
-    for survey_obj_id, fcm, schedule_id, patient_id, unregistered in query:
-        if unregistered:
-            continue
-        surveys[fcm].append(survey_obj_id)
-        schedules[fcm].append(schedule_id)
-        patient_ids[fcm] = patient_id
-
-    return dict(surveys), dict(schedules), patient_ids
-
-
 def create_push_notification_tasks():
     # we reuse the high level strategy from data processing celery tasks, see that documentation.
-    expiry = (datetime.utcnow() + timedelta(minutes=5)).replace(second=30, microsecond=0)
     now = timezone.now()
-    surveys, schedules, patient_ids = get_surveys_and_schedules(now)
-    print("Surveys:", surveys, sep="\n\t")
-    print("Schedules:", schedules, sep="\n\t")
-    print("Patient_ids:", patient_ids, sep="\n\t")
-
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
         if not check_firebase_instance():
             print("Firebase is not configured, cannot queue notifications.")
             return
+        queue_survey_tasks(now)
 
-        # surveys and schedules are guaranteed to have the same keys, assembling the data structures
-        # is a pain, so it is factored out. sorry, but not sorry. it was a mess.
-        for fcm_token in surveys.keys():
-            print(f"Queueing up push notification for user {patient_ids[fcm_token]} for {surveys[fcm_token]}")
-            safe_apply_async(
-                celery_send_push_notification,
-                args=[fcm_token, surveys[fcm_token], schedules[fcm_token]],
-                max_retries=0,
-                expires=expiry,
-                task_track_started=True,
-                task_publish_retry=False,
-                retry=False,
-            )
+
+def queue_survey_tasks(now):
+    # get: schedule time is in the past for participants that have fcm tokens.
+    query = ScheduledEvent.objects.filter(
+        # core
+        participant__fcm_tokens__isnull=False,
+        participant__fcm_tokens__unregistered=None,  # TODO: should this be here?
+        scheduled_time__lte=now,
+        scheduled_time__gte=now - timedelta(weeks=7),  # If it's older than 1 week, don't send it
+        # safety
+        participant__deleted=False,
+        survey__deleted=False,
+    ).values_list(
+        "participant_id",
+        "id",
+    )
+
+    participants_and_scheduled_events = defaultdict(list)
+    for participant_id, schedule_id in query:
+        participants_and_scheduled_events[participant_id].append(schedule_id)
+
+    for participant_id, schedule_ids in participants_and_scheduled_events.items():
+        print(
+            f"Queuing up survey push notification for participant {participant_id} for schedules "
+            f"{schedule_ids}"
+        )
+        queue_celery_task(participant_id, schedule_ids)
+
+
+def queue_celery_task(participant_id: int, schedule_pks: List[int]):
+    safe_apply_async(
+        celery_send_push_notification,
+        args=[participant_id, schedule_pks],
+        max_retries=0,
+        expires=(datetime.utcnow() + timedelta(minutes=5)).replace(second=30, microsecond=0),
+        task_track_started=True,
+        task_publish_retry=False,
+        retry=False,
+    )
 
 
 @push_send_celery_app.task(queue=PUSH_NOTIFICATION_SEND_QUEUE)
-def celery_send_push_notification(fcm_token: str, survey_obj_ids: List[str], schedule_pks: List[int]):
+def celery_send_push_notification(participant_id: int, schedule_pks: List[int]):
     ''' Celery task that sends push notifications. Note that this list of pks may contain duplicates.'''
-    # Oh.  The reason we need the patient_id is so that we can debug anything ever. lol...
-    patient_id = ParticipantFCMHistory.objects.filter(token=fcm_token) \
-        .values_list("participant__patient_id", flat=True).get()
-
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
         if not check_firebase_instance():
             print("Firebase credentials are not configured.")
             return
 
         # use the earliest timed schedule as our reference for the sent_time parameter.  (why?)
-        participant = Participant.objects.get(patient_id=patient_id)
-        schedules = ScheduledEvent.objects.filter(pk__in=schedule_pks)
+        participant = Participant.objects.get(pk=participant_id)
+        patient_id = participant.patient_id  # patient_id helps with debugging
+        fcm_token = participant.get_fcm_token().token
+        schedules = participant.scheduled_events.filter(id__in=schedule_pks).prefetch_related('survey')
         reference_schedule = schedules.order_by("scheduled_time").first()
-        survey_obj_ids = list(set(survey_obj_ids))  # already deduped; whatever.
+        survey_obj_ids = list(schedules.values_list('survey__object_id', flat=True).distinct())
 
         print(f"Sending push notification to {patient_id} for {survey_obj_ids}...")
         try:
@@ -145,6 +126,7 @@ def celery_send_push_notification(fcm_token: str, survey_obj_ids: List[str], sch
 
         except ValueError as e:
             print("\nValueError\n")
+            print(e)
             # This case occurs ever? is tested for in check_firebase_instance... weird race condition?
             # Error should be transient, and like all other cases we enqueue the next weekly surveys regardless.
             if "The default Firebase app does not exist" in str(e):
@@ -161,7 +143,9 @@ def celery_send_push_notification(fcm_token: str, survey_obj_ids: List[str], sch
 
 
 def send_push_notification(
-        participant: Participant, reference_schedule: ScheduledEvent, survey_obj_ids: List[str],
+        participant: Participant,
+        reference_schedule: ScheduledEvent,
+        survey_obj_ids: List[str],
         fcm_token: str
 ):
     """ Contains the body of the code to send a notification  """
