@@ -1,15 +1,17 @@
 from unittest.mock import patch
 
 from django.urls import reverse
-from tests.common import (BasicDefaultTestCase, GeneralPageTest, PopulatedSessionTestCase,
+from database.user_models import Researcher
+from tests.common import (ADMIN_ROLES, BasicDefaultTestCase, GeneralPageTest, PopulatedSessionTestCase,
     RedirectSessionApiTest, SessionApiTest)
 
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
-from constants.researcher_constants import ResearcherRole
+from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from database.security_models import ApiKey
+from libs.security import generate_easy_alphanumeric_string
 
 
 class TestLoginPages(BasicDefaultTestCase):
@@ -487,3 +489,38 @@ class TestDemoteStudyAdmin(SessionApiTest):
         self.assertFalse(r2.study_relations.exists())
         r2.refresh_from_db()
         self.assertTrue(r2.site_admin)
+
+
+class TestCreateNewResearcher(PopulatedSessionTestCase):
+    ENDPOINT_NAME = "system_admin_pages.create_new_researcher"
+    
+    def test_load_page_at_endpoint(self):
+        for user_role in ALL_RESEARCHER_TYPES:
+            prior_researcher_count = Researcher.objects.count()
+            self.assign_role(self.session_researcher, user_role)
+            resp = self.client.get(reverse(self.ENDPOINT_NAME))
+            if user_role in ADMIN_ROLES:
+                self.assertEqual(resp.status_code, 200)
+            else:
+                self.assertEqual(resp.status_code, 403)
+            self.assertEqual(prior_researcher_count, Researcher.objects.count())
+    
+    def test_create_researcher(self):
+        for user_role in ALL_RESEARCHER_TYPES:
+            prior_researcher_count = Researcher.objects.count()
+            self.assign_role(self.session_researcher, user_role)
+            username = generate_easy_alphanumeric_string()
+            password = generate_easy_alphanumeric_string()
+            resp = self.client.post(
+                reverse(self.ENDPOINT_NAME), data={"admin_id": username, "password": password}
+            )
+            
+            if user_role in ADMIN_ROLES:
+                self.assertEqual(resp.status_code, 302)
+                self.assertEqual(prior_researcher_count + 1, Researcher.objects.count())
+                self.assertTrue(Researcher.check_password(username, password))
+            else:
+                self.assertEqual(resp.status_code, 403)
+                self.assertEqual(prior_researcher_count, Researcher.objects.count())
+
+    
