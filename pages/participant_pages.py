@@ -58,13 +58,14 @@ def participant_page(request: ResearcherRequest, study_id: int, patient_id: str)
         study = participant.study
     except Participant.DoesNotExist:
         return abort(404)
-
+    
     # safety check, enforce fields and interventions to be present for both page load and edit.
     add_fields_and_interventions(participant, study)
-
+    
+    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         return render_participant_page(request, participant, study)
-
+    
     # update intervention dates for participant
     for intervention in study.interventions.all():
         input_date = request.POST.get(f"intervention{intervention.id}", None)
@@ -72,18 +73,18 @@ def participant_page(request: ResearcherRequest, study_id: int, patient_id: str)
         if input_date:
             intervention_date.date = datetime.strptime(input_date, API_DATE_FORMAT).date()
             intervention_date.save()
-
+    
     # update custom fields dates for participant
     for field in study.fields.all():
         input_id = f"field{field.id}"
         field_value = participant.field_values.get(field=field)
         field_value.value = request.POST.get(input_id, None)
         field_value.save()
-
+    
     # always call through the repopulate everything call, even though we only need to handle
     # relative surveys, the function handles extra cases.
     repopulate_all_survey_scheduled_events(study, participant)
-
+    
     messages.success(request, 'Successfully edited participant {participant.patient_id}.')
     return redirect(request.referrer)
 
@@ -101,7 +102,7 @@ def render_participant_page(request: ResearcherRequest, participant: Participant
     participant_fields_map = {
         name: value for name, value in participant.field_values.values_list("field__field_name", "value")
     }
-
+    
     # list of tuples of (intervention id, intervention name, intervention date)
     intervention_data = [
         (intervention.id, intervention.name, intervention_dates_map.get(intervention.id, ""))
@@ -112,13 +113,13 @@ def render_participant_page(request: ResearcherRequest, participant: Participant
         (field_id, field_name, participant_fields_map.get(field_name, ""))
         for field_id, field_name in study.fields.order_by("field_name").values_list('id', "field_name")
     ]
-
+    
     notification_attempts_count = participant.archived_events.count()
     survey_names = get_survey_names_dict(study)
     last_archived_event = ArchivedEvent.get_values_for_most_recent_notification(participant.id)
     latest_notification_attempt = \
         get_notification_details(last_archived_event, study.timezone, survey_names)
-
+    
     return render(
         request,
         'participant.html',
@@ -146,10 +147,10 @@ def get_survey_names_dict(study):
 def get_notification_details(archived_event, study_timezone, survey_names):
     # Maybe there's a less janky way to get timezone name, but I don't know what it is:
     timezone_short_name = study_timezone.tzname(datetime.now().astimezone(study_timezone))
-
+    
     def format_datetime(dt):
         return dt.astimezone(study_timezone).strftime('%A %b %-d, %Y, %-I:%M %p') + " (" + timezone_short_name + ")"
-
+    
     notification = {}
     if archived_event is not None:
         notification['scheduled_time'] = format_datetime(archived_event['scheduled_time'])
@@ -159,5 +160,5 @@ def get_notification_details(archived_event, study_timezone, survey_names):
         notification['survey_version'] = archived_event['survey_version'].strftime('%Y-%m-%d')
         notification['schedule_type'] = archived_event['schedule_type']
         notification['status'] = archived_event['status']
-
+    
     return notification

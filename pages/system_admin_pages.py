@@ -104,20 +104,20 @@ def validate_ios_credentials(credentials: str) -> bool:
 def manage_researchers(request: ResearcherRequest):
     # get the study names that each user has access to, but only those that the current admin  also
     # has access to.
-
+    
     if request.session_researcher.site_admin:
         session_ids = Study.objects.exclude(deleted=True).values_list("id", flat=True)
     else:
         session_ids = request.session_researcher.\
             study_relations.filter(study__deleted=False).values_list("study__id", flat=True)
-
+    
     researcher_list = []
     for researcher in get_administerable_researchers(request):
         allowed_studies = Study.get_all_studies_by_name().filter(
             study_relations__researcher=researcher, study_relations__study__in=session_ids,
         ).values_list('name', flat=True)
         researcher_list.append((researcher.as_unpacked_native_python(), list(allowed_studies)))
-
+    
     return render(request, 'manage_researchers.html', context=dict(admins=researcher_list))
 
 
@@ -127,19 +127,19 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
     # Wow this got complex...
     session_researcher = request.session_researcher
     edit_researcher = Researcher.objects.get(pk=researcher_pk)
-
+    
     # site admins can edit study admins, but not other site admins.
     # (users do not edit their own passwords on this page.)
     editable_password = (
             not edit_researcher.username == session_researcher.username
             and not edit_researcher.site_admin
     )
-
+    
     # if the session researcher is not a site admin then we need to restrict password editing
     # to only researchers that are not study_admins anywhere.
     if not session_researcher.site_admin:
         editable_password = editable_password and not edit_researcher.is_study_admin()
-
+    
     # edit_study_info is a list of tuples of (study relationship, whether that study is editable by
     # the current session admin, and the study itself.)
     visible_studies = session_researcher.get_visible_studies_by_name()
@@ -150,7 +150,7 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
         # When the session admin is just a study admin then we need to determine if the study that
         # the session admin can see is also one they are an admin on so we can display buttons.
         administerable_studies = set(get_administerable_studies_by_name(request).values_list("pk", flat=True))
-
+        
         # We need the overlap of the edit_researcher studies with the studies visible to the session
         # admin, and we need those relationships for display purposes on the page.
         edit_study_relationship_map = {
@@ -159,7 +159,7 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
                 .filter(study__in=visible_studies)
                 .values_list("study_id", "relationship")
         }
-
+        
         # get the relevant studies, populate with relationship, editability, and the study.
         edit_study_info = []
         for study in visible_studies.filter(pk__in=edit_study_relationship_map.keys()):
@@ -168,7 +168,7 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
                 study.id in administerable_studies,
                 study,
             ))
-
+    
     return render(
         request,
         'edit_researcher.html',
@@ -220,13 +220,14 @@ def demote_study_admin(request: ResearcherRequest):
 @require_http_methods(['GET', 'POST'])
 @authenticate_admin
 def create_new_researcher(request: ResearcherRequest):
+    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         return render(request, 'create_new_researcher.html')
-
+    
     # Drop any whitespace or special characters from the username
     username = ''.join(e for e in request.POST.get('admin_id', '') if e.isalnum())
     password = request.POST.get('password', '')
-
+    
     if Researcher.objects.filter(username=username).exists():
         messages.error(request, f"There is already a researcher with username {username}")
         return redirect('/create_new_researcher')
@@ -261,7 +262,7 @@ def edit_study(request, study_id=None):
     query = Researcher.filter_alphabetical(study_relations__study_id=study_id).values_list(
         "id", "username", "study_relations__relationship", "site_admin"
     )
-
+    
     # transform raw query data as needed
     listed_researchers = []
     for pk, username, relationship, site_admin in query:
@@ -271,7 +272,7 @@ def edit_study(request, study_id=None):
             "Site Admin" if site_admin else relationship.replace("_", " ").title(),
             site_admin
         ))
-
+    
     return render(
         request,
         'edit_study.html',
@@ -291,27 +292,28 @@ def create_study(request: ResearcherRequest):
     # Only a SITE admin can create new studies.
     if not request.session_researcher.site_admin:
         return abort(403)
-
+    
+    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         studies = [study.as_unpacked_native_python() for study in Study.get_all_studies_by_name()]
         return render(request, 'create_study.html', context=dict(studies=studies))
-
+    
     name = request.POST.get('name', '')
     encryption_key = request.POST.get('encryption_key', '')
     is_test = request.POST.get('is_test', "").lower() == 'true'  # 'true' -> True, 'false' -> False
     duplicate_existing_study = request.POST.get('copy_existing_study', None) == 'true'
     forest_enabled = request.POST.get('forest_enabled', "").lower() == 'true'
-
+    
     if len(name) > 5000:
         with make_error_sentry(SentryTypes.elastic_beanstalk):
             raise Exception("Someone tried to create a study with a suspiciously long name.")
         return abort(400)
-
+    
     if escape(name) != name:
         with make_error_sentry(SentryTypes.elastic_beanstalk):
             raise Exception("Someone tried to create a study with unsafe characters in its name.")
         return abort(400)
-
+    
     try:
         new_study = Study.create_with_object_id(
             name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled
@@ -322,7 +324,7 @@ def create_study(request: ResearcherRequest):
             copy_surveys = request.form.get('surveys', None) == 'true'
             old_study = Study.objects.get(pk=request.form.get('existing_study_id', None))
             device_settings, surveys, interventions = unpack_json_study(format_study(old_study))
-
+            
             copy_study_from_json(
                 new_study,
                 device_settings if copy_device_settings else {},
@@ -341,10 +343,10 @@ def create_study(request: ResearcherRequest):
                 messages.success(f"Overwrote {new_study.name}'s App Settings with custom values.")
             else:
                 messages.success(f"Did not alter {new_study.name}'s App Settings.")
-
+        
         messages.success(f'Successfully created study {name}.')
         return redirect(f'/device_settings/{new_study.pk}')
-
+    
     except ValidationError as ve:
         # display message describing failure based on the validation error (hacky, but works.)
         for field, message in ve.message_dict.items():
@@ -374,7 +376,7 @@ def toggle_study_forest_enabled(request: ResearcherRequest, study_id=None):
 def delete_study(request, study_id=None):
     # Site admins and study admins can delete studies.
     assert_admin(request, study_id)
-
+    
     if request.POST.get('confirmation', 'false') == 'true':
         study = Study.objects.get(pk=study_id)
         study.deleted = True
@@ -389,7 +391,8 @@ def device_settings(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
     researcher = request.session_researcher
     readonly = True if not researcher.check_study_admin(study_id) and not researcher.site_admin else False
-
+    
+    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     # if read only....
     if request.method == 'GET':
         return render(
@@ -401,10 +404,10 @@ def device_settings(request: ResearcherRequest, study_id=None):
                 readonly=readonly,
             )
         )
-
+    
     if readonly:
         abort(403)
-
+    
     params = {k: v for k, v in request.POST.items() if not k.startswith("consent_section")}
     consent_sections = {k: v for k, v in request.POST.items() if k.startswith("consent_section")}
     params = checkbox_to_boolean(CHECKBOX_TOGGLES, params)
@@ -437,21 +440,21 @@ def manage_firebase_credentials(request: ResearcherRequest):
 @authenticate_admin
 def upload_backend_firebase_cert(request: ResearcherRequest):
     uploaded = request.FILES.get('backend_firebase_cert', None)
-
+    
     if uploaded is None:
         messages.error(request, Markup(ALERT_EMPTY_TEXT))
         return redirect('/manage_firebase_credentials')
-
+    
     try:
         cert = uploaded.read().decode()
     except UnicodeDecodeError:  # raised for an unexpected file type
         messages.error(request, Markup(ALERT_DECODE_ERROR_TEXT))
         return redirect('/manage_firebase_credentials')
-
+    
     if not cert:
         messages.error(request, Markup(ALERT_EMPTY_TEXT))
         return redirect('/manage_firebase_credentials')
-
+    
     instantiation_errors = get_firebase_credential_errors(cert)
     if instantiation_errors:
         # noinspection StrFormat
@@ -460,7 +463,7 @@ def upload_backend_firebase_cert(request: ResearcherRequest):
         error_string = ALERT_SPECIFIC_ERROR_TEXT.format(error_message=instantiation_errors)
         messages.error(request, Markup(error_string))
         return redirect('/manage_firebase_credentials')
-
+    
     # delete and recreate to get metadata timestamps
     FileAsText.objects.filter(tag=BACKEND_FIREBASE_CREDENTIALS).delete()
     FileAsText.objects.create(tag=BACKEND_FIREBASE_CREDENTIALS, text=cert)

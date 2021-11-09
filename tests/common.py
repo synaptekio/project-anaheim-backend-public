@@ -60,6 +60,7 @@ ALL_ROLE_PERMUTATIONS = (
 )
 
 REAL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher)
+ALL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, "site_admin", None)
 
 
 class CommonTestCase(TestCase, ReferenceObjectMixin):
@@ -139,7 +140,7 @@ class PopulatedSessionTestCase(BasicDefaultTestCase):
             yield session_researcher, r2
 
 
-# These mixin classes implement some common patterns, please educate yourself on what the 
+# These mixin classes implement some common patterns, please educate yourself on what the
 # "do_post", "do_get", and "do_test_status_code", functions do, and use them.
 
 
@@ -190,14 +191,14 @@ class SessionApiTest(PopulatedSessionTestCase):
 class GeneralPageTest(PopulatedSessionTestCase):
     ENDPOINT_NAME = None
     
-    def do_get(self, *get_params, **kwargs):
+    def do_get(self, *get_params, **kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
         response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
-    def do_test_status_code(self, status_code: int, *params, **kwargs):
+    def do_test_status_code(self, status_code: int, *params, **kwargs) -> HttpResponse:
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
         resp = self.do_get(*params, **kwargs)
