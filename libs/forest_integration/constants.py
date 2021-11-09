@@ -36,4 +36,18 @@ TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS = {
     (ForestTree.jasmine, 'av_flight_duration'): ('flight_duration_average', None),
     (ForestTree.jasmine, 'sd_flight_duration'): ('flight_duration_standard_deviation', None),
     (ForestTree.jasmine, 'diameter'): ('distance_diameter', None),
+    
+    (ForestTree.willow, "num_in_call"): ("call_incoming_count", None),
+    (ForestTree.willow, "num_in_caller"): ("call_incoming_degree", None),
+    (ForestTree.willow, "total_mins_in_call"): ("call_incoming_duration", None),
+    (ForestTree.willow, "num_out_call"): ("call_outgoing_count", None),
+    (ForestTree.willow, "num_out_caller"): ("call_outgoing_degree", None),
+    (ForestTree.willow, "total_mins_out_call"): ("call_outgoing_duration", None),
+    
+    (ForestTree.willow, "num_r"): ("text_incoming_count", None),
+    (ForestTree.willow, "num_r_tel"): ("text_incoming_degree", None),
+    (ForestTree.willow, "total_char_r"): ("text_incoming_length", None),
+    (ForestTree.willow, "num_s"): ("text_outgoing_count", None),
+    (ForestTree.willow, "num_s_tel"): ("text_outgoing_degree", None),
+    (ForestTree.willow, "total_char_s"): ("text_outgoing_length", None),
 }
