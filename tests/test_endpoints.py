@@ -457,7 +457,6 @@ class TestElevateResearcher(SessionApiTest):
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
 
 
-# not done
 class TestDemoteStudyAdmin(SessionApiTest):
     # FIXME: this endpoint does not test for site admin cases correctly, the test passes but is
     # wrong. Behavior is fine because it has no relevant side effects except for the know bug where
@@ -500,7 +499,7 @@ class TestDemoteStudyAdmin(SessionApiTest):
 
 
 class TestCreateNewResearcher(SessionApiTest):
-    
+    """ Admins should be able to create and load the page. """
     ENDPOINT_NAME = "system_admin_pages.create_new_researcher"
     
     def test_load_page_at_endpoint(self):
@@ -541,8 +540,41 @@ class TestManageStudies(GeneralPageTest):
     def test(self):
         for user_role in ALL_ROLES:
             self.assign_role(self.session_researcher, user_role)
-            resp = self.client.get(reverse(self.ENDPOINT_NAME))
+            resp = self.do_get()
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 200)
             else:
                 self.assertEqual(resp.status_code, 403)
+
+
+class TestEditStudy(GeneralPageTest):
+    """ Test basics of permissions, test details of the study are appropriately present on page... """
+    ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    def test_only_admins_allowed(self):
+        for user_role in ALL_ROLES:
+            self.assign_role(self.session_researcher, user_role)
+            resp = self.do_get(study_id=self.session_study.id)
+            if user_role in ADMIN_ROLES:
+                self.assertEqual(resp.status_code, 200)
+            else:
+                self.assertEqual(resp.status_code, 403)
+    
+    def test_content_study_admin(self):
+        """ tests that various important pieces of information are present """
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.session_study.update(is_test=True, forest_enabled=False)
+        resp = self.do_get(study_id=self.session_study.id)
+        self.assert_present("Forest is currently disabled.", resp.content)
+        self.assert_present("This is a test study", resp.content)
+        self.assert_present(self.session_researcher.username, resp.content)
+        
+        self.session_study.update(is_test=False, forest_enabled=True)
+        r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
+        
+        resp = self.do_get(study_id=self.session_study.id)
+        self.assertEqual(resp.status_code, 200)
+        self.assert_present(self.session_researcher.username, resp.content)
+        self.assert_present(r2.username, resp.content)
+        self.assert_present("Forest is currently enabled.", resp.content)
+        self.assert_present("This is a production study", resp.content)

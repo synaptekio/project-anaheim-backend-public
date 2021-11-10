@@ -11,9 +11,9 @@ class ReferenceObjectMixin:
     """ This class implements DB object creation.  Some objects have convenience property wrappers
     because they are so common. """
     
-    DEFAULT_RESEARCHER_NAME = "researcher"
+    DEFAULT_RESEARCHER_NAME = "session_researcher"
     DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
-    DEFAULT_STUDY_NAME = "teststudy"
+    DEFAULT_STUDY_NAME = "session_study"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
     
     # For all defaults make sure to maintain the pattern that includes the use of the save function,
@@ -44,13 +44,12 @@ class ReferenceObjectMixin:
     
     def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
         """ Applies the study relation to the session researcher to the session study. """
-        try:
-            return self._default_study_relation
-        except AttributeError:
-            self._default_study_relation = self.generate_study_relation(
-                self.session_researcher, self.session_study, relation
-            )
-            return self._default_study_relation
+        if hasattr(self, "_default_study_relation"):
+            raise Exception("can only be called once per test (currently?)")
+        self._default_study_relation = self.generate_study_relation(
+            self.session_researcher, self.session_study, relation
+        )
+        return self._default_study_relation
     
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         """ Creates a study relation based on the input values, returns it. """
