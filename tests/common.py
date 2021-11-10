@@ -5,10 +5,10 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
-from tests.helpers import ReferenceObjectMixin
 
-from constants.researcher_constants import ResearcherRole
+from constants.testing_constants import REAL_ROLES
 from database.user_models import Researcher
+from tests.helpers import ReferenceObjectMixin
 
 
 # this makes print statements during debugging easier to read by bracketting the statement of which
@@ -36,34 +36,9 @@ if VERBOSE_2_OR_3:
     messages.error = monkeypatch_messages(messages.error)
 
 
-# ALL_ROLE_PERMUTATIONS is generated from this:
-# ALL_ROLE_PERMUTATIONS = tuple(
-# from constants.researcher_constants import ResearcherRole
-# from itertools import permutations
-#     two_options for two_options in permutations(
-#     ("site_admin", ResearcherRole.study_admin, ResearcherRole.researcher, None), 2)
-# )
-
-ALL_ROLE_PERMUTATIONS = (
-    ('site_admin', 'study_admin'),
-    ('site_admin', 'study_researcher'),
-    ('site_admin', None),
-    ('study_admin', 'site_admin'),
-    ('study_admin', 'study_researcher'),
-    ('study_admin', None),
-    ('study_researcher', 'site_admin'),
-    ('study_researcher', 'study_admin'),
-    ('study_researcher', None),
-    (None, 'site_admin'),
-    (None, 'study_admin'),
-    (None, 'study_researcher'),
-)
-
-REAL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher)
-ALL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, "site_admin", None)
-ADMIN_ROLES = (ResearcherRole.study_admin, "site_admin")
-
 class CommonTestCase(TestCase, ReferenceObjectMixin):
+    """ This class contains the various test-oriented features, for example the assert_present
+    method that handles a common case of some otherwise distracting type coersion. """
     
     def setUp(self) -> None:
         if VERBOSE_2_OR_3:
@@ -99,8 +74,10 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
 
 
-class BasicDefaultTestCase(CommonTestCase):
-    # common client operations
+class BasicSessionTestCase(CommonTestCase):
+    """ This class has the basics needed to do login operations, but runs no extra setup before each
+    test.  This class is probably only useful to test the login pages. """
+    
     def do_default_login(self):
         # logs in the default researcher user, assumes it has been instantiated.
         return self.do_login(self.DEFAULT_RESEARCHER_NAME, self.DEFAULT_RESEARCHER_PASSWORD)
@@ -112,14 +89,20 @@ class BasicDefaultTestCase(CommonTestCase):
         )
 
 
-class PopulatedSessionTestCase(BasicDefaultTestCase):
+class PopulatedSessionTestCase(BasicSessionTestCase):
+    """ This class sets up a logged-in researcher user (using the variable name "session_researcher"
+    to mimic the convenience variable in the real code).  This is the base test class that all
+    researcher endpoints should use. """
     
     def setUp(self) -> None:
-        self.session_researcher  # setup the default user, we always need it.
+        """ Log in the session researcher. """
+        self.session_researcher
         self.do_default_login()
         return super().setUp()
     
     def assign_role(self, researcher: Researcher, role: str):
+        """ Helper function to assign a user role to a Researcher.  Clears all existing roles on
+        that user. """
         if role in REAL_ROLES:
             researcher.study_relations.all().delete()
             self.generate_study_relation(researcher, self.session_study, role)
@@ -132,6 +115,8 @@ class PopulatedSessionTestCase(BasicDefaultTestCase):
             researcher.update(site_admin=True)
     
     def iterate_researcher_permutations(self):
+        """ Iterates over all possible combinations of user types for the session researcher and a
+        target researcher. """
         session_researcher = self.session_researcher
         r2 = self.generate_researcher()
         for session_researcher_role, target_researcher_role in ALL_ROLE_PERMUTATIONS:
@@ -145,14 +130,19 @@ class PopulatedSessionTestCase(BasicDefaultTestCase):
 
 
 class RedirectSessionApiTest(PopulatedSessionTestCase):
+    """ Some api calls return only redirects, and the fact of an error is reported only via the
+    django.contrib.messages library.  This class implements some specific helper functions to handle
+    very common cases.
+    When using this class make sure to set ENDPOINT_NAME and REDIRECT_ENDPOINT_NAME. The first is
+    used to populate the http post operation, the second is part of validation inside do_post. """
+    
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
-    # some api calls only come from pages, which means they need to return 302 in all cases.
     def do_post(self, **post_params) -> HttpResponseRedirect:
-        # instantiate the default researcher, pass through params, reverse the enpoint and pass in
-        # post params, then refresh default researcher just in case it has mutated during the call.
-        self.session_researcher
+        # Instantiate the default researcher, pass through params, reverse ENDPOINT_NAME and pass in
+        # post params, then refresh default researcher just in case it was mutated during the call.
+        # Assert that the request was redirected, and that it points to the appropriate endpoint.
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
         self.session_researcher.refresh_from_db()
         self.assertEqual(response.status_code, 302)
@@ -161,34 +151,41 @@ class RedirectSessionApiTest(PopulatedSessionTestCase):
         return response
     
     def get_redirect_content(self, *args, **kwargs) -> bytes:
-        # these tests usually need a page to test for content messages.  We use the Edit Credentials
-        # page (admin_pages.manage_credentials) because this page should be accessible by all user
-        # types, takes no arguments, and a bunch of these commands work on this page anyway.
+        # Tests for this class usually need a page to test for content messages.  This method loads
+        # the REDIRECT_ENDPOINT_NAME page, ensures it has the required 200 code, and returns the
+        # html content for further checking by the test itself.
         resp = self.client.get(reverse(self.REDIRECT_ENDPOINT_NAME), *args, **kwargs)
-        self.assertEqual(resp.status_code, 200)  # if it is not a 200 something has gone wrong.
+        self.assertEqual(resp.status_code, 200)
         return resp.content
 
 
 class SessionApiTest(PopulatedSessionTestCase):
+    """ This class is for non-redirect api endpoints.  It includes helper functions for issuing a
+    post request to the endpoint declared for ENDPOINT_NAME and testing its return code. """
+    
     ENDPOINT_NAME = None
     
-    # some api calls return real 400 codes
     def do_post(self, **post_params) -> HttpResponse:
-        # instantiate the default researcher, pass through params, refresh default researcher.
-        self.session_researcher
+        # instantiate the default researcher, pass through params, refresh default researcher, and
+        # return the response object for further testing.
         response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
         self.session_researcher.refresh_from_db()
         return response
     
-    def do_test_status_code(self, status_code: int, researcher: Researcher) -> HttpResponse:
+    def do_test_status_code(self, status_code: int, **kwargs) -> HttpResponse:
+        """ This helper function takes a status code in addition to post paramers, and tests for
+        it.  Use for writing concise tests. """
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.do_post(researcher_id=researcher.id, study_id=self.session_study.id)
+        resp = self.do_post(**kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp
 
 
 class GeneralPageTest(PopulatedSessionTestCase):
+    """ This class implements a do_get and a do_test_status_code function for implementing concise
+    tests on normal, non-api web pages. """
+    
     ENDPOINT_NAME = None
     
     def do_get(self, *get_params, **kwargs) -> HttpResponse:

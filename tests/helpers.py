@@ -1,5 +1,5 @@
-
 from constants.researcher_constants import ResearcherRole
+from constants.testing_constants import REAL_ROLES
 from database.study_models import Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
@@ -8,25 +8,22 @@ from libs.security import generate_easy_alphanumeric_string
 
 
 class ReferenceObjectMixin:
+    """ This class implements DB object creation.  Some objects have convenience property wrappers
+    because they are so common. """
+    
     DEFAULT_RESEARCHER_NAME = "researcher"
     DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
     DEFAULT_STUDY_NAME = "teststudy"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
     
-    # for all defaults make sure to maintain the pattern that includes the use of the save function
-    
-    @property
-    def default_forest_params(self) -> ForestParam:
-        try:
-            return self._default_forest_params
-        except AttributeError:
-            pass
-        # there is an actual default ForestParams defined in a migration.
-        self._default_forest_params = ForestParam.objects.get(default=True)
-        return self._default_forest_params
+    # For all defaults make sure to maintain the pattern that includes the use of the save function,
+    # this codebase implements a special save function that validates before passing through.
     
     @property
     def session_study(self) -> Study:
+        """ Gets or creates a default study object.  Note that this has the side effect of creating
+        a study settings db object as well.  This is a default object, and will be auto-populated
+        in scenarios where such an object is required but not provided. """
         try:
             return self._default_study
         except AttributeError:
@@ -46,6 +43,7 @@ class ReferenceObjectMixin:
         return study
     
     def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
+        """ Applies the study relation to the session researcher to the session study. """
         try:
             return self._default_study_relation
         except AttributeError:
@@ -55,6 +53,8 @@ class ReferenceObjectMixin:
             return self._default_study_relation
     
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
+        """ Creates a study relation based on the input values, returns it. """
+        self.assertIn(relation, REAL_ROLES)  # assertIn is part of TestCase.
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()
         return relation
@@ -62,6 +62,8 @@ class ReferenceObjectMixin:
     # Researcher
     @property
     def session_researcher(self) -> Researcher:
+        """ Gets or creates the session researcher object.  This is a default object, and will be
+        auto-populated in scenarios where such an object is required but not provided.  """
         try:
             return self._default_researcher
         except AttributeError:
@@ -69,10 +71,11 @@ class ReferenceObjectMixin:
         self._default_researcher = self.generate_researcher(self.DEFAULT_RESEARCHER_NAME)
         return self._default_researcher
     
-    def generate_researcher(self,
-                            name: str = None,
-                            relation_to_session_study: str = None,
-                            site_admin: bool = False) -> Researcher:
+    def generate_researcher(
+        self, name: str = None, relation_to_session_study: str = None, site_admin: bool = False
+    ) -> Researcher:
+        """ Generate a researcher based on the parameters provided, relation_to_session_study is
+        optional. """
         researcher = Researcher(
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
@@ -80,15 +83,16 @@ class ReferenceObjectMixin:
             site_admin=site_admin,
             is_batch_user=False,
         )
-        # set password saves
+        # set password saves.
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
         if relation_to_session_study is not None:
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
         
         return researcher
     
-    @property
-    def default_participant(self) -> Participant:
+    def default_participant(self, ios=False) -> Participant:
+        """ Creates a participant object on the session study.  This is a default object, and will
+        be auto-populated in scenarios where such an object is required but not provided. """
         try:
             return self._default_participant
         except AttributeError:
@@ -98,7 +102,7 @@ class ReferenceObjectMixin:
             device_id='_xjeWARoRevoDoL9OKDwRMpYcDhuAxm4nwedUgABxWA=',
             password='2oWT7-6Su2WMDRWpclT0q2glam7AD5taUzHIWRnO490=',
             salt='1NB2kCxOOYzayIYGZYlhHw==',
-            os_type="ANDROID",
+            os_type="IOS" if ios else "ANDROID",
             timezone_name="America/New_York",
             push_notification_unreachable_count=0,
             deleted=False,
@@ -110,8 +114,9 @@ class ReferenceObjectMixin:
     
     @property
     def session_survey(self) -> Survey:
+        """ Creates a survey with no content attached to the session study. """
         try:
-            self._session_survey
+            self._default_survey
         except AttributeError:
             pass
         survey = Survey(
@@ -120,53 +125,25 @@ class ReferenceObjectMixin:
             object_id=self.DEFAULT_SURVEY_OBJECT_ID,
         )
         survey.save()
-        self._session_survey = survey
+        self._default_survey = survey
         return survey
     
-    # @property
-    # def default_device_settings(self):
-    #     # TODO: this should go off of the defaults in the database table
-    #     return {
-    #         'about_page_text': "irrelevant string 1",
-    #         'accelerometer': True,
-    #         'accelerometer_off_duration_seconds': 10,
-    #         'accelerometer_on_duration_seconds': 10,
-    #         'allow_upload_over_cellular_data': False,
-    #         'bluetooth': False,
-    #         'bluetooth_global_offset_seconds': 0,
-    #         'bluetooth_on_duration_seconds': 60,
-    #         'bluetooth_total_duration_seconds': 300,
-    #         'call_clinician_button_text': "irrelevant string 2",
-    #         'calls': True,
-    #         'check_for_new_surveys_frequency_seconds': 21600,
-    #         'consent_form_text': "irrelevant string 3",
-    #         'consent_sections': "{}", # needs to be a de/serializeable json object
-    #         'create_new_data_files_frequency_seconds': 900,
-    #         'devicemotion': False,
-    #         'devicemotion_off_duration_seconds': 600,
-    #         'devicemotion_on_duration_seconds': 60,
-    #         'gps': True,
-    #         'gps_off_duration_seconds': 600,
-    #         'gps_on_duration_seconds': 60,
-    #         'gyro': False,
-    #         'gyro_off_duration_seconds': 600,
-    #         'gyro_on_duration_seconds': 60,
-    #         'magnetometer': False,
-    #         'magnetometer_off_duration_seconds': 600,
-    #         'magnetometer_on_duration_seconds': 60,
-    #         'power_state': True,
-    #         'proximity': False,
-    #         'reachability': True,
-    #         'seconds_before_auto_logout': 600,
-    #         'survey_submit_success_toast_text': "irrelevant string 4",
-    #         'texts': True,
-    #         'upload_data_files_frequency_seconds': 3600,
-    #         'voice_recording_max_time_length_seconds': 240,
-    #         'wifi': True,
-    #         'wifi_log_frequency_seconds': 300
-    #     }
+    @property
+    def default_forest_params(self) -> ForestParam:
+        """ Creates a default forest params object.  This is a default object, and will be
+        auto-populated in scenarios where such an object is required but not provided. """
+        try:
+            return self._default_forest_params
+        except AttributeError:
+            pass
+        # there is an actual default ForestParams defined in a migration.
+        self._default_forest_params = ForestParam.objects.get(default=True)
+        return self._default_forest_params
+
 
 def compare_dictionaries(reference, comparee, ignore=None):
+    """ Compares two dictionary objects and displays the differences in a useful fashion. """
+    
     if not isinstance(reference, dict):
         raise Exception("reference was %s, not dictionary" % type(reference))
     if not isinstance(comparee, dict):

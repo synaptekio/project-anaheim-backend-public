@@ -1,20 +1,21 @@
 from unittest.mock import patch
 
 from django.urls import reverse
-from database.user_models import Researcher
-from tests.common import (ADMIN_ROLES, BasicDefaultTestCase, GeneralPageTest, PopulatedSessionTestCase,
-    RedirectSessionApiTest, SessionApiTest)
 
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
+from constants.testing_constants import ADMIN_ROLES, ALL_ROLES
 from database.security_models import ApiKey
+from database.user_models import Researcher
 from libs.security import generate_easy_alphanumeric_string
+from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
+    RedirectSessionApiTest, SessionApiTest)
 
 
-class TestLoginPages(BasicDefaultTestCase):
+class TestLoginPages(BasicSessionTestCase):
     """ Basic authentication test, make sure that the machinery for logging a user
     in and out are functional at setting and clearing a session. """
     
@@ -293,7 +294,7 @@ class TestDashboardStream(PopulatedSessionTestCase):
         self.set_session_study_relation()
         url = reverse(
             "dashboard_api.dashboard_participant_page",
-            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant.patient_id),
+            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant().patient_id),
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -415,68 +416,75 @@ class TestEditResearcher(GeneralPageTest):
 
 class TestElevateResearcher(SessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.elevate_researcher"
-    # this one is tedious.
+    # (this one is tedious.)
     
     def test_self_as_researcher_on_study(self):
         self.set_session_study_relation(ResearcherRole.researcher)
-        self.do_test_status_code(403, self.session_researcher)
+        self.do_test_status_code(
+            403, researcher_id=self.session_researcher.id, study_id=self.session_study.id
+        )
     
     def test_self_as_study_admin_on_study(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
-        self.do_test_status_code(403, self.session_researcher)
+        self.do_test_status_code(
+            403, researcher_id=self.session_researcher.id, study_id=self.session_study.id
+        )
     
     def test_researcher_as_study_admin_on_study(self):
         # this is the only case that succeeds
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
-        self.do_test_status_code(302, r2)
+        self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
     
     def test_study_admin_as_study_admin_on_study(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.study_admin)
-        self.do_test_status_code(403, r2)
+        self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.study_admin)
     
     def test_site_admin_as_study_admin_on_study(self):
         self.session_researcher
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(site_admin=True)
-        self.do_test_status_code(403, r2)
+        self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
     
     def test_site_admin_as_site_admin(self):
         self.session_researcher.update(site_admin=True)
         r2 = self.generate_researcher(site_admin=True)
-        self.do_test_status_code(403, r2)
+        self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
 
 
 # not done
 class TestDemoteStudyAdmin(SessionApiTest):
+    # FIXME: this endpoint does not test for site admin cases correctly, the test passes but is
+    # wrong. Behavior is fine because it has no relevant side effects except for the know bug where
+    # site admins need to be manually added to a study before being able to download data.
     ENDPOINT_NAME = "system_admin_pages.demote_study_admin"
     
     def test_researcher_as_researcher(self):
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
-        self.do_test_status_code(403, r2)
+        self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
     
     def test_researcher_as_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
-        self.do_test_status_code(302, r2)
+        self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
     
     def test_study_admin_as_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.study_admin)
-        self.do_test_status_code(302, r2)
+        self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertEqual(r2.study_relations.get().relationship, ResearcherRole.researcher)
     
     def test_site_admin_as_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(site_admin=True)
-        self.do_test_status_code(302, r2)
+        self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.exists())
         r2.refresh_from_db()
         self.assertTrue(r2.site_admin)
@@ -485,16 +493,18 @@ class TestDemoteStudyAdmin(SessionApiTest):
         self.session_researcher.update(site_admin=True)
         self.set_session_study_relation(ResearcherRole.study_admin)
         r2 = self.generate_researcher(site_admin=True)
-        self.do_test_status_code(302, r2)
+        self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.exists())
         r2.refresh_from_db()
         self.assertTrue(r2.site_admin)
 
 
-class TestCreateNewResearcher(PopulatedSessionTestCase):
+class TestCreateNewResearcher(SessionApiTest):
+    
     ENDPOINT_NAME = "system_admin_pages.create_new_researcher"
     
     def test_load_page_at_endpoint(self):
+        # This test should be transformed into a separate endpoint
         for user_role in ALL_RESEARCHER_TYPES:
             prior_researcher_count = Researcher.objects.count()
             self.assign_role(self.session_researcher, user_role)
@@ -511,9 +521,7 @@ class TestCreateNewResearcher(PopulatedSessionTestCase):
             self.assign_role(self.session_researcher, user_role)
             username = generate_easy_alphanumeric_string()
             password = generate_easy_alphanumeric_string()
-            resp = self.client.post(
-                reverse(self.ENDPOINT_NAME), data={"admin_id": username, "password": password}
-            )
+            resp = self.do_post(admin_id=username, password=password)
             
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 302)
@@ -525,15 +533,16 @@ class TestCreateNewResearcher(PopulatedSessionTestCase):
 
 
 class TestManageStudies(GeneralPageTest):
+    """ All we do with this page is make sure it loads... there isn't much to hook onto and
+    determine a failure or a success... the study names are always present in the json on the
+    html... """
     ENDPOINT_NAME = "system_admin_pages.manage_studies"
     
     def test(self):
-        for user_role in ALL_RESEARCHER_TYPES:
+        for user_role in ALL_ROLES:
             self.assign_role(self.session_researcher, user_role)
             resp = self.client.get(reverse(self.ENDPOINT_NAME))
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 200)
             else:
                 self.assertEqual(resp.status_code, 403)
-                
-                

@@ -205,6 +205,9 @@ def elevate_researcher(request: ResearcherRequest):
 @require_POST
 @authenticate_admin
 def demote_study_admin(request: ResearcherRequest):
+    # FIXME: this endpoint does not test for site admin cases correctly, the test passes but is
+    # wrong. Behavior is fine because it has no relevant side effects except for the know bug where
+    # site admins need to be manually added to a study before being able to download data.
     researcher_pk = request.POST.get("researcher_id")
     study_pk = request.POST.get("study_id")
     assert_admin(request, study_pk)
