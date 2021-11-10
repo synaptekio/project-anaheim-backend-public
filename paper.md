@@ -16,6 +16,10 @@ authors:
     affiliation: 3
   - name: Tucker Jaenicke
     affiliation: 2
+  - name: Leila Minowada
+    affiliation: 2
+  - name: Sean Esterkin
+    affiliation: 2
   - name: Alvin Siu
     affiliation: 2
   - name: Josh Zagorsky
