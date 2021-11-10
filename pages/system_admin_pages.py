@@ -389,7 +389,7 @@ def toggle_study_forest_enabled(request: ResearcherRequest, study_id=None):
 # TODO: move to api
 @require_POST
 @authenticate_admin
-def delete_study(request, study_id=None):
+def delete_study(request: ResearcherRequest, study_id=None):
     # Site admins and study admins can delete studies.
     assert_admin(request, study_id)
     
@@ -398,7 +398,8 @@ def delete_study(request, study_id=None):
         study.deleted = True
         study.save()
         messages.success(request, f"Deleted study '{study.name}'")
-        return "success"
+    
+    return redirect("system_admin_pages.manage_studies")
 
 
 @require_http_methods(['GET', 'POST'])

@@ -649,10 +649,10 @@ class TestCreateStudy(SessionApiTest):
         self.assertEqual(resp.content, b"")
 
 
+# FIXME: this test has the annoying un-factored url with post params and url params
 class TestToggleForest(RedirectSessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.toggle_study_forest_enabled"
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
-    # okay this endpoint is unlike all other endpoints, a post that takes a url parameter, fun.
     
     def test_toggle_on(self):
         resp = self._do_test_toggle(True)
@@ -676,3 +676,22 @@ class TestToggleForest(RedirectSessionApiTest):
         else:
             self.assertFalse(self.session_study.forest_enabled)
         return self.client.get(redirect_endpoint)
+
+
+# FIXME: this test has the annoying un-factored url with post params and url params
+class TestDeleteStudy(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.delete_study"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_studies"
+    
+    def test_success(self):
+        self.session_researcher.update(site_admin=True)
+        resp = self.client.post(
+            easy_url(self.ENDPOINT_NAME, study_id=self.session_study.id),
+            data={"confirmation": "true"}
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.session_study.refresh_from_db()
+        self.assertTrue(self.session_study.deleted)
+        self.assertEqual(resp.url, easy_url(self.REDIRECT_ENDPOINT_NAME))
+        resp = self.client.get(self.REDIRECT_ENDPOINT_NAME)
+        self.assert_present("Deleted study ", resp.content)
