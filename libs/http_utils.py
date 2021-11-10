@@ -1,9 +1,16 @@
 import functools
 
 from django.http.request import HttpRequest
+from django.urls.base import reverse
 
 from database.user_models import Participant
 from libs.internal_types import ParticipantRequest
+
+
+def easy_url(url: str, *args, **kwargs) -> str:
+    """ The django reverse function, but args and kwargs are passed thnough to the args and kwargs
+    variables.  (Imported in the jinja templates.) """
+    return reverse(url, args=args, kwargs=kwargs)
 
 
 def checkbox_to_boolean(list_checkbox_params, dict_all_params):
@@ -38,7 +45,7 @@ def determine_os_api(some_function):
         request: ParticipantRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
-
+        
         # naive, could be improved, but sufficient
         url_end = request.path[-4:].lower()
         if "ios" in url_end:
@@ -46,5 +53,5 @@ def determine_os_api(some_function):
         else:
             kwargs["OS_API"] = Participant.ANDROID_API
         return some_function(*args, **kwargs)
-
+    
     return provide_os_determination_and_call

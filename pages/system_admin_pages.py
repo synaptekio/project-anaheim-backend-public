@@ -25,6 +25,7 @@ from database.study_models import Study
 from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Researcher, StudyRelation
+from libs import sentry
 from libs.copy_study import copy_study_from_json, format_study, unpack_json_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
@@ -311,13 +312,15 @@ def create_study(request: ResearcherRequest):
     forest_enabled = request.POST.get('forest_enabled', "").lower() == 'true'
     
     if len(name) > 5000:
-        with make_error_sentry(SentryTypes.elastic_beanstalk):
-            raise Exception("Someone tried to create a study with a suspiciously long name.")
+        if not sentry.FORCE_SENTRY_OFF:  # raising this
+            with make_error_sentry(SentryTypes.elastic_beanstalk):
+                raise Exception("Someone tried to create a study with a suspiciously long name.")
         return abort(400)
     
     if escape(name) != name:
-        with make_error_sentry(SentryTypes.elastic_beanstalk):
-            raise Exception("Someone tried to create a study with unsafe characters in its name.")
+        if not sentry.FORCE_SENTRY_OFF:
+            with make_error_sentry(SentryTypes.elastic_beanstalk):
+                raise Exception("Someone tried to create a study with unsafe characters in its name.")
         return abort(400)
     
     try:
@@ -325,32 +328,8 @@ def create_study(request: ResearcherRequest):
             name=name, encryption_key=encryption_key, is_test=is_test, forest_enabled=forest_enabled
         )
         if duplicate_existing_study:
-            # surveys are always provided, there is a checkbox about whether to import them
-            copy_device_settings = request.form.get('device_settings', None) == 'true'
-            copy_surveys = request.form.get('surveys', None) == 'true'
-            old_study = Study.objects.get(pk=request.form.get('existing_study_id', None))
-            device_settings, surveys, interventions = unpack_json_study(format_study(old_study))
-            
-            copy_study_from_json(
-                new_study,
-                device_settings if copy_device_settings else {},
-                surveys if copy_surveys else [],
-                interventions,
-            )
-            Survey.TRACKING_SURVEY
-            tracking_surveys_added = new_study.surveys.filter(survey_type=Survey.TRACKING_SURVEY).count()
-            audio_surveys_added = new_study.surveys.filter(survey_type=Survey.AUDIO_SURVEY).count()
-            # image_surveys_added = new_study.objects.filter(survey_type=Survey.IMAGE_SURVEY).count()
-            messages.success(
-                f"Copied {tracking_surveys_added} Surveys and {audio_surveys_added} " +
-                f"Audio Surveys from {old_study.name} to {new_study.name}.",
-            )
-            if copy_device_settings:
-                messages.success(f"Overwrote {new_study.name}'s App Settings with custom values.")
-            else:
-                messages.success(f"Did not alter {new_study.name}'s App Settings.")
-        
-        messages.success(f'Successfully created study {name}.')
+            do_duplicate_step(request, new_study)
+        messages.success(request, f'Successfully created study {name}.')
         return redirect(f'/device_settings/{new_study.pk}')
     
     except ValidationError as ve:
@@ -358,6 +337,37 @@ def create_study(request: ResearcherRequest):
         for field, message in ve.message_dict.items():
             messages.error(request, f'{field}: {message[0]}')
         return redirect('/create_study')
+
+
+def do_duplicate_step(request: ResearcherRequest, new_study: Study):
+    """ Everything you need to copy a study. """
+    # surveys are always provided, there is a checkbox about whether to import them
+    copy_device_settings = request.POST.get('device_settings', None) == 'true'
+    copy_surveys = request.POST.get('surveys', None) == 'true'
+    old_study = Study.objects.get(pk=request.POST.get('existing_study_id', None))
+    device_settings, surveys, interventions = unpack_json_study(format_study(old_study))
+    
+    copy_study_from_json(
+        new_study,
+        device_settings if copy_device_settings else {},
+        surveys if copy_surveys else [],
+        interventions,
+    )
+    tracking_surveys_added = new_study.surveys.filter(survey_type=Survey.TRACKING_SURVEY).count()
+    audio_surveys_added = new_study.surveys.filter(survey_type=Survey.AUDIO_SURVEY).count()
+    # image_surveys_added = new_study.objects.filter(survey_type=Survey.IMAGE_SURVEY).count()
+    messages.success(
+        request,
+        f"Copied {tracking_surveys_added} Surveys and {audio_surveys_added} "
+        f"Audio Surveys from {old_study.name} to {new_study.name}.",
+    )
+    if copy_device_settings:
+        messages.success(
+            request, f"Overwrote {new_study.name}'s App Settings with custom values."
+        )
+    else:
+        messages.success(request, f"Did not alter {new_study.name}'s App Settings.")
+
 
 
 @require_POST

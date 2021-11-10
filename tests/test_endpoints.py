@@ -1,14 +1,18 @@
+from typing import List
 from unittest.mock import patch
 
+from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 
+from config.jinja2 import easy_url
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
-from constants.testing_constants import ADMIN_ROLES, ALL_ROLES
+from constants.testing_constants import ADMIN_ROLES, ALL_TESTING_ROLES
 from database.security_models import ApiKey
+from database.study_models import Study
 from database.user_models import Researcher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
@@ -538,7 +542,7 @@ class TestManageStudies(GeneralPageTest):
     ENDPOINT_NAME = "system_admin_pages.manage_studies"
     
     def test(self):
-        for user_role in ALL_ROLES:
+        for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
             resp = self.do_get()
             if user_role in ADMIN_ROLES:
@@ -552,7 +556,7 @@ class TestEditStudy(GeneralPageTest):
     ENDPOINT_NAME = "system_admin_pages.edit_study"
     
     def test_only_admins_allowed(self):
-        for user_role in ALL_ROLES:
+        for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
             resp = self.do_get(study_id=self.session_study.id)
             if user_role in ADMIN_ROLES:
@@ -578,3 +582,67 @@ class TestEditStudy(GeneralPageTest):
         self.assert_present(r2.username, resp.content)
         self.assert_present("Forest is currently enabled.", resp.content)
         self.assert_present("This is a production study", resp.content)
+
+
+# FIXME: need to implement tests for copy study.
+class TestCreateStudy(SessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.create_study"
+    NEW_STUDY_NAME = "something anything"
+    
+    @property
+    def get_the_new_study(self):
+        return Study.objects.get(name=self.NEW_STUDY_NAME)
+    
+    def create_study_params(self, *except_these: List[str]):
+        """ keys are: name, encryption_key, is_test, copy_existing_study, forest_enabled """
+        params = dict(
+            name=self.NEW_STUDY_NAME,
+            encryption_key="a" * 32,
+            is_test="true",
+            copy_existing_study="",
+            forest_enabled="false",
+        )
+        for k in except_these:
+            params.pop(k)
+        return params
+    
+    def test_load_page(self):
+        # only site admins can load the page
+        for user_role in ALL_TESTING_ROLES:
+            self.assign_role(self.session_researcher, user_role)
+            resp = self.do_get()
+            if user_role == "site_admin":
+                self.assertEqual(resp.status_code, 200)
+            else:
+                self.assertEqual(resp.status_code, 403)
+    
+    def test_create_study_success(self):
+        self.session_researcher.update(site_admin=True)
+        resp = self.do_post(**self.create_study_params())
+        self.assertEqual(resp.status_code, 302)
+        self.assertIsInstance(resp, HttpResponseRedirect)
+        target_url = easy_url(
+            "system_admin_pages.device_settings", study_id=self.get_the_new_study.id
+        )
+        self.assertEqual(resp.url, target_url)
+        resp = self.client.get(target_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assert_present(f"Successfully created study {self.get_the_new_study.name}.", resp.content)
+    
+    def test_create_study_long_name(self):
+        # this situation reports to sentry manually, the response is a hard 400, no calls to messages
+        self.session_researcher.update(site_admin=True)
+        params = self.create_study_params()
+        params["name"] = "a"*10000
+        resp = self.do_post(**params)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.content, b"")
+    
+    def test_create_study_bad_name(self):
+        # this situation reports to sentry manually, the response is a hard 400, no calls to messages
+        self.session_researcher.update(site_admin=True)
+        params = self.create_study_params()
+        params["name"] = "&" * 50
+        resp = self.do_post(**params)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.content, b"")

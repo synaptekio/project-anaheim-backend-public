@@ -10,7 +10,7 @@ from config.settings import (SENTRY_DATA_PROCESSING_DSN, SENTRY_ELASTIC_BEANSTAL
 
 
 # when running in a shell we force sentry off and force the use of the null_error_handler
-FORCE_SENTRY_OFF = True if "shell_plus" in argv or "--ipython" in argv or "ipython" in argv else False
+FORCE_SENTRY_OFF = any(key in argv for key in ("shell_plus", "--ipython", "ipython", "test"))
 
 class SentryTypes:
     data_processing = "data_processing"
@@ -53,13 +53,13 @@ def make_error_sentry(sentry_type:str, tags:dict=None):
     """ Creates an ErrorSentry, defaults to error limit 10.
     If the applicable sentry DSN is missing will return an ErrorSentry,
     but if null truthy a NullErrorHandler will be returned instead. """
-
+    
     if FORCE_SENTRY_OFF:
         return null_error_handler
-
+    
     tags = tags or {}
     tags["sentry_type"] = sentry_type
-
+    
     try:
         return ErrorSentry(
             get_dsn_from_string(sentry_type),
@@ -67,4 +67,4 @@ def make_error_sentry(sentry_type:str, tags:dict=None):
             sentry_report_limit=10
         )
     except InvalidDsn:
-            return null_error_handler
+        return null_error_handler

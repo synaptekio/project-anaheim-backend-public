@@ -172,6 +172,13 @@ class SessionApiTest(PopulatedSessionTestCase):
         self.session_researcher.refresh_from_db()
         return response
     
+    def do_get(self, *get_params, **kwargs) -> HttpResponse:
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.session_researcher
+        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
+        self.session_researcher.refresh_from_db()  # just in case
+        return response
+    
     def do_test_status_code(self, status_code: int, **kwargs) -> HttpResponse:
         """ This helper function takes a status code in addition to post paramers, and tests for
         it.  Use for writing concise tests. """

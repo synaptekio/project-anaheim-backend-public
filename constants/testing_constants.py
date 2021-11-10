@@ -34,5 +34,5 @@ ALL_ROLE_PERMUTATIONS = (
 )
 
 REAL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher)
-ALL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, "site_admin", None)
+ALL_TESTING_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, "site_admin", None)
 ADMIN_ROLES = (ResearcherRole.study_admin, "site_admin")
