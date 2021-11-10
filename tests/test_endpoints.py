@@ -544,7 +544,7 @@ class TestManageStudies(GeneralPageTest):
     def test(self):
         for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
-            resp = self.do_get()
+            resp = self.smart_get()
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 200)
             else:
@@ -558,17 +558,16 @@ class TestEditStudy(GeneralPageTest):
     def test_only_admins_allowed(self):
         for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
-            resp = self.do_get(study_id=self.session_study.id)
-            if user_role in ADMIN_ROLES:
-                self.assertEqual(resp.status_code, 200)
-            else:
-                self.assertEqual(resp.status_code, 403)
+            self.do_test_status_code(
+                status_code=200 if user_role in ADMIN_ROLES else 403,
+                study_id=self.session_study.id
+            )
     
     def test_content_study_admin(self):
         """ tests that various important pieces of information are present """
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.session_study.update(is_test=True, forest_enabled=False)
-        resp = self.do_get(study_id=self.session_study.id)
+        resp = self.do_test_status_code(200, study_id=self.session_study.id)
         self.assert_present("Forest is currently disabled.", resp.content)
         self.assert_present("This is a test study", resp.content)
         self.assert_present(self.session_researcher.username, resp.content)
@@ -576,8 +575,7 @@ class TestEditStudy(GeneralPageTest):
         self.session_study.update(is_test=False, forest_enabled=True)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
         
-        resp = self.do_get(study_id=self.session_study.id)
-        self.assertEqual(resp.status_code, 200)
+        resp = self.do_test_status_code(200, study_id=self.session_study.id)
         self.assert_present(self.session_researcher.username, resp.content)
         self.assert_present(r2.username, resp.content)
         self.assert_present("Forest is currently enabled.", resp.content)
@@ -611,16 +609,11 @@ class TestCreateStudy(SessionApiTest):
         # only site admins can load the page
         for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
-            resp = self.do_get()
-            if user_role == "site_admin":
-                self.assertEqual(resp.status_code, 200)
-            else:
-                self.assertEqual(resp.status_code, 403)
+            self.do_test_status_code(302 if user_role == "site_admin" else 403)
     
     def test_create_study_success(self):
         self.session_researcher.update(site_admin=True)
-        resp = self.do_post(**self.create_study_params())
-        self.assertEqual(resp.status_code, 302)
+        resp = self.do_test_status_code(302, **self.create_study_params())
         self.assertIsInstance(resp, HttpResponseRedirect)
         target_url = easy_url(
             "system_admin_pages.device_settings", study_id=self.get_the_new_study.id
@@ -635,8 +628,7 @@ class TestCreateStudy(SessionApiTest):
         self.session_researcher.update(site_admin=True)
         params = self.create_study_params()
         params["name"] = "a"*10000
-        resp = self.do_post(**params)
-        self.assertEqual(resp.status_code, 400)
+        resp = self.do_test_status_code(400, **params)
         self.assertEqual(resp.content, b"")
     
     def test_create_study_bad_name(self):
@@ -644,8 +636,7 @@ class TestCreateStudy(SessionApiTest):
         self.session_researcher.update(site_admin=True)
         params = self.create_study_params()
         params["name"] = "&" * 50
-        resp = self.do_post(**params)
-        self.assertEqual(resp.status_code, 400)
+        resp = self.do_test_status_code(400, **params)
         self.assertEqual(resp.content, b"")
 
 
@@ -667,8 +658,7 @@ class TestToggleForest(RedirectSessionApiTest):
         self.session_researcher.update(site_admin=True)
         self.session_study.update(forest_enabled=not enable)  # directly mutate the database.
         # resp = self.do_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
-        resp = self.client.post(easy_url(self.ENDPOINT_NAME, study_id=self.session_study.id))
-        self.assertEqual(resp.status_code, 302)
+        resp = self.do_post(self.session_study.id)
         self.assertEqual(resp.url, redirect_endpoint)
         self.session_study.refresh_from_db()
         if enable:
@@ -685,13 +675,8 @@ class TestDeleteStudy(RedirectSessionApiTest):
     
     def test_success(self):
         self.session_researcher.update(site_admin=True)
-        resp = self.client.post(
-            easy_url(self.ENDPOINT_NAME, study_id=self.session_study.id),
-            data={"confirmation": "true"}
-        )
-        self.assertEqual(resp.status_code, 302)
+        resp = self.do_post(self.session_study.id, confirmation="true")
         self.session_study.refresh_from_db()
         self.assertTrue(self.session_study.deleted)
         self.assertEqual(resp.url, easy_url(self.REDIRECT_ENDPOINT_NAME))
-        resp = self.client.get(self.REDIRECT_ENDPOINT_NAME)
-        self.assert_present("Deleted study ", resp.content)
+        self.assert_present("Deleted study ", self.get_redirect_content())

@@ -198,7 +198,6 @@ class SessionApiTest(SmartRequestsTestCase):
     
     def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
-        self.session_researcher
         response = self.smart_get(*reverse_params, **reverse_kwargs)
         self.session_researcher.refresh_from_db()  # just in case
         return response
