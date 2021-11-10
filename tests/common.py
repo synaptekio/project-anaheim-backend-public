@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
 
-from constants.testing_constants import REAL_ROLES
+from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES
 from database.user_models import Researcher
 from tests.helpers import ReferenceObjectMixin
 
@@ -149,7 +149,7 @@ class RedirectSessionApiTest(PopulatedSessionTestCase):
         self.assertIsInstance(response, HttpResponseRedirect)
         self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
         return response
-    
+        
     def get_redirect_content(self, *args, **kwargs) -> bytes:
         # Tests for this class usually need a page to test for content messages.  This method loads
         # the REDIRECT_ENDPOINT_NAME page, ensures it has the required 200 code, and returns the
@@ -172,10 +172,12 @@ class SessionApiTest(PopulatedSessionTestCase):
         self.session_researcher.refresh_from_db()
         return response
     
-    def do_get(self, *get_params, **kwargs) -> HttpResponse:
+    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
-        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
+        response = self.client.get(
+            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+        )
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
@@ -195,10 +197,10 @@ class GeneralPageTest(PopulatedSessionTestCase):
     
     ENDPOINT_NAME = None
     
-    def do_get(self, *get_params, **kwargs) -> HttpResponse:
+    def do_get(self, *reverse_params, **kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
-        response = self.client.get(reverse(self.ENDPOINT_NAME, args=get_params, kwargs=kwargs))
+        response = self.client.get(reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=kwargs))
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
