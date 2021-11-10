@@ -125,31 +125,55 @@ class PopulatedSessionTestCase(BasicSessionTestCase):
             yield session_researcher, r2
 
 
-# These mixin classes implement some common patterns, please educate yourself on what the
-# "do_post", "do_get", and "do_test_status_code", functions do, and use them.
+class SmartRequestsTestCase(PopulatedSessionTestCase):
+    ENDPOINT_NAME = None
+    REDIRECT_ENDPOINT_NAME = None
+    
+    def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+        if reverse_kwargs is None:
+            reverse_kwargs = {}
+        return self.client.post(
+            reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
+        )
+    
+    def smart_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
+        return self.client.get(
+            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+        )
+    
+    def smart_get_redirect(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
+        return self.client.get(
+            reverse(self.REDIRECT_ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+        )
 
 
-class RedirectSessionApiTest(PopulatedSessionTestCase):
+class RedirectSessionApiTest(SmartRequestsTestCase):
     """ Some api calls return only redirects, and the fact of an error is reported only via the
     django.contrib.messages library.  This class implements some specific helper functions to handle
     very common cases.
     When using this class make sure to set ENDPOINT_NAME and REDIRECT_ENDPOINT_NAME. The first is
     used to populate the http post operation, the second is part of validation inside do_post. """
-    
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
-    def do_post(self, **post_params) -> HttpResponseRedirect:
+    def do_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
         # Instantiate the default researcher, pass through params, reverse ENDPOINT_NAME and pass in
         # post params, then refresh default researcher just in case it was mutated during the call.
         # Assert that the request was redirected, and that it points to the appropriate endpoint.
-        response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
+        response = self.smart_post(*reverse_args, reverse_params=reverse_kwargs, **post_params)
         self.session_researcher.refresh_from_db()
         self.assertEqual(response.status_code, 302)
         self.assertIsInstance(response, HttpResponseRedirect)
         self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
         return response
-        
+    
+    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
+        # instantiate the default researcher, pass through params, refresh default researcher.
+        self.session_researcher
+        response = self.smart_get(*reverse_params, **reverse_kwargs)
+        self.session_researcher.refresh_from_db()  # just in case?
+        return response
+    
     def get_redirect_content(self, *args, **kwargs) -> bytes:
         # Tests for this class usually need a page to test for content messages.  This method loads
         # the REDIRECT_ENDPOINT_NAME page, ensures it has the required 200 code, and returns the
@@ -159,25 +183,23 @@ class RedirectSessionApiTest(PopulatedSessionTestCase):
         return resp.content
 
 
-class SessionApiTest(PopulatedSessionTestCase):
+class SessionApiTest(SmartRequestsTestCase):
     """ This class is for non-redirect api endpoints.  It includes helper functions for issuing a
     post request to the endpoint declared for ENDPOINT_NAME and testing its return code. """
     
     ENDPOINT_NAME = None
     
-    def do_post(self, **post_params) -> HttpResponse:
+    def do_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher, and
         # return the response object for further testing.
-        response = self.client.post(reverse(self.ENDPOINT_NAME), data=post_params)
+        response = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
         self.session_researcher.refresh_from_db()
         return response
     
     def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
-        response = self.client.get(
-            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
-        )
+        response = self.smart_get(*reverse_params, **reverse_kwargs)
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
@@ -191,16 +213,16 @@ class SessionApiTest(PopulatedSessionTestCase):
         return resp
 
 
-class GeneralPageTest(PopulatedSessionTestCase):
+class GeneralPageTest(SmartRequestsTestCase):
     """ This class implements a do_get and a do_test_status_code function for implementing concise
     tests on normal, non-api web pages. """
     
     ENDPOINT_NAME = None
     
-    def do_get(self, *reverse_params, **kwargs) -> HttpResponse:
+    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher.
         self.session_researcher
-        response = self.client.get(reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=kwargs))
+        response = self.smart_get(*reverse_params, **reverse_kwargs)
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
