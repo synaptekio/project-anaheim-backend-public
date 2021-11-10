@@ -369,12 +369,12 @@ def do_duplicate_step(request: ResearcherRequest, new_study: Study):
         messages.success(request, f"Did not alter {new_study.name}'s App Settings.")
 
 
-
+# FIXME: this should probably take a post parameter, not a url endpoint.
 @require_POST
 @authenticate_admin
 def toggle_study_forest_enabled(request: ResearcherRequest, study_id=None):
     # Only a SITE admin can toggle forest on a study
-    if request.session_researcher.site_admin:
+    if not request.session_researcher.site_admin:
         return abort(403)
     study = Study.objects.get(pk=study_id)
     study.forest_enabled = not study.forest_enabled

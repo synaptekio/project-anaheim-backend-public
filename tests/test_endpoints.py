@@ -585,6 +585,7 @@ class TestEditStudy(GeneralPageTest):
 
 
 # FIXME: need to implement tests for copy study.
+# FIXME: this test is not well factored, it doesn't follow a common pattern.
 class TestCreateStudy(SessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.create_study"
     NEW_STUDY_NAME = "something anything"
@@ -646,3 +647,32 @@ class TestCreateStudy(SessionApiTest):
         resp = self.do_post(**params)
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.content, b"")
+
+
+class TestToggleForest(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.toggle_study_forest_enabled"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    # okay this endpoint is unlike all other endpoints, a post that takes a url parameter, fun.
+    
+    def test_toggle_on(self):
+        resp = self._do_test_toggle(True)
+        self.assert_present("Enabled Forest on", resp.content)
+    
+    def test_toggle_off(self):
+        resp = self._do_test_toggle(False)
+        self.assert_present("Disabled Forest on", resp.content)
+    
+    def _do_test_toggle(self, enable: bool):
+        redirect_endpoint = easy_url(self.REDIRECT_ENDPOINT_NAME, study_id=self.session_study.id)
+        self.session_researcher.update(site_admin=True)
+        self.session_study.update(forest_enabled=not enable)  # directly mutate the database.
+        # resp = self.do_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
+        resp = self.client.post(easy_url(self.ENDPOINT_NAME, study_id=self.session_study.id))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, redirect_endpoint)
+        self.session_study.refresh_from_db()
+        if enable:
+            self.assertTrue(self.session_study.forest_enabled)
+        else:
+            self.assertFalse(self.session_study.forest_enabled)
+        return self.client.get(redirect_endpoint)
