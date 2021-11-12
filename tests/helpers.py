@@ -1,6 +1,6 @@
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES
-from database.study_models import Study
+from database.study_models import DeviceSettings, Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
 from database.user_models import Participant, Researcher, StudyRelation
@@ -19,6 +19,9 @@ class ReferenceObjectMixin:
     # For all defaults make sure to maintain the pattern that includes the use of the save function,
     # this codebase implements a special save function that validates before passing through.
     
+    #
+    ## Study objects
+    #
     @property
     def session_study(self) -> Study:
         """ Gets or creates a default study object.  Note that this has the side effect of creating
@@ -58,7 +61,9 @@ class ReferenceObjectMixin:
         relation.save()
         return relation
     
-    # Researcher
+    #
+    ## Researcher objects
+    #
     @property
     def session_researcher(self) -> Researcher:
         """ Gets or creates the session researcher object.  This is a default object, and will be
@@ -82,12 +87,40 @@ class ReferenceObjectMixin:
             site_admin=site_admin,
             is_batch_user=False,
         )
-        # set password saves.
+        # set password saves...
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
         if relation_to_session_study is not None:
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
         
         return researcher
+    
+    #
+    ## Objects for Studies
+    #
+    
+    @property
+    def session_survey(self) -> Survey:
+        """ Creates a survey with no content attached to the session study. """
+        try:
+            return self._default_survey
+        except AttributeError:
+            pass
+        self._default_survey = Survey(
+            study=self.session_study,
+            survey_type=Survey.TRACKING_SURVEY,
+            object_id=self.DEFAULT_SURVEY_OBJECT_ID,
+        )
+        self._default_survey.save()
+        return self._default_survey
+    
+    @property
+    def session_device_settings(self) -> DeviceSettings:
+        """ Providing the comment about using the save() pattern is observed, this cannot fail. """
+        return self.session_study.device_settings
+    
+    #
+    ## Participant objects
+    #
     
     def default_participant(self, ios=False) -> Participant:
         """ Creates a participant object on the session study.  This is a default object, and will
@@ -111,21 +144,9 @@ class ReferenceObjectMixin:
         self._default_participant = participant
         return participant
     
-    @property
-    def session_survey(self) -> Survey:
-        """ Creates a survey with no content attached to the session study. """
-        try:
-            self._default_survey
-        except AttributeError:
-            pass
-        survey = Survey(
-            study=self.session_study,
-            survey_type=Survey.TRACKING_SURVEY,
-            object_id=self.DEFAULT_SURVEY_OBJECT_ID,
-        )
-        survey.save()
-        self._default_survey = survey
-        return survey
+    #
+    ## Forest objects
+    #
     
     @property
     def default_forest_params(self) -> ForestParam:

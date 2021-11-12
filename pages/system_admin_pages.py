@@ -407,7 +407,7 @@ def delete_study(request: ResearcherRequest, study_id=None):
 def device_settings(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
     researcher = request.session_researcher
-    readonly = True if not researcher.check_study_admin(study_id) and not researcher.site_admin else False
+    readonly = not researcher.check_study_admin(study_id) and not researcher.site_admin
     
     # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     # if read only....

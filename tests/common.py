@@ -189,9 +189,9 @@ class SessionApiTest(SmartRequestsTestCase):
     
     ENDPOINT_NAME = None
     
-    def do_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponse:
+    def do_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         # instantiate the default researcher, pass through params, refresh default researcher, and
-        # return the response object for further testing.
+        # return the response object for further testing
         response = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
         self.session_researcher.refresh_from_db()
         return response
@@ -202,12 +202,12 @@ class SessionApiTest(SmartRequestsTestCase):
         self.session_researcher.refresh_from_db()  # just in case
         return response
     
-    def do_test_status_code(self, status_code: int, **kwargs) -> HttpResponse:
+    def do_test_status_code(self, status_code:int, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         """ This helper function takes a status code in addition to post paramers, and tests for
         it.  Use for writing concise tests. """
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.do_post(**kwargs)
+        resp = self.do_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
         self.assertEqual(resp.status_code, status_code)
         return resp
 

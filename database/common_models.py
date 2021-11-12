@@ -125,9 +125,11 @@ class UtilityModel(models.Model):
         super().save(*args, **kwargs)
 
     def update(self, **kwargs):
-        """ Convenience method on database instance objects to update the database using a dictionary.
-            (exists to make porting from mongodb easier) """
+        """ Convenience method on to update the database with a dictionary or kwargs."""
         for attr, value in kwargs.items():
+            if not hasattr(self, attr):
+                # This safety is good enough, only fails when using defer.
+                raise Exception(f"unpexpected parameter: {attr}")
             setattr(self, attr, value)
         self.save()
 
