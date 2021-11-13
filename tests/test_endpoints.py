@@ -1037,7 +1037,7 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
             self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")
 
 
-# FIXME: add failure case test
+# FIXME: add failure case tests, user type tests
 class TestSetResearcherPassword(SessionApiTest):
     ENDPOINT_NAME = "admin_api.set_researcher_password"
     
@@ -1056,3 +1056,14 @@ class TestSetResearcherPassword(SessionApiTest):
         self.assertFalse(
             r2.check_password(r2.username, self.DEFAULT_RESEARCHER_PASSWORD)
         )
+
+
+class TestRenameStudy(RedirectSessionApiTest):
+    ENDPOINT_NAME = "admin_api.rename_study"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    def test(self):
+        self.session_researcher.update(site_admin=True)
+        self.smart_post(self.session_study.id, new_study_name="hello!")
+        self.session_study.refresh_from_db()
+        self.assertEqual(self.session_study.name, "hello!")
