@@ -14,7 +14,8 @@ from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATC
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
-from constants.testing_constants import ADMIN_ROLES, ALL_TESTING_ROLES
+from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
+    IOS_CERT)
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.user_models import Researcher
@@ -811,22 +812,10 @@ class TestManageFirebaseCredentials(GeneralPageTest):
         self.do_test_status_code(200)
 
 
+# FIXME: implement tests for error cases
 class TestUploadBackendFirebaseCert(RedirectSessionApiTest):
     ENDPOINT_NAME = "system_admin_pages.upload_backend_firebase_cert"
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
-    BACKEND_CERT = \
-        """{
-          "type": "service_account",
-          "project_id": "some id",
-          "private_key_id": "numbers and letters",
-          "private_key": "-----BEGIN PRIVATE KEY-----omg a key-----END PRIVATE KEY-----",
-          "client_email": "firebase-adminsdk *serviceaccountinfo*",
-          "client_id": "NUMBERS!",
-          "auth_uri": "https://an_account_oauth",
-          "token_uri": "https://an_account/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "some_neato_cert_url"
-        }"""
     
     @patch("pages.system_admin_pages.update_firebase_instance")
     @patch("pages.system_admin_pages.get_firebase_credential_errors")
@@ -837,7 +826,35 @@ class TestUploadBackendFirebaseCert(RedirectSessionApiTest):
         update_firebase_instance.return_value = True
         # test upload as site admin
         self.session_researcher.update(site_admin=True)
-        file = SimpleUploadedFile("backend_cert.json", self.BACKEND_CERT.encode(), "text/json")
+        file = SimpleUploadedFile("backend_cert.json", BACKEND_CERT.encode(), "text/json")
         self.smart_post(backend_firebase_cert=file)
         resp_content = self.get_redirect_content()
         self.assert_present("New firebase credentials have been received", resp_content)
+
+
+# FIXME: implement tests for error cases
+class TestUploadIosFirebaseCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.upload_ios_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        # test upload as site admin
+        self.session_researcher.update(site_admin=True)
+        file = SimpleUploadedFile("ios_firebase_cert.plist", IOS_CERT.encode(), "text/json")
+        self.smart_post(ios_firebase_cert=file)
+        resp_content = self.get_redirect_content()
+        self.assert_present("New IOS credentials were received", resp_content)
+
+
+# FIXME: implement tests for error cases
+class TestUploadAndroidFirebaseCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.upload_android_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        # test upload as site admin
+        self.session_researcher.update(site_admin=True)
+        file = SimpleUploadedFile("android_firebase_cert.json", ANDROID_CERT.encode(), "text/json")
+        self.smart_post(android_firebase_cert=file)
+        resp_content = self.get_redirect_content()
+        self.assert_present("New android credentials were received", resp_content)
