@@ -916,3 +916,22 @@ class TestPipelineWebFormPage(GeneralPageTest):
         id_key, secret_key = self.session_researcher.reset_access_credentials()
         resp = self.smart_get()
         self.assert_not_present("Reset Data-Download API Access Credentials", resp.content)
+
+
+# FIXME: add error cases to tests
+class TestSetStudyTimezone(RedirectSessionApiTest):
+    ENDPOINT_NAME = "admin_api.set_study_timezone"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    def test_study_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self._test_success()
+    
+    def test_site_admin(self):
+        self.session_researcher.update(site_admin=True)
+        self._test_success()
+    
+    def _test_success(self):
+        self.smart_post(self.session_study.id, new_timezone_name="Pacific/Noumea")
+        self.session_study.refresh_from_db()
+        self.assertEqual(self.session_study.timezone_name, "Pacific/Noumea")
