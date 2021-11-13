@@ -75,21 +75,38 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
     
     def assert_researcher_relation(self, researcher: Researcher, study: Study, relationship: str):
-        if relationship == "site_admin":
-            researcher.refresh_from_db()
-            self.assertTrue(researcher.site_admin)
-        elif relationship in REAL_ROLES:
-            self.assertTrue(
-                StudyRelation.objects.filter(
-                    study=study, researcher=researcher, relationship=relationship
-                ).exists()
-            )
-        elif relationship is None:
-            self.assertFalse(
-                StudyRelation.objects.filter(study=study, researcher=researcher).exists()
-            )
-        else:
-            raise Exception("invalid researcher role provided")
+        try:
+            if relationship == "site_admin":
+                researcher.refresh_from_db()
+                self.assertTrue(researcher.site_admin)
+                # no relationships because it is a site admin
+                self.assertEqual(
+                    StudyRelation.objects.filter(study=study, researcher=researcher).count(), 0
+                )
+            elif relationship is None:
+                # Relationship should not exist because it was set to None
+                self.assertFalse(
+                    StudyRelation.objects.filter(study=study, researcher=researcher).exists()
+                )
+            elif relationship in REAL_ROLES:
+                # relatioship is supposed to be the provided relatioship (researcher or study_admin)
+                self.assertEqual(
+                    StudyRelation.objects.filter(
+                        study=study, researcher=researcher, relationship=relationship).count(),
+                    1
+                )
+            else:
+                raise Exception("invalid researcher role provided")
+        except AssertionError:
+            print("researcher:", researcher.username)
+            print("study:", study.name)
+            print("relationship that it should be:", relationship)
+            real_relatiosnship = StudyRelation.objects.filter(study=study, researcher=researcher)
+            if not real_relatiosnship:
+                print("relationship was 'None'")
+            else:
+                print(f"relationship was '{real_relatiosnship.get().relationship}'")
+            raise
 
 
 class BasicSessionTestCase(CommonTestCase):

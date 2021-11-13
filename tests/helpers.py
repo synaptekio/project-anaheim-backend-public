@@ -76,20 +76,20 @@ class ReferenceObjectMixin:
         return self._default_researcher
     
     def generate_researcher(
-        self, name: str = None, relation_to_session_study: str = None, site_admin: bool = False
+        self, name: str = None, relation_to_session_study: str = None
     ) -> Researcher:
         """ Generate a researcher based on the parameters provided, relation_to_session_study is
-        optional. """
+        optional. """    
         researcher = Researcher(
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
-            site_admin=site_admin,
+            site_admin=relation_to_session_study == "site_admin",
             is_batch_user=False,
         )
         # set password saves...
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
-        if relation_to_session_study is not None:
+        if relation_to_session_study not in (None, "site_admin"):
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
         
         return researcher
