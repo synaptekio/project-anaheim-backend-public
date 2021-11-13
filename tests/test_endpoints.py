@@ -1076,3 +1076,12 @@ class TestDownloadPage(GeneralPageTest):
     def test(self):
         # just test that it loads without breaking
         self.smart_get()
+
+
+class TestPrivacyPolicy(GeneralPageTest):
+    ENDPOINT_NAME = "admin_api.download_privacy_policy"
+    
+    def test(self):
+        # just test that it loads without breaking
+        redirect = self.smart_get()
+        self.assertIsInstance(redirect, HttpResponseRedirect)

@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
@@ -153,5 +154,5 @@ def download_beta_release(request: ResearcherRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/release/Beiwe-2.2.3-onnelaLabServer-release.apk")
 
 
-def download_privacy_policy():
+def download_privacy_policy(request: HttpRequest):
     return redirect("https://s3.amazonaws.com/beiwe-app-backups/Beiwe+Data+Privacy+and+Security.pdf")
