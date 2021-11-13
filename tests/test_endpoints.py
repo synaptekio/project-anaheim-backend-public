@@ -1085,3 +1085,30 @@ class TestPrivacyPolicy(GeneralPageTest):
         # just test that it loads without breaking
         redirect = self.smart_get()
         self.assertIsInstance(redirect, HttpResponseRedirect)
+
+
+# FIXME: implpment this test beyond "it doesn't crash", and there is a known bug to follow up on too.
+class TestStudyParticipantApi(SessionApiTest):
+    ENDPOINT_NAME = "study_api.study_participants_api"
+    
+    COLUMN_ORDER_KEY = "order[0][column]"
+    ORDER_DIRECTION_KEY = "order[0][dir]"
+    SEARCH_PARAMETER = "search[value]"
+    
+    @property
+    def DEFAULT_PARAMETERS(self):
+        return {
+            "draw": 1,
+            "start": 0,
+            "length": 10,
+            # sort, sort order, search term
+            self.COLUMN_ORDER_KEY: 1,
+            self.ORDER_DIRECTION_KEY: "desc",
+            self.SEARCH_PARAMETER: None,
+        }
+    
+    def test(self):
+        self.smart_get(
+            self.session_study.id,
+            get_kwargs=self.DEFAULT_PARAMETERS,
+        )

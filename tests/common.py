@@ -167,27 +167,39 @@ class SmartRequestsTestCase(PopulatedSessionTestCase):
     REDIRECT_ENDPOINT_NAME = None
     
     def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
-        if reverse_kwargs is None:
-            reverse_kwargs = {}
-        for arg in chain(reverse_args, reverse_kwargs.values(), post_params.values()):
-            if isinstance(arg, Model):
-                raise TypeError(f"encountered {type(arg)}")
+        """ A wrapper to do a post request, using reverse on the ENDPOINT_NAME, and with a
+        reasonable pattern for providing parameters to both reverse and post. """
+        reverse_kwargs = reverse_kwargs or {}
+        # print(f"*reverse_args: {reverse_args}\n**reverse_kwargs: {reverse_kwargs}\n**post_params: {post_params}\n")
+        self._detect_obnoxious_type_error("smart_post", reverse_args, reverse_kwargs, post_params)
         return self.client.post(
             reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
         )
     
-    def smart_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
-        for arg in chain(reverse_params, reverse_kwargs.values()):
-            if isinstance(arg, Model):
-                raise TypeError(f"encountered {type(arg)}")
+    def smart_get(self, *reverse_params, get_kwargs=None, **reverse_kwargs) -> HttpResponse:
+        """ A wrapper to do a get request, using reverse on the ENDPOINT_NAME, and with a reasonable
+        pattern for providing parameters to both reverse and get. """
+        get_kwargs = get_kwargs or {}
+        # print(f"*reverse_params: {reverse_params}\n**get_kwargs: {get_kwargs}\n**reverse_kwargs: {reverse_kwargs}\n")
+        self._detect_obnoxious_type_error("smart_get", reverse_params, reverse_kwargs, get_kwargs)
         return self.client.get(
-            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs), **get_kwargs
         )
     
-    def smart_get_redirect(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
+    def smart_get_redirect(self, *reverse_params, get_kwargs=None, **reverse_kwargs) -> HttpResponse:
+        """ As smart_get, but uses REDIRECT_ENDPOINT_NAME. """
+        get_kwargs = get_kwargs or {}
+        # print(f"*reverse_params: {reverse_params}\n**get_kwargs: {get_kwargs}\n**reverse_kwargs: {reverse_kwargs}\n")
+        self._detect_obnoxious_type_error("smart_get_redirect", reverse_params, reverse_kwargs, get_kwargs)
         return self.client.get(
-            reverse(self.REDIRECT_ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+            reverse(self.REDIRECT_ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs), **get_kwargs
         )
+    
+    @staticmethod
+    def _detect_obnoxious_type_error(function_name: str, args: tuple, kwargs1: dict, kwargs2: dict):
+        for arg in chain(args, kwargs1.values(), kwargs2.values()):
+            if isinstance(arg, Model):
+                raise TypeError(f"encountered {type(arg)} passed to {function_name}.")
 
 
 class RedirectSessionApiTest(SmartRequestsTestCase):
@@ -239,9 +251,11 @@ class GeneralPageTest(SmartRequestsTestCase):
     tests on normal, non-api web pages. """
     ENDPOINT_NAME = None
     
-    def do_test_status_code(self, status_code: int, *params, **kwargs) -> HttpResponse:
+    def do_test_status_code(
+        self, status_code: int, *reverse_params, get_kwargs=None, **reverse_kwargs
+    ) -> HttpResponse:
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.smart_get(*params, **kwargs)
+        resp = self.smart_get(*reverse_params, get_kwargs=get_kwargs, **reverse_kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp

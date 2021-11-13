@@ -14,8 +14,8 @@ from libs.internal_types import ResearcherRequest
 
 @require_GET
 @authenticate_researcher_study_access
-def study_participants_api(request: ResearcherRequest, study_id):
-    study = Study.objects.get(pk=study_id)
+def study_participants_api(request: ResearcherRequest, study_id: int):
+    study: Study = Study.objects.get(pk=study_id)
     # `draw` is passed by DataTables. It's automatically incremented, starting with 1 on the page
     # load, and then 2 with the next call to this API endpoint, and so on.
     draw = int(request.GET.get('draw'))
@@ -34,13 +34,13 @@ def study_participants_api(request: ResearcherRequest, study_id):
         "recordsFiltered": filtered_participants_count,
         "data": data
     }
-    return HttpResponse(json.dumps(table_data), status=200)
+    return HttpResponse(json.dumps(table_data), status_code=200)
 
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
 def interventions_page(request: ResearcherRequest, study_id=None):
-    study = Study.objects.get(pk=study_id)
+    study: Study = Study.objects.get(pk=study_id)
     # FIXME: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         return render(
