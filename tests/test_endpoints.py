@@ -17,7 +17,7 @@ from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATC
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
-    IOS_CERT)
+    IOS_CERT, SITE_ADMIN)
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.system_models import FileAsText
@@ -332,7 +332,7 @@ class TestManageResearchers(GeneralPageTest):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self._test_render_with_researchers()
         # make sure that site admins are not present
-        r4 = self.generate_researcher(relation_to_session_study="site_admin")
+        r4 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         resp = self.do_test_status_code(200)
         self.assert_not_present(r4.username, resp.content)
         
@@ -345,7 +345,7 @@ class TestManageResearchers(GeneralPageTest):
         self.session_researcher.update(site_admin=True)
         self._test_render_with_researchers()
         # make sure that site admins ARE present
-        r4 = self.generate_researcher(relation_to_session_study="site_admin")
+        r4 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         resp = self.do_test_status_code(200)
         self.assert_present(r4.username, resp.content)
         
@@ -459,13 +459,13 @@ class TestElevateResearcher(SessionApiTest):
     def test_site_admin_as_study_admin_on_study(self):
         self.session_researcher
         self.set_session_study_relation(ResearcherRole.study_admin)
-        r2 = self.generate_researcher(relation_to_session_study="site_admin")
+        r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
     
     def test_site_admin_as_site_admin(self):
         self.session_researcher.update(site_admin=True)
-        r2 = self.generate_researcher(relation_to_session_study="site_admin")
+        r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
 
@@ -495,7 +495,7 @@ class TestDemoteStudyAdmin(SessionApiTest):
     
     def test_site_admin_as_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
-        r2 = self.generate_researcher(relation_to_session_study="site_admin")
+        r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.exists())
         r2.refresh_from_db()
@@ -504,7 +504,7 @@ class TestDemoteStudyAdmin(SessionApiTest):
     def test_site_admin_as_site_admin(self):
         self.session_researcher.update(site_admin=True)
         self.set_session_study_relation(ResearcherRole.study_admin)
-        r2 = self.generate_researcher(relation_to_session_study="site_admin")
+        r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.exists())
         r2.refresh_from_db()
@@ -618,7 +618,7 @@ class TestCreateStudy(SessionApiTest):
         # only site admins can load the page
         for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
-            self.do_test_status_code(302 if user_role == "site_admin" else 403)
+            self.do_test_status_code(302 if user_role == SITE_ADMIN else 403)
     
     def test_create_study_success(self):
         self.session_researcher.update(site_admin=True)
@@ -950,7 +950,7 @@ class TestAddResearcherToStudy(SessionApiTest):
     # # FIXME: test fails, need to fix data download bug on site admin users first
     # def test_site_admin_on_site_admin(self):
     #     self.session_researcher.update(site_admin=True)
-    #     self._test("site_admin", 403, "site_admin")
+    #     self._test(SITE_ADMIN, 403, SITE_ADMIN)
     
     def test_study_admin_on_none(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
@@ -967,14 +967,14 @@ class TestAddResearcherToStudy(SessionApiTest):
     # FIXME: test fails, need to fix data download bug on site admin users first
     # def test_study_admin_on_site_admin(self):
     #     self.set_session_study_relation(ResearcherRole.study_admin)
-    #     self._test("site_admin", 403, "site_admin")
+    #     self._test(SITE_ADMIN, 403, SITE_ADMIN)
     
     def test_researcher(self):
         self.set_session_study_relation(ResearcherRole.researcher)
         self._test(ResearcherRole.researcher, 403, ResearcherRole.researcher)
         self._test(ResearcherRole.study_admin, 403, ResearcherRole.study_admin)
         self._test(None, 403, None)
-        self._test("site_admin", 403, "site_admin")
+        self._test(SITE_ADMIN, 403, SITE_ADMIN)
     
     def _test(self, r2_starting_relation, status_code, desired_relation):
         # setup researcher, do the post request
@@ -1001,14 +1001,14 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
         self._test(None, 302)
         self._test(ResearcherRole.study_admin, 302)
         self._test(ResearcherRole.researcher, 302)
-        self._test("site_admin", 302)
+        self._test(SITE_ADMIN, 302)
     
     def test_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self._test(None, 403)
         self._test(ResearcherRole.study_admin, 403)
         self._test(ResearcherRole.researcher, 302)
-        self._test("site_admin", 403)
+        self._test(SITE_ADMIN, 403)
     
     def test_researcher(self):
         self.set_session_study_relation(ResearcherRole.researcher)
@@ -1021,8 +1021,8 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
         )
     
     def _test(self, r2_starting_relation, status_code):
-        if r2_starting_relation == "site_admin":
-            r2 = self.generate_researcher(relation_to_session_study="site_admin")
+        if r2_starting_relation == SITE_ADMIN:
+            r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         else:
             r2 = self.generate_researcher(relation_to_session_study=r2_starting_relation)
         redirect = self.smart_post(

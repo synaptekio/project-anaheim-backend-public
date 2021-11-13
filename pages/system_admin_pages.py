@@ -33,9 +33,6 @@ from libs.internal_types import ResearcherRequest
 from libs.sentry import make_error_sentry, SentryTypes
 from libs.timezone_dropdown import ALL_TIMEZONES_DROPDOWN
 
-
-SITE_ADMIN = "Site Admin"
-
 ####################################################################################################
 ###################################### Helpers #####################################################
 ####################################################################################################
@@ -147,7 +144,7 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
     visible_studies = session_researcher.get_visible_studies_by_name()
     if edit_researcher.site_admin:
         # if the session admin is a site admin then we can skip the complex logic
-        edit_study_info = [(SITE_ADMIN, True, study) for study in visible_studies]
+        edit_study_info = [("Site Admin", True, study) for study in visible_studies]
     else:
         # When the session admin is just a study admin then we need to determine if the study that
         # the session admin can see is also one they are an admin on so we can display buttons.

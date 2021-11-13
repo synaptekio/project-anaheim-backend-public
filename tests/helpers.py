@@ -1,5 +1,5 @@
 from constants.researcher_constants import ResearcherRole
-from constants.testing_constants import REAL_ROLES
+from constants.testing_constants import REAL_ROLES, SITE_ADMIN
 from database.study_models import DeviceSettings, Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
@@ -84,12 +84,12 @@ class ReferenceObjectMixin:
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
-            site_admin=relation_to_session_study == "site_admin",
+            site_admin=relation_to_session_study == SITE_ADMIN,
             is_batch_user=False,
         )
         # set password saves...
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
-        if relation_to_session_study not in (None, "site_admin"):
+        if relation_to_session_study not in (None, SITE_ADMIN):
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
         
         return researcher
