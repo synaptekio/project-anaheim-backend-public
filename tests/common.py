@@ -156,29 +156,20 @@ class RedirectSessionApiTest(SmartRequestsTestCase):
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
-    def do_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
-        # Instantiate the default researcher, pass through params, reverse ENDPOINT_NAME and pass in
-        # post params, then refresh default researcher just in case it was mutated during the call.
-        # Assert that the request was redirected, and that it points to the appropriate endpoint.
-        response = self.smart_post(*reverse_args, reverse_params=reverse_kwargs, **post_params)
-        self.session_researcher.refresh_from_db()
+    def smart_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
+        # As smart post, but assert that the request was redirected, and that it points to the
+        # appropriate endpoint.
+        response = super().smart_post(*reverse_args, reverse_params=reverse_kwargs, **post_params)
         self.assertEqual(response.status_code, 302)
         self.assertIsInstance(response, HttpResponseRedirect)
         self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
-        return response
-    
-    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
-        # instantiate the default researcher, pass through params, refresh default researcher.
-        self.session_researcher
-        response = self.smart_get(*reverse_params, **reverse_kwargs)
-        self.session_researcher.refresh_from_db()  # just in case?
         return response
     
     def get_redirect_content(self, *args, **kwargs) -> bytes:
         # Tests for this class usually need a page to test for content messages.  This method loads
         # the REDIRECT_ENDPOINT_NAME page, ensures it has the required 200 code, and returns the
         # html content for further checking by the test itself.
-        resp = self.client.get(reverse(self.REDIRECT_ENDPOINT_NAME), *args, **kwargs)
+        resp = self.smart_get_redirect(*args, **kwargs)
         self.assertEqual(resp.status_code, 200)
         return resp.content
 
@@ -186,48 +177,28 @@ class RedirectSessionApiTest(SmartRequestsTestCase):
 class SessionApiTest(SmartRequestsTestCase):
     """ This class is for non-redirect api endpoints.  It includes helper functions for issuing a
     post request to the endpoint declared for ENDPOINT_NAME and testing its return code. """
-    
     ENDPOINT_NAME = None
     
-    def do_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
-        # instantiate the default researcher, pass through params, refresh default researcher, and
-        # return the response object for further testing
-        response = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
-        self.session_researcher.refresh_from_db()
-        return response
-    
-    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
-        # instantiate the default researcher, pass through params, refresh default researcher.
-        response = self.smart_get(*reverse_params, **reverse_kwargs)
-        self.session_researcher.refresh_from_db()  # just in case
-        return response
-    
-    def do_test_status_code(self, status_code:int, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+    def do_test_status_code(
+        self, status_code: int, *reverse_args, reverse_kwargs=None, **post_params
+    ) -> HttpResponse:
         """ This helper function takes a status code in addition to post paramers, and tests for
         it.  Use for writing concise tests. """
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.do_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
+        resp = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
         self.assertEqual(resp.status_code, status_code)
         return resp
 
 
 class GeneralPageTest(SmartRequestsTestCase):
     """ This class implements a do_get and a do_test_status_code function for implementing concise
-    tests on normal, non-api web pages. """
-    
+    tests on normal, non-api web pages. """    
     ENDPOINT_NAME = None
-    
-    def do_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
-        # instantiate the default researcher, pass through params, refresh default researcher.
-        self.session_researcher
-        response = self.smart_get(*reverse_params, **reverse_kwargs)
-        self.session_researcher.refresh_from_db()  # just in case
-        return response
     
     def do_test_status_code(self, status_code: int, *params, **kwargs) -> HttpResponse:
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.do_get(*params, **kwargs)
+        resp = self.smart_get(*params, **kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp

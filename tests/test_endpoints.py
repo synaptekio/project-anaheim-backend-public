@@ -138,7 +138,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
     
     def test_reset_admin_password_success(self):
-        self.do_post(
+        self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD,
             new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
             confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
@@ -151,7 +151,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
         self.assert_present(PASSWORD_RESET_SUCCESS, self.get_redirect_content())
     
     def test_reset_admin_password_wrong(self):
-        self.do_post(
+        self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
             new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
             confirm_new_password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
@@ -163,7 +163,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
     
     def test_reset_admin_password_rules_fail(self):
         non_default = "abcdefghijklmnop"
-        self.do_post(
+        self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD,
             new_password=non_default,
             confirm_new_password=non_default,
@@ -175,7 +175,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
     
     def test_reset_admin_password_too_short(self):
         non_default = "a1#"
-        self.do_post(
+        self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD,
             new_password=non_default,
             confirm_new_password=non_default,
@@ -187,7 +187,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
     
     def test_reset_admin_password_mismatch(self):
         #has to pass the length and character checks
-        self.do_post(
+        self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD,
             new_password="aA1#aA1#aA1#",
             confirm_new_password="aA1#aA1#aA1#aA1#",
@@ -205,7 +205,8 @@ class TestResetDownloadApiCredentials(RedirectSessionApiTest):
     
     def test_reset(self):
         self.assertIsNone(self.session_researcher.access_key_id)
-        self.do_post()
+        self.smart_post()
+        self.session_researcher.refresh_from_db()
         self.assertIsNotNone(self.session_researcher.access_key_id)
         self.assert_present("Your Data-Download API access credentials have been reset",
                              self.get_redirect_content())
@@ -219,7 +220,7 @@ class TestNewTableauApiKey(RedirectSessionApiTest):
     #  (need to review the tableau tests)
     def test_reset(self):
         self.assertIsNone(self.session_researcher.api_keys.first())
-        self.do_post()
+        self.smart_post()
         self.assertIsNotNone(self.session_researcher.api_keys.first())
         self.assert_present("New Tableau API credentials have been generated for you",
                              self.get_redirect_content())
@@ -237,7 +238,7 @@ class TestDisableTableauApiKey(RedirectSessionApiTest):
             has_tableau_api_permissions=True,
             readable_name="something",
         )
-        self.do_post(api_key_id=api_key.access_key_id)
+        self.smart_post(api_key_id=api_key.access_key_id)
         self.assertFalse(self.session_researcher.api_keys.first().is_active)
         content = self.get_redirect_content()
         self.assert_present(api_key.access_key_id, content)
@@ -245,14 +246,14 @@ class TestDisableTableauApiKey(RedirectSessionApiTest):
     
     def test_no_match(self):
         # fail with empty and fail with success
-        self.do_post(api_key_id="abc")
+        self.smart_post(api_key_id="abc")
         self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.get_redirect_content())
         api_key = ApiKey.generate(
             researcher=self.session_researcher,
             has_tableau_api_permissions=True,
             readable_name="something",
         )
-        self.do_post(api_key_id="abc")
+        self.smart_post(api_key_id="abc")
         api_key.refresh_from_db()
         self.assertTrue(api_key.is_active)
         self.assert_present(TABLEAU_NO_MATCHING_API_KEY, self.get_redirect_content())
@@ -264,7 +265,7 @@ class TestDisableTableauApiKey(RedirectSessionApiTest):
             readable_name="something",
         )
         api_key.update(is_active=False)
-        self.do_post(api_key_id=api_key.access_key_id)
+        self.smart_post(api_key_id=api_key.access_key_id)
         api_key.refresh_from_db()
         self.assertFalse(api_key.is_active)
         self.assert_present(TABLEAU_API_KEY_IS_DISABLED, self.get_redirect_content())
@@ -528,7 +529,7 @@ class TestCreateNewResearcher(SessionApiTest):
             self.assign_role(self.session_researcher, user_role)
             username = generate_easy_alphanumeric_string()
             password = generate_easy_alphanumeric_string()
-            resp = self.do_post(admin_id=username, password=password)
+            resp = self.smart_post(admin_id=username, password=password)
             
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 302)
@@ -661,8 +662,8 @@ class TestToggleForest(RedirectSessionApiTest):
         redirect_endpoint = easy_url(self.REDIRECT_ENDPOINT_NAME, study_id=self.session_study.id)
         self.session_researcher.update(site_admin=True)
         self.session_study.update(forest_enabled=not enable)  # directly mutate the database.
-        # resp = self.do_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
-        resp = self.do_post(self.session_study.id)
+        # resp = self.smart_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
+        resp = self.smart_post(self.session_study.id)
         self.assertEqual(resp.url, redirect_endpoint)
         self.session_study.refresh_from_db()
         if enable:
@@ -679,7 +680,7 @@ class TestDeleteStudy(RedirectSessionApiTest):
     
     def test_success(self):
         self.session_researcher.update(site_admin=True)
-        resp = self.do_post(self.session_study.id, confirmation="true")
+        resp = self.smart_post(self.session_study.id, confirmation="true")
         self.session_study.refresh_from_db()
         self.assertTrue(self.session_study.deleted)
         self.assertEqual(resp.url, easy_url(self.REDIRECT_ENDPOINT_NAME))
@@ -734,7 +735,7 @@ class TestDeviceSettings(SessionApiTest):
     def test_get(self):
         for role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, role)
-            resp = self.do_get(self.session_study.id)
+            resp = self.smart_get(self.session_study.id)
             self.assertEqual(resp.status_code, 200 if role != None else 403)
     
     def test_study_admin(self):
