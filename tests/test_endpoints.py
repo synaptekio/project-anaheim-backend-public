@@ -1058,6 +1058,7 @@ class TestSetResearcherPassword(SessionApiTest):
         )
 
 
+# fixme: add user type tests
 class TestRenameStudy(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_api.rename_study"
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
@@ -1067,3 +1068,11 @@ class TestRenameStudy(RedirectSessionApiTest):
         self.smart_post(self.session_study.id, new_study_name="hello!")
         self.session_study.refresh_from_db()
         self.assertEqual(self.session_study.name, "hello!")
+
+
+class TestDownloadPage(GeneralPageTest):
+    ENDPOINT_NAME = "admin_api.download_page"
+    
+    def test(self):
+        # just test that it loads without breaking
+        self.smart_get()
