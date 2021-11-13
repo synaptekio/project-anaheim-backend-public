@@ -963,7 +963,7 @@ class TestAddResearcherToStudy(SessionApiTest):
     def test_study_admin_on_researcher(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self._test(ResearcherRole.researcher, 302, ResearcherRole.researcher)
-
+    
     # FIXME: test fails, need to fix data download bug on site admin users first
     # def test_study_admin_on_site_admin(self):
     #     self.set_session_study_relation(ResearcherRole.study_admin)
@@ -1035,3 +1035,24 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
         if isinstance(redirect, HttpResponseRedirect):
             self.assert_researcher_relation(r2, self.session_study, None)
             self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")
+
+
+# FIXME: add failure case test
+class TestSetResearcherPassword(SessionApiTest):
+    ENDPOINT_NAME = "admin_api.set_researcher_password"
+    
+    def test(self):
+        self.session_researcher.update(site_admin=True)
+        r2 = self.generate_researcher()
+        self.smart_post(
+            researcher_id=r2.id,
+            password=self.DEFAULT_RESEARCHER_PASSWORD + "1",
+        )
+        # we are ... teleologically correct here mimicking the code...
+        r2.refresh_from_db()
+        self.assertTrue(
+            r2.check_password(r2.username, self.DEFAULT_RESEARCHER_PASSWORD + "1")
+        )
+        self.assertFalse(
+            r2.check_password(r2.username, self.DEFAULT_RESEARCHER_PASSWORD)
+        )
