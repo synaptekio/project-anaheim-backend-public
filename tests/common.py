@@ -76,15 +76,18 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
     
     def assert_researcher_relation(self, researcher: Researcher, study: Study, relationship: str):
         if relationship == "site_admin":
+            researcher.refresh_from_db()
             self.assertTrue(researcher.site_admin)
         elif relationship in REAL_ROLES:
             self.assertTrue(
                 StudyRelation.objects.filter(
                     study=study, researcher=researcher, relationship=relationship
-                ).exists
+                ).exists()
             )
         elif relationship is None:
-            self.assertTrue(StudyRelation.objects.exists(study=study, researcher=researcher).exists())
+            self.assertFalse(
+                StudyRelation.objects.filter(study=study, researcher=researcher).exists()
+            )
         else:
             raise Exception("invalid researcher role provided")
 

@@ -27,11 +27,11 @@ def set_study_timezone(request: ResearcherRequest, study_id=None):
     if new_timezone not in ALL_TIMEZONES:
         messages.warning(request, ("The timezone chosen does not exist."))
         return redirect(f'/edit_study/{study_id}')
-
+    
     study = Study.objects.get(pk=study_id)
     study.timezone_name = new_timezone
     study.save()
-
+    
     # All scheduled events for this study need to be recalculated
     # this causes chaos, relative and absolute surveys will be regenerated if already sent.
     repopulate_all_survey_scheduled_events(study)
@@ -52,7 +52,7 @@ def add_researcher_to_study(request: ResearcherRequest, ):
     except ValidationError:
         # handle case of the study id + researcher already existing
         pass
-
+    
     # This gets called by both edit_researcher and edit_study, so the POST request
     # must contain which URL it came from.
     # FIXME: don't source the url from the page, give it a required post parameter for the redirect and check against that
@@ -71,6 +71,7 @@ def remove_researcher_from_study(request: ResearcherRequest, ):
     assert_admin(request, study_id)
     assert_researcher_under_admin(request, researcher, study_id)
     StudyRelation.objects.filter(study_id=study_id, researcher_id=researcher_id).delete()
+    # FIXME: don't source the url from the page, give it a required post parameter for the redirect and check against that
     return redirect(request.POST['redirect_url'])
 
 
@@ -80,12 +81,12 @@ def delete_researcher(request: ResearcherRequest, researcher_id):
     # only site admins can delete researchers from the system.
     if not request.session_researcher.site_admin:
         return abort(403)
-
+    
     try:
         researcher = Researcher.objects.get(pk=researcher_id)
     except Researcher.DoesNotExist:
         return abort(404)
-
+    
     StudyRelation.objects.filter(researcher=researcher).delete()
     researcher.delete()
     return redirect('/manage_researchers')

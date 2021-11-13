@@ -938,7 +938,7 @@ class TestSetStudyTimezone(RedirectSessionApiTest):
 
 
 # FIXME: there are manyy cases here that should not be possible, study admin adding researcher role
-# to site admin for example
+# to site admin for example.  Note the changes made to TestRemoveResearcherFromStudy for later.
 class TestAddResearcherToStudy(SessionApiTest):
     ENDPOINT_NAME = "admin_api.add_researcher_to_study"
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
@@ -977,3 +977,48 @@ class TestAddResearcherToStudy(SessionApiTest):
         self.assert_researcher_relation(r2, self.session_study, ResearcherRole.researcher)
         self.assertEqual(redirect.status_code, 302)
         self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")
+
+
+class TestRemoveResearcherFromStudy(SessionApiTest):
+    ENDPOINT_NAME = "admin_api.remove_researcher_from_study"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    def test_site_admin(self):
+        self.session_researcher.update(site_admin=True)
+        self._test(None, 302)
+        self._test(ResearcherRole.study_admin, 302)
+        self._test(ResearcherRole.researcher, 302)
+        self._test("site_admin", 302)
+    
+    def test_study_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self._test(None, 403)
+        self._test(ResearcherRole.study_admin, 403)
+        self._test(ResearcherRole.researcher, 302)
+        self._test("site_admin", 403)
+    
+    def test_researcher(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        r2 = self.generate_researcher(relation_to_session_study=None)
+        self.do_test_status_code(
+            403,
+            study_id=self.session_study.id,
+            researcher_id=r2.id,
+            redirect_url=f"/edit_study/{self.session_study.id}"
+        )
+    
+    def _test(self, r2_starting_relation, status_code):
+        if r2_starting_relation == "site_admin":
+            r2 = self.generate_researcher(site_admin=True)
+        else:
+            r2 = self.generate_researcher(relation_to_session_study=r2_starting_relation)
+        redirect = self.smart_post(
+            study_id=self.session_study.id,
+            researcher_id=r2.id,
+            redirect_url=f"/edit_study/{self.session_study.id}"
+        )
+        # needs to be a None at the end
+        self.assertEqual(redirect.status_code, status_code)
+        if isinstance(redirect, HttpResponseRedirect):
+            self.assert_researcher_relation(r2, self.session_study, None)
+            self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")
