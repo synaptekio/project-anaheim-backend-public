@@ -918,7 +918,7 @@ class TestPipelineWebFormPage(GeneralPageTest):
         self.assert_not_present("Reset Data-Download API Access Credentials", resp.content)
 
 
-# FIXME: add error cases to tests
+# FIXME: add error cases to this test
 class TestSetStudyTimezone(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_api.set_study_timezone"
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
@@ -935,3 +935,45 @@ class TestSetStudyTimezone(RedirectSessionApiTest):
         self.smart_post(self.session_study.id, new_timezone_name="Pacific/Noumea")
         self.session_study.refresh_from_db()
         self.assertEqual(self.session_study.timezone_name, "Pacific/Noumea")
+
+
+# FIXME: there are manyy cases here that should not be possible, study admin adding researcher role
+# to site admin for example
+class TestAddResearcherToStudy(SessionApiTest):
+    ENDPOINT_NAME = "admin_api.add_researcher_to_study"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    def test_site_admin(self):
+        self.session_researcher.update(site_admin=True)
+        self._test(None)
+        self._test(ResearcherRole.study_admin)
+        self._test(ResearcherRole.researcher)
+    
+    def test_study_admin(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self._test(None)
+        self._test(ResearcherRole.study_admin)
+        self._test(ResearcherRole.researcher)
+    
+    # throws a 400 error, not a redirect
+    def test_researcher(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        r2 = self.generate_researcher(relation_to_session_study=None)
+        self.do_test_status_code(
+            403,
+            study_id=self.session_study.id,
+            researcher_id=r2.id,
+            redirect_url=f"/edit_study/{self.session_study.id}"
+        )
+    
+    def _test(self, r2_starting_relation):
+        r2 = self.generate_researcher(relation_to_session_study=r2_starting_relation)
+        redirect = self.smart_post(
+            study_id=self.session_study.id,
+            researcher_id=r2.id,
+            redirect_url=f"/edit_study/{self.session_study.id}"
+        )
+        # needs to be a researcher at the end
+        self.assert_researcher_relation(r2, self.session_study, ResearcherRole.researcher)
+        self.assertEqual(redirect.status_code, 302)
+        self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")

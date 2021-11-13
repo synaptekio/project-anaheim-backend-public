@@ -7,7 +7,8 @@ from django.urls import reverse
 from django.urls.base import resolve
 
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES
-from database.user_models import Researcher
+from database.study_models import Study
+from database.user_models import Researcher, StudyRelation
 from tests.helpers import ReferenceObjectMixin
 
 
@@ -72,6 +73,20 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             return the_test_function(test_str.decode(), corpus)
         else:
             raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
+    
+    def assert_researcher_relation(self, researcher: Researcher, study: Study, relationship: str):
+        if relationship == "site_admin":
+            self.assertTrue(researcher.site_admin)
+        elif relationship in REAL_ROLES:
+            self.assertTrue(
+                StudyRelation.objects.filter(
+                    study=study, researcher=researcher, relationship=relationship
+                ).exists
+            )
+        elif relationship is None:
+            self.assertTrue(StudyRelation.objects.exists(study=study, researcher=researcher).exists())
+        else:
+            raise Exception("invalid researcher role provided")
 
 
 class BasicSessionTestCase(CommonTestCase):
@@ -193,7 +208,7 @@ class SessionApiTest(SmartRequestsTestCase):
 
 class GeneralPageTest(SmartRequestsTestCase):
     """ This class implements a do_get and a do_test_status_code function for implementing concise
-    tests on normal, non-api web pages. """    
+    tests on normal, non-api web pages. """
     ENDPOINT_NAME = None
     
     def do_test_status_code(self, status_code: int, *params, **kwargs) -> HttpResponse:
