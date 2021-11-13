@@ -800,5 +800,13 @@ class TestDeviceSettings(SessionApiTest):
             # compare the inner values of every key, make sure they differ
             for inner_key, v2 in a_dict_of_two_values.items():
                 self.assertNotEqual(old_consent_sections[outer_key][inner_key], v2)
-                
-                
+
+
+
+class TestManageFirebaseCredentials(GeneralPageTest):
+    ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        # just test that the page loads, I guess
+        self.session_researcher.update(site_admin=True)
+        self.do_test_status_code(200)
