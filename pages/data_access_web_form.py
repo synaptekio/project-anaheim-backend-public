@@ -14,7 +14,7 @@ from libs.internal_types import ResearcherRequest
 @require_GET
 @authenticate_researcher_login
 def data_api_web_form_page(request: ResearcherRequest):
-    warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
+    warn_researcher_if_hasnt_yet_generated_access_key(request)
     return render(
         request,
         "data_api_web_form.html",
@@ -28,7 +28,7 @@ def data_api_web_form_page(request: ResearcherRequest):
 @require_GET
 @authenticate_researcher_login
 def pipeline_download_page(request: ResearcherRequest):
-    warn_researcher_if_hasnt_yet_generated_access_key(request.session_researcher)
+    warn_researcher_if_hasnt_yet_generated_access_key(request)
     # FIXME clean this up.
     # it is a bit obnoxious to get this data, we need to deduplcate it and then turn it back into a list
     tags_by_study = {
@@ -49,12 +49,12 @@ def pipeline_download_page(request: ResearcherRequest):
     )
 
 
-def warn_researcher_if_hasnt_yet_generated_access_key(researcher: Researcher):
-    if not researcher.access_key_id:
+def warn_researcher_if_hasnt_yet_generated_access_key(request: ResearcherRequest):
+    if not request.session_researcher.access_key_id:
         msg = """You need to generate an <b>Access Key</b> and a <b>Secret Key </b> before you
         can download data. Go to <a href='/manage_credentials'> Manage Credentials</a> and click
         'Reset Data-Download API Access Credentials'. """
-        messages.warning(Markup(msg))
+        messages.warning(request, Markup(msg))
 
 
 def participants_by_study(request: ResearcherRequest):

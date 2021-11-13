@@ -894,3 +894,14 @@ class TestDeleteFirebaseAndroidCert(RedirectSessionApiTest):
         FileAsText.objects.create(tag=ANDROID_FIREBASE_CREDENTIALS, text="any_string")
         self.smart_post()
         self.assertFalse(FileAsText.objects.exists())
+
+
+class TestDataAccessWebFormPage(GeneralPageTest):
+    ENDPOINT_NAME = "data_access_web_form.data_api_web_form_page"
+    
+    def test(self):
+        resp = self.smart_get()
+        self.assert_present("Reset Data-Download API Access Credentials", resp.content)
+        id_key, secret_key = self.session_researcher.reset_access_credentials()
+        resp = self.smart_get()
+        self.assert_not_present("Reset Data-Download API Access Credentials", resp.content)

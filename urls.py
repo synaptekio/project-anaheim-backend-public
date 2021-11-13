@@ -146,7 +146,7 @@ urlpatterns = [
     path(
         "data_access_web_form",
         data_access_web_form.data_api_web_form_page,
-        name="data_access_web_form.data_access_web_form"),
+        name="data_access_web_form.data_api_web_form_page"),
     path(
         "pipeline_access_web_form",
         data_access_web_form.pipeline_download_page,
