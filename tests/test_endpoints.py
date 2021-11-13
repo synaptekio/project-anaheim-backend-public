@@ -1,7 +1,8 @@
 from copy import copy
 from typing import List
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import HttpResponseRedirect
@@ -96,7 +97,7 @@ class TestViewStudy(GeneralPageTest):
         self.do_test_status_code(200, self.session_study.id)
     
     @patch('pages.admin_pages.check_firebase_instance')
-    def test_view_study_site_admin(self, check_firebase_instance):
+    def test_view_study_site_admin(self, check_firebase_instance: MagicMock):
         study = self.session_study
         self.session_researcher.update(site_admin=True)
         
@@ -808,3 +809,35 @@ class TestManageFirebaseCredentials(GeneralPageTest):
         # just test that the page loads, I guess
         self.session_researcher.update(site_admin=True)
         self.do_test_status_code(200)
+
+
+class TestUploadBackendFirebaseCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.upload_backend_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    BACKEND_CERT = \
+        """{
+          "type": "service_account",
+          "project_id": "some id",
+          "private_key_id": "numbers and letters",
+          "private_key": "-----BEGIN PRIVATE KEY-----omg a key-----END PRIVATE KEY-----",
+          "client_email": "firebase-adminsdk *serviceaccountinfo*",
+          "client_id": "NUMBERS!",
+          "auth_uri": "https://an_account_oauth",
+          "token_uri": "https://an_account/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "some_neato_cert_url"
+        }"""
+    
+    @patch("pages.system_admin_pages.update_firebase_instance")
+    @patch("pages.system_admin_pages.get_firebase_credential_errors")
+    def test(self, get_firebase_credential_errors: MagicMock, update_firebase_instance: MagicMock):
+        # test that the data makes it to the backend, patch out the errors that are sourced from the
+        # firbase admin lbrary
+        get_firebase_credential_errors.return_value = None
+        update_firebase_instance.return_value = True
+        # test upload as site admin
+        self.session_researcher.update(site_admin=True)
+        file = SimpleUploadedFile("backend_cert.json", self.BACKEND_CERT.encode(), "text/json")
+        self.smart_post(backend_firebase_cert=file)
+        resp_content = self.get_redirect_content()
+        self.assert_present("New firebase credentials have been received", resp_content)
