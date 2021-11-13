@@ -1,6 +1,8 @@
+from itertools import chain
 from sys import argv
 
 from django.contrib import messages
+from django.db.models import Model
 from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
@@ -167,11 +169,17 @@ class SmartRequestsTestCase(PopulatedSessionTestCase):
     def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         if reverse_kwargs is None:
             reverse_kwargs = {}
+        for arg in chain(reverse_args, reverse_kwargs.values(), post_params.values()):
+            if isinstance(arg, Model):
+                raise TypeError(f"encountered {type(arg)}")
         return self.client.post(
             reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
         )
     
     def smart_get(self, *reverse_params, **reverse_kwargs) -> HttpResponse:
+        for arg in chain(reverse_params, reverse_kwargs.values()):
+            if isinstance(arg, Model):
+                raise TypeError(f"encountered {type(arg)}")
         return self.client.get(
             reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
         )
