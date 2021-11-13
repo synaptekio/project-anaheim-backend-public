@@ -1,9 +1,9 @@
 from copy import copy
 from typing import List
 from unittest.mock import patch
-from django.db import models
-from django.forms.fields import IntegerField, NullBooleanField
 
+from django.db import models
+from django.forms.fields import NullBooleanField
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 
@@ -20,7 +20,6 @@ from database.user_models import Researcher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
     RedirectSessionApiTest, SessionApiTest)
-from tests.helpers import compare_dictionaries
 
 
 class TestLoginPages(BasicSessionTestCase):
@@ -186,7 +185,7 @@ class TestResetAdminPassword(RedirectSessionApiTest):
         self.assert_present(NEW_PASSWORD_8_LONG, self.get_redirect_content())
     
     def test_reset_admin_password_mismatch(self):
-        #has to pass the length and character checks
+        # has to pass the length and character checks
         self.smart_post(
             current_password=self.DEFAULT_RESEARCHER_PASSWORD,
             new_password="aA1#aA1#aA1#",
@@ -736,7 +735,7 @@ class TestDeviceSettings(SessionApiTest):
         for role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, role)
             resp = self.smart_get(self.session_study.id)
-            self.assertEqual(resp.status_code, 200 if role != None else 403)
+            self.assertEqual(resp.status_code, 200 if role is not None else 403)
     
     def test_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
@@ -800,7 +799,6 @@ class TestDeviceSettings(SessionApiTest):
             # compare the inner values of every key, make sure they differ
             for inner_key, v2 in a_dict_of_two_values.items():
                 self.assertNotEqual(old_consent_sections[outer_key][inner_key], v2)
-
 
 
 class TestManageFirebaseCredentials(GeneralPageTest):
