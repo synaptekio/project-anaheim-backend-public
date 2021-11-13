@@ -9,6 +9,8 @@ from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 
 from config.jinja2 import easy_url
+from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
+    IOS_FIREBASE_CREDENTIALS)
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
@@ -18,6 +20,7 @@ from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID
     IOS_CERT)
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
+from database.system_models import FileAsText
 from database.user_models import Researcher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
@@ -858,3 +861,36 @@ class TestUploadAndroidFirebaseCert(RedirectSessionApiTest):
         self.smart_post(android_firebase_cert=file)
         resp_content = self.get_redirect_content()
         self.assert_present("New android credentials were received", resp_content)
+
+
+class TestDeleteFirebaseBackendCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.delete_backend_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        self.session_researcher.update(site_admin=True)
+        FileAsText.objects.create(tag=BACKEND_FIREBASE_CREDENTIALS, text="any_string")
+        self.smart_post()
+        self.assertFalse(FileAsText.objects.exists())
+
+
+class TestDeleteFirebaseIosCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.delete_ios_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        self.session_researcher.update(site_admin=True)
+        FileAsText.objects.create(tag=IOS_FIREBASE_CREDENTIALS, text="any_string")
+        self.smart_post()
+        self.assertFalse(FileAsText.objects.exists())
+
+
+class TestDeleteFirebaseAndroidCert(RedirectSessionApiTest):
+    ENDPOINT_NAME = "system_admin_pages.delete_android_firebase_cert"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
+    
+    def test(self):
+        self.session_researcher.update(site_admin=True)
+        FileAsText.objects.create(tag=ANDROID_FIREBASE_CREDENTIALS, text="any_string")
+        self.smart_post()
+        self.assertFalse(FileAsText.objects.exists())
