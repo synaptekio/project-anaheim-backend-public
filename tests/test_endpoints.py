@@ -1139,3 +1139,17 @@ class TestDeleteIntervention(RedirectSessionApiTest):
         self.smart_post(self.session_study.id, intervention=intervention.id)
         self.assertFalse(Intervention.objects.filter(id=intervention.id).exists())
 
+
+class TestDeleteIntervention(RedirectSessionApiTest):
+    ENDPOINT_NAME = "study_api.edit_intervention"
+    REDIRECT_ENDPOINT_NAME = "study_api.interventions_page"
+    
+    def test(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        intervention = self.generate_intervention(self.session_study, "obscure_name_of_intervention")
+        self.smart_post(
+            self.session_study.id, intervention_id=intervention.id, edit_intervention="new_name"
+        )
+        intervention_new = Intervention.objects.get(id=intervention.id)
+        self.assertEqual(intervention.id, intervention_new.id)
+        self.assertEqual(intervention_new.name, "new_name")

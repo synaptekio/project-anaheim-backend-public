@@ -103,6 +103,7 @@ def edit_intervention(request: ResearcherRequest, study_id=None):
     
     return redirect(f'/interventions/{study.id}')
 
+
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
 def study_fields(request: ResearcherRequest, study_id=None):
