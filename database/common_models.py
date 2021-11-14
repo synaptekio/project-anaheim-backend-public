@@ -11,7 +11,7 @@ from middleware.abort_middleware import abort
 class ObjectIdError(Exception): pass
 
 
-def _generate_objectid_string():
+def generate_objectid_string():
     return ''.join(random_choice(OBJECT_ID_ALLOWED_CHARS) for _ in range(24))
 
 
@@ -37,7 +37,7 @@ class UtilityModel(models.Model):
         """
 
         for _ in range(10):
-            object_id = _generate_objectid_string()
+            object_id = generate_objectid_string()
             if not cls.objects.filter(**{field_name: object_id}).exists():
                 break
         else:

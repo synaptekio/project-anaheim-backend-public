@@ -18,6 +18,7 @@ from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATC
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
     IOS_CERT, SITE_ADMIN)
+from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study
 from database.system_models import FileAsText
@@ -1108,7 +1109,21 @@ class TestStudyParticipantApi(SessionApiTest):
         }
     
     def test(self):
-        self.smart_get(
-            self.session_study.id,
-            get_kwargs=self.DEFAULT_PARAMETERS,
-        )
+        self.smart_get(self.session_study.id, get_kwargs=self.DEFAULT_PARAMETERS)
+
+
+class TestInterventionsPage(SessionApiTest):
+    ENDPOINT_NAME = "study_api.interventions_page"
+    
+    def test_get(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.generate_intervention(self.session_study, "obscure_name_of_intervention")
+        resp = self.smart_get(self.session_study.id)
+        self.assert_present("obscure_name_of_intervention", resp.content)
+    
+    def test_post(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.smart_post(self.session_study.id, new_intervention="ohello")
+        intervention = Intervention.objects.get(study=self.session_study)
+        self.assertEqual(intervention.name, "ohello")
+        

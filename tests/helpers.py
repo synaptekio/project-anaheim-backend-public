@@ -1,5 +1,7 @@
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, SITE_ADMIN
+from database.common_models import generate_objectid_string
+from database.schedule_models import Intervention
 from database.study_models import DeviceSettings, Study
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
@@ -79,7 +81,7 @@ class ReferenceObjectMixin:
         self, name: str = None, relation_to_session_study: str = None
     ) -> Researcher:
         """ Generate a researcher based on the parameters provided, relation_to_session_study is
-        optional. """    
+        optional. """
         researcher = Researcher(
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
@@ -105,19 +107,28 @@ class ReferenceObjectMixin:
             return self._default_survey
         except AttributeError:
             pass
-        self._default_survey = Survey(
-            study=self.session_study,
-            survey_type=Survey.TRACKING_SURVEY,
-            object_id=self.DEFAULT_SURVEY_OBJECT_ID,
+        self._default_survey = self.generate_survey(
+            self.session_study, Survey.TRACKING_SURVEY, self.DEFAULT_SURVEY_OBJECT_ID,
         )
         self._default_survey.save()
         return self._default_survey
+    
+    def generate_survey(self, study: Study, survey_type: str, object_id: str = None) -> Survey:
+        self._default_survey = Survey(
+            study=study,
+            survey_type=survey_type,
+            object_id=object_id or generate_objectid_string(),
+        )
     
     @property
     def session_device_settings(self) -> DeviceSettings:
         """ Providing the comment about using the save() pattern is observed, this cannot fail. """
         return self.session_study.device_settings
     
+    def generate_intervention(self, study: Study, name: str) -> Intervention:
+        intervention = Intervention(study=study, name=name)
+        intervention.save()
+        return intervention
     #
     ## Participant objects
     #
