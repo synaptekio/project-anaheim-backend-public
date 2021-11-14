@@ -1,7 +1,12 @@
+from datetime import datetime
+
+from django.utils import timezone
+
+from constants.celery_constants import ScheduleTypes
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, SITE_ADMIN
 from database.common_models import generate_objectid_string
-from database.schedule_models import Intervention
+from database.schedule_models import ArchivedEvent, Intervention, ScheduledEvent
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
@@ -101,7 +106,7 @@ class ReferenceObjectMixin:
     #
     
     @property
-    def session_survey(self) -> Survey:
+    def default_survey(self) -> Survey:
         """ Creates a survey with no content attached to the session study. """
         try:
             return self._default_survey
@@ -110,15 +115,17 @@ class ReferenceObjectMixin:
         self._default_survey = self.generate_survey(
             self.session_study, Survey.TRACKING_SURVEY, self.DEFAULT_SURVEY_OBJECT_ID,
         )
-        self._default_survey.save()
         return self._default_survey
     
-    def generate_survey(self, study: Study, survey_type: str, object_id: str = None) -> Survey:
-        self._default_survey = Survey(
+    def generate_survey(self, study: Study, survey_type: str, object_id: str = None, **kwargs) -> Survey:
+        survey = Survey(
             study=study,
             survey_type=survey_type,
             object_id=object_id or generate_objectid_string(),
+            **kwargs
         )
+        survey.save()
+        return survey
     
     @property
     def session_device_settings(self) -> DeviceSettings:
@@ -139,27 +146,52 @@ class ReferenceObjectMixin:
     ## Participant objects
     #
     
-    def default_participant(self, ios=False) -> Participant:
+    @property
+    def default_participant(self) -> Participant:
         """ Creates a participant object on the session study.  This is a default object, and will
         be auto-populated in scenarios where such an object is required but not provided. """
         try:
             return self._default_participant
         except AttributeError:
             pass
+        self._default_participant = self.generate_participant(self.session_study, "particip")
+        return self._default_participant
+    
+    def generate_participant(self, study: Study, patient_id: str = None, ios=False):
         participant = Participant(
-            patient_id="particip",
+            patient_id=patient_id or generate_easy_alphanumeric_string(),
+            os_type=Participant.IOS_API if ios else Participant.ANDROID_API,
+            study=study,
             device_id='_xjeWARoRevoDoL9OKDwRMpYcDhuAxm4nwedUgABxWA=',
             password='2oWT7-6Su2WMDRWpclT0q2glam7AD5taUzHIWRnO490=',
             salt='1NB2kCxOOYzayIYGZYlhHw==',
-            os_type="IOS" if ios else "ANDROID",
-            timezone_name="America/New_York",
-            push_notification_unreachable_count=0,
-            deleted=False,
-            study=self.session_study,
         )
         participant.save()
-        self._default_participant = participant
         return participant
+    
+    # def generate_scheduled_event(self, survey: Survey, participant: Participant, schedule_type: str) -> ScheduledEvent:
+    #     ScheduledEvent(
+    #         survey_archive
+    #         weekly_schedule
+    #         relative_schedule
+    #         absolute_schedule
+    #         scheduled_time
+    #     )
+    
+    def generate_archived_event(
+        self, survey: Survey, participant: Participant, schedule_type: str = None,
+        scheduled_time: datetime = None, response_time: datetime = None, status: str = None
+    ):
+        archived_event = ArchivedEvent(
+            survey_archive=survey.archives.first(),
+            participant=participant,
+            schedule_type=schedule_type or ScheduleTypes.weekly,
+            scheduled_time=scheduled_time or timezone.now(),
+            response_time=response_time or None,
+            status=status or ArchivedEvent.SUCCESS,
+        )
+        archived_event.save()
+        return archived_event
     
     #
     ## Forest objects

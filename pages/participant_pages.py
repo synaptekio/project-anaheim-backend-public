@@ -20,27 +20,31 @@ from middleware.abort_middleware import abort
 @require_GET
 @authenticate_researcher_study_access
 def notification_history(request: ResearcherRequest, study_id: int, patient_id: str):
+    # use the provided study id because authentication already validated it
     try:
         participant = Participant.objects.get(patient_id=patient_id)
-        study = participant.study
-    except Participant.DoesNotExist:
+        study = Study.objects.get(id=study_id)
+    except (Participant.DoesNotExist, Study.DoesNotExist):
         return abort(404)
     page_number = request.GET.get('page', 1)
     per_page = request.GET.get('per_page', 100)
     survey_names = get_survey_names_dict(study)
-    notification_attempts = []
+    
     archived_events = ArchivedEvent.get_values_for_notification_history_paginated(participant.id, per_page=per_page)
     try:
         archived_events_page = archived_events.page(page_number)
     except EmptyPage:
         return abort(404)
     last_page_number = archived_events.page_range.stop - 1
+    
+    notification_attempts = []
     for archived_event in archived_events_page:
         notification_attempts.append(get_notification_details(archived_event, study.timezone, survey_names))
+        
     return render(
         request,
+        'notification_history.html',
         context=dict(
-            'notification_history.html',
             participant=participant,
             page=archived_events_page,
             notification_attempts=notification_attempts,

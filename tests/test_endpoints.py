@@ -308,7 +308,7 @@ class TestDashboardStream(PopulatedSessionTestCase):
         self.set_session_study_relation()
         url = reverse(
             "dashboard_api.dashboard_participant_page",
-            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant().patient_id),
+            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant.patient_id),
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -1199,3 +1199,13 @@ class TestEditStudyField(RedirectSessionApiTest):
         self.assertEqual(study_field.id, study_field_new.id)
         self.assertEqual(study_field_new.field_name, "new_name")
 
+
+# FIXME: implement more tests of this endpoint, it is complex.
+class TestNotificationHistory(GeneralPageTest):
+    ENDPOINT_NAME = "participant_pages.notification_history"
+    
+    def test(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.generate_archived_event(self.default_survey, self.default_participant)
+        self.do_test_status_code(200, self.session_study.id, self.default_participant.patient_id)
+        
