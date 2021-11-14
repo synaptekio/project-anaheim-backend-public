@@ -12,6 +12,7 @@ from database.schedule_models import ArchivedEvent
 from database.study_models import Study
 from database.user_models import Participant
 from libs.firebase_config import check_firebase_instance
+from libs.http_utils import easy_url
 from libs.internal_types import ResearcherRequest
 from libs.push_notification_helpers import repopulate_all_survey_scheduled_events
 from middleware.abort_middleware import abort
@@ -40,7 +41,7 @@ def notification_history(request: ResearcherRequest, study_id: int, patient_id: 
     notification_attempts = []
     for archived_event in archived_events_page:
         notification_attempts.append(get_notification_details(archived_event, study.timezone, survey_names))
-        
+    
     return render(
         request,
         'notification_history.html',
@@ -57,10 +58,11 @@ def notification_history(request: ResearcherRequest, study_id: int, patient_id: 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
 def participant_page(request: ResearcherRequest, study_id: int, patient_id: str):
+    # use the provided study id because authentication already validated it
     try:
         participant = Participant.objects.get(patient_id=patient_id)
-        study = participant.study
-    except Participant.DoesNotExist:
+        study = Study.objects.get(id=study_id)
+    except (Participant.DoesNotExist, Study.DoesNotExist):
         return abort(404)
     
     # safety check, enforce fields and interventions to be present for both page load and edit.
@@ -89,8 +91,10 @@ def participant_page(request: ResearcherRequest, study_id: int, patient_id: str)
     # relative surveys, the function handles extra cases.
     repopulate_all_survey_scheduled_events(study, participant)
     
-    messages.success(request, 'Successfully edited participant {participant.patient_id}.')
-    return redirect(request.referrer)
+    messages.success(request, f'Successfully edited participant {participant.patient_id}.')
+    return redirect(easy_url(
+        "participant_pages.participant_page", study_id=study_id, patient_id=patient_id
+    ))
 
 
 def render_participant_page(request: ResearcherRequest, participant: Participant, study: Study):

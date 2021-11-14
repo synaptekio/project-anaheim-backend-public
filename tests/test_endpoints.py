@@ -1208,4 +1208,18 @@ class TestNotificationHistory(GeneralPageTest):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.generate_archived_event(self.default_survey, self.default_participant)
         self.do_test_status_code(200, self.session_study.id, self.default_participant.patient_id)
+
+
+class TestParticipantPage(RedirectSessionApiTest):
+    ENDPOINT_NAME = "participant_pages.participant_page"
+    REDIRECT_ENDPOINT_NAME = "participant_pages.participant_page"
+    
+    def test_get(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        resp = self.smart_get(self.session_study.id, self.default_participant.patient_id)
+        self.assertEqual(resp.status_code, 200)
         
+    def test_post(self):
+        # FIXME: implement real tests here...s
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.smart_post(self.session_study.id, self.default_participant.patient_id)

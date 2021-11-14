@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 from django.utils import timezone
 
@@ -6,7 +6,7 @@ from constants.celery_constants import ScheduleTypes
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, SITE_ADMIN
 from database.common_models import generate_objectid_string
-from database.schedule_models import ArchivedEvent, Intervention, ScheduledEvent
+from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
@@ -168,6 +168,15 @@ class ReferenceObjectMixin:
         )
         participant.save()
         return participant
+    
+    def generate_intervention_date(
+        self, participant: Participant, intervention: Intervention, date: date = None
+    ) -> InterventionDate:
+        intervention_date = InterventionDate(
+            participant=participant, intervention=intervention, date=date or timezone.now().today()
+        )
+        intervention_date.save()
+        return intervention_date
     
     # def generate_scheduled_event(self, survey: Survey, participant: Participant, schedule_type: str) -> ScheduledEvent:
     #     ScheduledEvent(
