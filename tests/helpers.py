@@ -56,6 +56,7 @@ class ReferenceObjectMixin:
         """ Applies the study relation to the session researcher to the session study. """
         if hasattr(self, "_default_study_relation"):
             raise Exception("can only be called once per test (currently?)")
+        
         self._default_study_relation = self.generate_study_relation(
             self.session_researcher, self.session_study, relation
         )
@@ -63,6 +64,9 @@ class ReferenceObjectMixin:
     
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         """ Creates a study relation based on the input values, returns it. """
+        if relation == SITE_ADMIN:
+            self.session_researcher.update(site_admin=True)
+            return SITE_ADMIN
         self.assertIn(relation, REAL_ROLES)  # assertIn is part of TestCase.
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()

@@ -104,7 +104,7 @@ class TestViewStudy(GeneralPageTest):
     @patch('pages.admin_pages.check_firebase_instance')
     def test_view_study_site_admin(self, check_firebase_instance: MagicMock):
         study = self.session_study
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         
         # test rendering with several specifc values set to observe the rendering changes
         study.update(forest_enabled=False)
@@ -326,7 +326,7 @@ class TestManageResearchers(GeneralPageTest):
         self.do_test_status_code(200)
     
     def test_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.do_test_status_code(200)
     
     def test_render_study_admin(self):
@@ -343,7 +343,7 @@ class TestManageResearchers(GeneralPageTest):
         self.assert_not_present(r5.username, resp.content)
     
     def test_render_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test_render_with_researchers()
         # make sure that site admins ARE present
         r4 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
@@ -384,7 +384,7 @@ class TestEditResearcher(GeneralPageTest):
     
     def test_render_for_self_as_site_admin(self):
         # ensure it renders (buttons will be disabled)
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.do_test_status_code(200, self.session_researcher.id)
     
     def test_render_for_researcher_as_researcher(self):
@@ -410,11 +410,11 @@ class TestEditResearcher(GeneralPageTest):
     
     # site admin, renders
     def test_render_valid_researcher_as_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test_render_generic_under_study()
     
     def test_render_researcher_with_no_study_as_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test_render_researcher_with_no_study()
     
     def _test_render_generic_under_study(self):
@@ -465,7 +465,7 @@ class TestElevateResearcher(SessionApiTest):
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
     
     def test_site_admin_as_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(403, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.filter(study=self.session_study).exists())
@@ -503,8 +503,7 @@ class TestDemoteStudyAdmin(SessionApiTest):
         self.assertTrue(r2.site_admin)
     
     def test_site_admin_as_site_admin(self):
-        self.session_researcher.update(site_admin=True)
-        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.set_session_study_relation(SITE_ADMIN)
         r2 = self.generate_researcher(relation_to_session_study=SITE_ADMIN)
         self.do_test_status_code(302, researcher_id=r2.id, study_id=self.session_study.id)
         self.assertFalse(r2.study_relations.exists())
@@ -622,7 +621,7 @@ class TestCreateStudy(SessionApiTest):
             self.do_test_status_code(302 if user_role == SITE_ADMIN else 403)
     
     def test_create_study_success(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         resp = self.do_test_status_code(302, **self.create_study_params())
         self.assertIsInstance(resp, HttpResponseRedirect)
         target_url = easy_url(
@@ -635,7 +634,7 @@ class TestCreateStudy(SessionApiTest):
     
     def test_create_study_long_name(self):
         # this situation reports to sentry manually, the response is a hard 400, no calls to messages
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         params = self.create_study_params()
         params["name"] = "a"*10000
         resp = self.do_test_status_code(400, **params)
@@ -643,7 +642,7 @@ class TestCreateStudy(SessionApiTest):
     
     def test_create_study_bad_name(self):
         # this situation reports to sentry manually, the response is a hard 400, no calls to messages
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         params = self.create_study_params()
         params["name"] = "&" * 50
         resp = self.do_test_status_code(400, **params)
@@ -665,7 +664,7 @@ class TestToggleForest(RedirectSessionApiTest):
     
     def _do_test_toggle(self, enable: bool):
         redirect_endpoint = easy_url(self.REDIRECT_ENDPOINT_NAME, study_id=self.session_study.id)
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.session_study.update(forest_enabled=not enable)  # directly mutate the database.
         # resp = self.smart_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
         resp = self.smart_post(self.session_study.id)
@@ -684,7 +683,7 @@ class TestDeleteStudy(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_studies"
     
     def test_success(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         resp = self.smart_post(self.session_study.id, confirmation="true")
         self.session_study.refresh_from_db()
         self.assertTrue(self.session_study.deleted)
@@ -748,7 +747,7 @@ class TestDeviceSettings(SessionApiTest):
         self.do_test_update()
     
     def test_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.do_test_update()
     
     def do_test_update(self):
@@ -812,7 +811,7 @@ class TestManageFirebaseCredentials(GeneralPageTest):
     
     def test(self):
         # just test that the page loads, I guess
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.do_test_status_code(200)
 
 
@@ -829,7 +828,7 @@ class TestUploadBackendFirebaseCert(RedirectSessionApiTest):
         get_firebase_credential_errors.return_value = None
         update_firebase_instance.return_value = True
         # test upload as site admin
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         file = SimpleUploadedFile("backend_cert.json", BACKEND_CERT.encode(), "text/json")
         self.smart_post(backend_firebase_cert=file)
         resp_content = self.get_redirect_content()
@@ -843,7 +842,7 @@ class TestUploadIosFirebaseCert(RedirectSessionApiTest):
     
     def test(self):
         # test upload as site admin
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         file = SimpleUploadedFile("ios_firebase_cert.plist", IOS_CERT.encode(), "text/json")
         self.smart_post(ios_firebase_cert=file)
         resp_content = self.get_redirect_content()
@@ -857,7 +856,7 @@ class TestUploadAndroidFirebaseCert(RedirectSessionApiTest):
     
     def test(self):
         # test upload as site admin
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         file = SimpleUploadedFile("android_firebase_cert.json", ANDROID_CERT.encode(), "text/json")
         self.smart_post(android_firebase_cert=file)
         resp_content = self.get_redirect_content()
@@ -869,7 +868,7 @@ class TestDeleteFirebaseBackendCert(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
     
     def test(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         FileAsText.objects.create(tag=BACKEND_FIREBASE_CREDENTIALS, text="any_string")
         self.smart_post()
         self.assertFalse(FileAsText.objects.exists())
@@ -880,7 +879,7 @@ class TestDeleteFirebaseIosCert(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
     
     def test(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         FileAsText.objects.create(tag=IOS_FIREBASE_CREDENTIALS, text="any_string")
         self.smart_post()
         self.assertFalse(FileAsText.objects.exists())
@@ -891,7 +890,7 @@ class TestDeleteFirebaseAndroidCert(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.manage_firebase_credentials"
     
     def test(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         FileAsText.objects.create(tag=ANDROID_FIREBASE_CREDENTIALS, text="any_string")
         self.smart_post()
         self.assertFalse(FileAsText.objects.exists())
@@ -929,7 +928,7 @@ class TestSetStudyTimezone(RedirectSessionApiTest):
         self._test_success()
     
     def test_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test_success()
     
     def _test_success(self):
@@ -943,14 +942,14 @@ class TestAddResearcherToStudy(SessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
     
     def test_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test(None, 302, ResearcherRole.researcher)
         self._test(ResearcherRole.study_admin, 302, ResearcherRole.study_admin)
         self._test(ResearcherRole.researcher, 302, ResearcherRole.researcher)
     
     # # FIXME: test fails, need to fix data download bug on site admin users first
     # def test_site_admin_on_site_admin(self):
-    #     self.session_researcher.update(site_admin=True)
+    #     self.set_session_study_relation(SITE_ADMIN)
     #     self._test(SITE_ADMIN, 403, SITE_ADMIN)
     
     def test_study_admin_on_none(self):
@@ -998,7 +997,7 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
     
     def test_site_admin(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self._test(None, 302)
         self._test(ResearcherRole.study_admin, 302)
         self._test(ResearcherRole.researcher, 302)
@@ -1043,7 +1042,7 @@ class TestSetResearcherPassword(SessionApiTest):
     ENDPOINT_NAME = "admin_api.set_researcher_password"
     
     def test(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         r2 = self.generate_researcher()
         self.smart_post(
             researcher_id=r2.id,
@@ -1065,7 +1064,7 @@ class TestRenameStudy(RedirectSessionApiTest):
     REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
     
     def test(self):
-        self.session_researcher.update(site_admin=True)
+        self.set_session_study_relation(SITE_ADMIN)
         self.smart_post(self.session_study.id, new_study_name="hello!")
         self.session_study.refresh_from_db()
         self.assertEqual(self.session_study.name, "hello!")
@@ -1220,6 +1219,6 @@ class TestParticipantPage(RedirectSessionApiTest):
         self.assertEqual(resp.status_code, 200)
         
     def test_post(self):
-        # FIXME: implement real tests here...s
+        # FIXME: implement real tests here...
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.smart_post(self.session_study.id, self.default_participant.patient_id)
