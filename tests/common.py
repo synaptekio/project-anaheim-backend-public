@@ -2,6 +2,7 @@ from itertools import chain
 from sys import argv
 
 from django.contrib import messages
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
@@ -214,6 +215,8 @@ class RedirectSessionApiTest(SmartRequestsTestCase):
     def smart_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
         # As smart post, but assert that the request was redirected, and that it points to the
         # appropriate endpoint.
+        if self.REDIRECT_ENDPOINT_NAME is None:
+            raise ImproperlyConfigured("You must provide a value for REDIRECT_ENDPOINT_NAME.")
         response = super().smart_post(*reverse_args, reverse_params=reverse_kwargs, **post_params)
         self.assertEqual(response.status_code, 302)
         self.assertIsInstance(response, HttpResponseRedirect)
