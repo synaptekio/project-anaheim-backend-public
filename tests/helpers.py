@@ -2,7 +2,7 @@ from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, SITE_ADMIN
 from database.common_models import generate_objectid_string
 from database.schedule_models import Intervention
-from database.study_models import DeviceSettings, Study
+from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam
 from database.user_models import Participant, Researcher, StudyRelation
@@ -129,6 +129,12 @@ class ReferenceObjectMixin:
         intervention = Intervention(study=study, name=name)
         intervention.save()
         return intervention
+    
+    def generate_study_field(self, study: Study, name: str) -> StudyField:
+        study_field = StudyField(study=study, field_name=name)
+        study_field.save()
+        return study_field
+    
     #
     ## Participant objects
     #

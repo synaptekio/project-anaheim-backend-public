@@ -20,7 +20,7 @@ from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID
     IOS_CERT, SITE_ADMIN)
 from database.schedule_models import Intervention
 from database.security_models import ApiKey
-from database.study_models import DeviceSettings, Study
+from database.study_models import DeviceSettings, Study, StudyField
 from database.system_models import FileAsText
 from database.user_models import Researcher, StudyRelation
 from libs.security import generate_easy_alphanumeric_string
@@ -1114,6 +1114,7 @@ class TestStudyParticipantApi(SessionApiTest):
 
 class TestInterventionsPage(SessionApiTest):
     ENDPOINT_NAME = "study_api.interventions_page"
+    REDIRECT_ENDPOINT_NAME = "study_api.interventions_page"
     
     def test_get(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
@@ -1140,7 +1141,7 @@ class TestDeleteIntervention(RedirectSessionApiTest):
         self.assertFalse(Intervention.objects.filter(id=intervention.id).exists())
 
 
-class TestDeleteIntervention(RedirectSessionApiTest):
+class TestEditIntervention(RedirectSessionApiTest):
     ENDPOINT_NAME = "study_api.edit_intervention"
     REDIRECT_ENDPOINT_NAME = "study_api.interventions_page"
     
@@ -1153,3 +1154,48 @@ class TestDeleteIntervention(RedirectSessionApiTest):
         intervention_new = Intervention.objects.get(id=intervention.id)
         self.assertEqual(intervention.id, intervention_new.id)
         self.assertEqual(intervention_new.name, "new_name")
+
+
+class TestStudyFields(RedirectSessionApiTest):
+    ENDPOINT_NAME = "study_api.study_fields"
+    REDIRECT_ENDPOINT_NAME = "study_api.study_fields"
+    
+    def test_get(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.generate_study_field(self.session_study, "obscure_name_of_study_field")
+        resp = self.smart_get(self.session_study.id)
+        self.assert_present("obscure_name_of_study_field", resp.content)
+    
+    def test_post(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        resp = self.smart_post(self.session_study.id, new_field="ohello")
+        self.assertEqual(resp.status_code, 302)
+        study_field = StudyField.objects.get(study=self.session_study)
+        self.assertEqual(study_field.field_name, "ohello")
+
+
+class TestDeleteStudyField(RedirectSessionApiTest):
+    ENDPOINT_NAME = "study_api.delete_field"
+    REDIRECT_ENDPOINT_NAME = "study_api.study_fields"
+    
+    def test(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        study_field = self.generate_study_field(self.session_study, "obscure_name_of_study_field")
+        self.smart_post(self.session_study.id, field=study_field.id)
+        self.assertFalse(StudyField.objects.filter(id=study_field.id).exists())
+
+
+class TestEditStudyField(RedirectSessionApiTest):
+    ENDPOINT_NAME = "study_api.edit_custom_field"
+    REDIRECT_ENDPOINT_NAME = "study_api.study_fields"
+    
+    def test(self):
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        study_field = self.generate_study_field(self.session_study, "obscure_name_of_study_field")
+        self.smart_post(
+            self.session_study.id, field_id=study_field.id, edit_custom_field="new_name"
+        )
+        study_field_new = StudyField.objects.get(id=study_field.id)
+        self.assertEqual(study_field.id, study_field_new.id)
+        self.assertEqual(study_field_new.field_name, "new_name")
+
