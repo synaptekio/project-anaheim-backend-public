@@ -250,11 +250,11 @@ urlpatterns = [
     path(
         'export_study_settings_file/<str:study_id>',
         copy_study_api.export_study_settings_file,
-        name="export_study_settings_file"),
+        name="copy_study_api.export_study_settings_file"),
     path(
         'import_study_settings_file/<str:study_id>',
         copy_study_api.import_study_settings_file,
-        name="import_study_settings_file"),
+        name="copy_study_api.import_study_settings_file"),
 
     # survey_api
     path(

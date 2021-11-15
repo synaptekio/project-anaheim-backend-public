@@ -1,6 +1,7 @@
+from io import BytesIO
 
 from django.contrib import messages
-from django.http.response import HttpResponse
+from django.http.response import FileResponse
 from django.shortcuts import redirect
 from django.views.decorators.http import require_GET, require_POST
 
@@ -17,9 +18,9 @@ from middleware.abort_middleware import abort
 JSON structure for exporting and importing study surveys and settings:
     {
      'device_settings': {},
-     'surveys': [{}, {}, ...]
+     'surveys': [{}, {}, ...],
+     'interventions: [{}, {}, ...],
     }
-    Also, purge all id keys
 """
 
 @require_GET
@@ -28,11 +29,11 @@ def export_study_settings_file(request: ResearcherRequest, study_id):
     """ Endpoint that returns a json representation of a study. """
     study = Study.objects.get(pk=study_id)
     filename = study.name.replace(' ', '_') + "_surveys_and_settings.json"
-    return HttpResponse(
-        request,
-        format_study(study),
-        mimetype="application/json",
-        headers={'Content-Disposition': 'attachment;filename=' + filename}
+    return FileResponse(
+        BytesIO(format_study(study).encode()),  # this is particularly stupid.
+        content_type="application/json",
+        as_attachment=True,
+        filename=filename,
     )
 
 
@@ -44,15 +45,15 @@ def import_study_settings_file(request: ResearcherRequest, study_id):
     file = request.files.get('upload', None)
     if not file:
         abort(400)
-
+    
     if not allowed_file_extension(file.filename):
         messages.warning(request, "You can only upload .json files!")
         return redirect(request.referrer)
-
+    
     copy_device_settings = request.form.get('device_settings', None) == 'true'
     copy_surveys = request.form.get('surveys', None) == 'true'
     device_settings, surveys, interventions = unpack_json_study(file.read())
-
+    
     initial_tracking_surveys = study.surveys.filter(survey_type=Survey.TRACKING_SURVEY).count()
     initial_audio_surveys = study.surveys.filter(survey_type=Survey.AUDIO_SURVEY).count()
     # initial_image_surveys = study.objects.filter(survey_type=Survey.IMAGE_SURVEY).count()

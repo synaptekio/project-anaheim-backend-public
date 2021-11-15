@@ -1,3 +1,4 @@
+import json
 from copy import copy
 from typing import List
 from unittest.mock import MagicMock, patch
@@ -5,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
 from django.forms.fields import NullBooleanField
-from django.http.response import HttpResponseRedirect
+from django.http.response import FileResponse, HttpResponseRedirect
 from django.urls import reverse
 
 from config.jinja2 import easy_url
@@ -22,7 +23,7 @@ from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
 from database.system_models import FileAsText
-from database.user_models import Researcher, StudyRelation
+from database.user_models import Researcher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
     RedirectSessionApiTest, SessionApiTest)
@@ -1217,8 +1218,35 @@ class TestParticipantPage(RedirectSessionApiTest):
         self.set_session_study_relation(ResearcherRole.study_admin)
         resp = self.smart_get(self.session_study.id, self.default_participant.patient_id)
         self.assertEqual(resp.status_code, 200)
-        
+    
     def test_post(self):
         # FIXME: implement real tests here...
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.smart_post(self.session_study.id, self.default_participant.patient_id)
+
+
+# FIXME: add interventions and surveys to the export tests
+class TestExportStudySettingsFile(SessionApiTest):
+    ENDPOINT_NAME = "copy_study_api.export_study_settings_file"
+    
+    def test(self):
+        
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        # FileResponse objects stream, which means you need to iterate over `resp.streaming_content``
+        resp: FileResponse = self.smart_get(self.session_study.id)
+        # sanity check...
+        items_to_iterate = 0
+        for file_bytes in resp.streaming_content:
+            items_to_iterate += 1
+        self.assertEqual(items_to_iterate, 1)
+        # get survey, check device_settings, surveys, interventions are all present
+        output_survey: dict = json.loads(file_bytes.decode())  # make sure it is a json file
+        self.assertIn("device_settings", output_survey)
+        self.assertIn("surveys", output_survey)
+        self.assertIn("interventions", output_survey)
+        output_device_settings: dict = output_survey["device_settings"]
+        real_device_settings = self.session_device_settings.as_unpacked_native_python()
+        # confirm that all elements are equal for the dicts
+        for k, v in output_device_settings.items():
+            self.assertEqual(v, real_device_settings[k])
+            
