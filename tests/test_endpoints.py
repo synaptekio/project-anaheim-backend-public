@@ -1317,6 +1317,7 @@ class TestICreateSurvey(RedirectSessionApiTest):
         self.assertEqual(survey_type, survey.survey_type)
 
 
+# FIXME: add schedule removal tests to this test
 class TestDeleteSurvey(RedirectSessionApiTest):
     ENDPOINT_NAME = "survey_api.delete_survey"
     REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
@@ -1329,3 +1330,5 @@ class TestDeleteSurvey(RedirectSessionApiTest):
         self.smart_post(self.session_study.id, survey.id)
         self.assertEqual(Survey.objects.count(), 1)
         self.assertEqual(Survey.objects.filter(deleted=False).count(), 0)
+        
+
