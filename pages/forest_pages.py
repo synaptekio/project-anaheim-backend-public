@@ -99,7 +99,7 @@ def create_tasks(request: ResearcherRequest, study_id=None):
     if request.method == "GET":
         return _render_create_tasks(study)
 
-    form = CreateTasksForm(data=request.values, study=study)
+    form = CreateTasksForm(data=request.POST, study=study)
 
     if not form.is_valid():
         error_messages = [

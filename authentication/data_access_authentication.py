@@ -113,8 +113,8 @@ def api_check_researcher_study_access(request: ResearcherRequest, block_test_stu
 
 def api_get_and_validate_credentials(request: HttpRequest) -> Tuple[str, str]:
     """ Sanitize access and secret keys from request """
-    access_key = request.values.get("access_key", None)
-    secret_key = request.values.get("secret_key", None)
+    access_key = request.POST.get("access_key", None)
+    secret_key = request.POST.get("secret_key", None)
 
     # reject empty strings and value-not-present cases
     if not access_key or not secret_key:
@@ -164,8 +164,8 @@ def api_get_study_confirm_exists(request: ResearcherRequest) -> Study:
     Study object id malformed (not 24 characters) causes 400 error.
     Study does not exist in our database causes 404 error.
     """
-    study_object_id = request.values.get('study_id', None)
-    study_pk = request.values.get('study_pk', None)
+    study_object_id = request.POST.get('study_id', None)
+    study_pk = request.POST.get('study_pk', None)
 
     if study_object_id is not None:
 

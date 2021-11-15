@@ -21,7 +21,7 @@ FINAL_SERIALIZABLE_FIELD_NAMES = (
 @require_GET
 @authenticate_tableau
 def get_tableau_daily(request: TableauRequest):
-    form = ApiQueryForm(data=request.values)
+    form = ApiQueryForm(data=request.POST)
     if not form.is_valid():
         return format_errors(form.errors.get_json_data())
     query = tableau_query_database(study_object_id=form.get_study_id(), **form.cleaned_data)
