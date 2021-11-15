@@ -99,7 +99,7 @@ function end(domainName) {
     // Send a POST request (using XMLHttpRequest) with the JSON survey object as a parameter
     $.ajax({
         type: 'POST',
-        url: '/update_survey/' + survey_id,
+        url: '/update_survey/' + study_id + "/" + survey_id,
         data: {
             content: angular.toJson(content),
             weekly_timings: JSON.stringify(weekly_times),

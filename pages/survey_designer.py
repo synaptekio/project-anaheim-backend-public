@@ -11,12 +11,8 @@ from middleware.abort_middleware import abort
 
 
 @authenticate_researcher_study_access
-def render_edit_survey(request: ResearcherRequest, survey_id=None):
-    try:
-        survey = Survey.objects.get(pk=survey_id)
-    except Survey.DoesNotExist:
-        return abort(404)
-
+def render_edit_survey(request: ResearcherRequest, study_id: int, survey_id: int):
+    survey = Survey.get_or_404(pk=survey_id)
     return render(
         request,
         'edit_survey.html',

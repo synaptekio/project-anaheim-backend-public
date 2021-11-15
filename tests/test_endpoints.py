@@ -1324,11 +1324,25 @@ class TestDeleteSurvey(RedirectSessionApiTest):
     
     def test(self):
         self.assertEqual(Survey.objects.count(), 0)
-        self.set_session_study_relation(ResearcherRole.study_admin)
+        self.set_session_study_relation(ResearcherRole.researcher)
         survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
         self.assertEqual(Survey.objects.count(), 1)
         self.smart_post(self.session_study.id, survey.id)
         self.assertEqual(Survey.objects.count(), 1)
         self.assertEqual(Survey.objects.filter(deleted=False).count(), 0)
-        
 
+
+class TestUpdateSurvey(SessionApiTest):
+    ENDPOINT_NAME = "survey_api.update_survey"
+    
+    def test_with_hax_to_bypass_the_hard_bit(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
+        self.assertEqual(survey.settings, '{}')
+        resp = self.smart_post(
+            self.session_study.id, survey.id, content='[]', settings='[]',
+            weekly_timings='[]', absolute_timings='[]', relative_timings='[]',
+        )
+        survey.refresh_from_db()
+        self.assertEqual(survey.settings, '[]')
+        self.assertEqual(resp.status_code, 201)

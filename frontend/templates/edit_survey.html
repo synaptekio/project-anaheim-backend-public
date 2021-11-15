@@ -23,6 +23,7 @@
   <script type="text/javascript">
       var questions = {{ survey.content|tojson }};
       var survey_id = '{{ survey.id }}';
+      var study_id = '{{ study.id }}';
       var weekly_times = {{ weekly_timings|tojson }};
       var relative_times = {{ relative_timings|tojson }};
       var absolute_times = {{ absolute_timings|tojson }};

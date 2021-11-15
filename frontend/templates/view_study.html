@@ -110,7 +110,7 @@
           {# If there are surveys attached to this study, list them #}
           {% if tracking_survey_ids %}
             {% for ids in tracking_survey_ids %}
-              <h4><a href="/edit_survey/{{ids[0]}}" class="list-group-item">Survey ID #{{ids[1]}}</a></h4>
+              <h4><a href="/edit_survey/{{study_id}}/{{ids[0]}}" class="list-group-item">Survey ID #{{ids[1]}}</a></h4>
             {% endfor %}
             {# If there aren't surveys attached to this study, show a message saying "no surveys" #}
           {% else %}
@@ -127,7 +127,7 @@
           {# If there are surveys attached to this study, list them #}
           {% if audio_survey_ids %}
             {% for ids in audio_survey_ids %}
-              <h4><a href="/edit_survey/{{ids[0]}}" class="list-group-item">Audio Survey ID #{{ids[1]}}</a></h4>
+              <h4><a href="/edit_survey/{{study_id}}/{{ids[0]}}" class="list-group-item">Audio Survey ID #{{ids[1]}}</a></h4>
             {% endfor %}
             {# If there aren't surveys attached to this study, show a message saying "no surveys" #}
           {% else %}
@@ -144,7 +144,7 @@
           {# If there are surveys attached to this study, list them #}
           {% if image_survey_ids %}
             {% for ids in image_survey_ids %}
-              <h4><a href="/edit_survey/{{ids[0]}}" class="list-group-item">Image Survey ID #{{ids[1]}}</a></h4>
+              <h4><a href="/edit_survey/{{study_id}}/{{ids[0]}}" class="list-group-item">Image Survey ID #{{ids[1]}}</a></h4>
             {% endfor %}
             {# If there aren't surveys attached to this study, show a message saying "no surveys" #}
           {% else %}

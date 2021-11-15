@@ -3,7 +3,7 @@ import json
 from django.contrib import messages
 from django.http.response import HttpResponse
 from django.shortcuts import redirect
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods
 
 from authentication.admin_authentication import authenticate_researcher_study_access
 from database.schedule_models import AbsoluteSchedule, RelativeSchedule, WeeklySchedule
@@ -44,9 +44,9 @@ def delete_survey(request: ResearcherRequest, study_id=None, survey_id=None):
 ################################################################################
 
 
-@require_http_methods(['GET', 'POST'])
+@require_POST
 @authenticate_researcher_study_access
-def update_survey(request: ResearcherRequest, survey_id=None):
+def update_survey(request: ResearcherRequest, study_id: int, survey_id: int):
     """
     Updates the survey when the 'Save & Deploy button on the edit_survey page is hit. Expects
     content, weekly_timings, absolute_timings, relative_timings, and settings in the request body
@@ -71,25 +71,27 @@ def update_survey(request: ResearcherRequest, survey_id=None):
             return HttpResponse(json.dumps(errors), status_code=400)
     
     # For each of the schedule types, creates Schedule objects and ScheduledEvent objects
-    weekly_timings = json.loads(request.values['weekly_timings'])
+    weekly_timings = json.loads(request.POST.get('weekly_timings'))
     w_duplicated = WeeklySchedule.create_weekly_schedules(weekly_timings, survey)
     repopulate_weekly_survey_schedule_events(survey)
-    absolute_timings = json.loads(request.values['absolute_timings'])
+    absolute_timings = json.loads(request.POST.get('absolute_timings'))
     a_duplicated = AbsoluteSchedule.create_absolute_schedules(absolute_timings, survey)
     repopulate_absolute_survey_schedule_events(survey)
-    relative_timings = json.loads(request.values['relative_timings'])
+    relative_timings = json.loads(request.POST.get('relative_timings'))
     r_duplicated = RelativeSchedule.create_relative_schedules(relative_timings, survey)
     repopulate_relative_survey_schedule_events(survey)
     
     # These three all stay JSON when added to survey
     content = json.dumps(content)
-    settings = request.values['settings']
+    settings = request.POST.get('settings')
     survey.update(content=content, settings=settings)
     
     # if any duplicate schedules were submitted, flash a message
     if w_duplicated or a_duplicated or r_duplicated:
-        messages.succcess('Duplicate schedule was submitted. Only one of the duplicates was created.')
-    return HttpResponse("", status_code=201)
+        messages.success(
+            request, 'Duplicate schedule was submitted. Only one of the duplicates was created.'
+        )
+    return HttpResponse(status=201)
 
 
 def recursive_survey_content_json_decode(json_entity: str):
