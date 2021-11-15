@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 from copy import copy
 from typing import List
@@ -6,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
 from django.forms.fields import NullBooleanField
-from django.http.response import FileResponse, HttpResponseRedirect
+from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 
 from config.jinja2 import easy_url
@@ -24,6 +25,7 @@ from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
 from database.system_models import FileAsText
 from database.user_models import Researcher
+from libs.copy_study import format_study
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
     RedirectSessionApiTest, SessionApiTest)
@@ -725,18 +727,6 @@ class TestDeviceSettings(SessionApiTest):
             else:
                 some_dict[field] = "true"
     
-    @staticmethod
-    def mutate_variable(var):
-        # ah, checkboxes are bizarre, use invert_checkboxes
-        if isinstance(var, bool):
-            return var  # don't change here, use invert_boolean_checkbox_fields
-        elif isinstance(var, (float, int)):
-            return var + 1
-        elif isinstance(var, str):
-            return var + "aaa"
-        else:
-            raise TypeError(f"Unhandled type: {type(var)}")
-    
     def test_get(self):
         for role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, role)
@@ -765,7 +755,7 @@ class TestDeviceSettings(SessionApiTest):
         post_params.update(**self.CONSENT_SECTIONS)
         
         # mutate everything
-        post_params = {k: self.mutate_variable(v) for k, v in post_params.items()}
+        post_params = {k: self.mutate_variable(v, ignore_bools=True) for k, v in post_params.items()}
         self.invert_boolean_checkbox_fields(post_params)
         
         # Hit endpoint
@@ -1230,7 +1220,6 @@ class TestExportStudySettingsFile(SessionApiTest):
     ENDPOINT_NAME = "copy_study_api.export_study_settings_file"
     
     def test(self):
-        
         self.set_session_study_relation(ResearcherRole.study_admin)
         # FileResponse objects stream, which means you need to iterate over `resp.streaming_content``
         resp: FileResponse = self.smart_get(self.session_study.id)
@@ -1249,4 +1238,55 @@ class TestExportStudySettingsFile(SessionApiTest):
         # confirm that all elements are equal for the dicts
         for k, v in output_device_settings.items():
             self.assertEqual(v, real_device_settings[k])
-            
+
+
+# FIXME: add interventions and surveys to the import tests
+class TestImportStudySettingsFile(RedirectSessionApiTest):
+    ENDPOINT_NAME = "copy_study_api.import_study_settings_file"
+    REDIRECT_ENDPOINT_NAME = "system_admin_pages.edit_study"
+    
+    # other post params: device_settings, surveys
+    
+    def test_no_device_settings_no_surveys(self):
+        resp = self._test(False, False)
+        self.assert_present("Did not alter", resp.content)
+        self.assert_present("Copied 0 Surveys and 0 Audio Surveys", resp.content)
+    
+    def test_device_settings_no_surveys(self):
+        resp = self._test(True, False)
+        self.assert_present("Settings with custom values.", resp.content)
+        self.assert_present("Copied 0 Surveys and 0 Audio Surveys", resp.content)
+    
+    def test_device_settings_and_surveys(self):
+        resp = self._test(True, True)
+        self.assert_present("Settings with custom values.", resp.content)
+        # self.assert_present("Copied 0 Surveys and 0 Audio Surveys", resp.content)
+    
+    def test_bad_filename(self):
+        resp = self._test(True, True, ".exe", success=False)
+        # FIXME: this is not present in the html, it should be
+        # self.assert_present("You can only upload .json files.", resp.content)
+    
+    def _test(
+        self, device_settings: bool, surveys: bool, extension: str = "json", success: bool = True
+    ) -> HttpResponse:
+        self.set_session_study_relation(SITE_ADMIN)
+        study2 = self.generate_study("study_2")
+        self.assertEqual(self.session_device_settings.gps, True)
+        self.session_device_settings.update(gps=False)
+        
+        # this is the function that creates the canonical study representation wrapped in a burrito
+        survey_json_file = BytesIO(format_study(self.session_study).encode())
+        survey_json_file.name = f"something.{extension}"  # ayup, that's how you add a name...
+        
+        self.smart_post(
+            study2.id,
+            upload=survey_json_file,
+            device_settings="true" if device_settings else "false",
+            surveys="true" if surveys else "false",
+        )
+        study2.device_settings.refresh_from_db()
+        if success:
+            self.assertEqual(study2.device_settings.gps, not device_settings)
+        # return the page, we always need it
+        return self.smart_get_redirect(study2.id)

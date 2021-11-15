@@ -10,6 +10,7 @@ from database.study_models import Study
 from database.survey_models import Survey
 from libs.copy_study import (allowed_file_extension, copy_study_from_json, format_study,
     unpack_json_study)
+from libs.http_utils import easy_url
 from libs.internal_types import ResearcherRequest
 from middleware.abort_middleware import abort
 
@@ -39,19 +40,20 @@ def export_study_settings_file(request: ResearcherRequest, study_id):
 
 @require_POST
 @authenticate_admin
-def import_study_settings_file(request: ResearcherRequest, study_id):
+def import_study_settings_file(request: ResearcherRequest, study_id: int):
     """ Endpoint that takes the output of export_study_settings_file and creates a new study. """
     study = Study.objects.get(pk=study_id)
-    file = request.files.get('upload', None)
-    if not file:
-        abort(400)
+    file = request.FILES.get('upload', None)
     
-    if not allowed_file_extension(file.filename):
+    if file is None:
+        return abort(400)
+    
+    if not allowed_file_extension(file.name):
         messages.warning(request, "You can only upload .json files!")
-        return redirect(request.referrer)
+        return redirect(easy_url("system_admin_pages.edit_study", study_id=study_id))
     
-    copy_device_settings = request.form.get('device_settings', None) == 'true'
-    copy_surveys = request.form.get('surveys', None) == 'true'
+    copy_device_settings = request.POST.get('device_settings', None) == 'true'
+    copy_surveys = request.POST.get('surveys', None) == 'true'
     device_settings, surveys, interventions = unpack_json_study(file.read())
     
     initial_tracking_surveys = study.surveys.filter(survey_type=Survey.TRACKING_SURVEY).count()
@@ -67,11 +69,12 @@ def import_study_settings_file(request: ResearcherRequest, study_id):
     end_audio_surveys = study.surveys.filter(survey_type=Survey.AUDIO_SURVEY).count()
     # end_image_surveys = study.objects.filter(survey_type=Survey.IMAGE_SURVEY).count()
     messages.success(
+        request,
         f"Copied {end_tracking_surveys-initial_tracking_surveys} " +
         f"Surveys and {end_audio_surveys-initial_audio_surveys} Audio Surveys",
     )
     if copy_device_settings:
-        messages.success(f"Overwrote {study.name}'s App Settings with custom values.")
+        messages.success(request, f"Overwrote {study.name}'s App Settings with custom values.")
     else:
-        messages.success(f"Did not alter {study.name}'s App Settings.")
+        messages.success(request, f"Did not alter {study.name}'s App Settings.")
     return redirect(f'/edit_study/{study_id}')

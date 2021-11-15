@@ -38,18 +38,24 @@ class ReferenceObjectMixin:
             return self._default_study
         except AttributeError:
             pass
+        self._default_study = self.generate_study(self.DEFAULT_STUDY_NAME)
+        return self._default_study
+    
+    def generate_study(
+        self, name: str, encryption_key: str = None, object_id: str = None, is_test: bool = None,
+        forest_enabled: bool = None
+    ):
         study = Study(
-            name=self.DEFAULT_STUDY_NAME,
-            encryption_key="thequickbrownfoxjumpsoverthelazy",
-            object_id="2Mwjb91zSWzHgOrQahEvlu5v",
-            is_test=True,
+            name=name,
+            encryption_key=encryption_key or "thequickbrownfoxjumpsoverthelazy",
+            object_id=object_id or generate_objectid_string(),
+            is_test=is_test or True,
+            forest_enabled=forest_enabled or True,
             timezone_name="America/New_York",
             deleted=False,
-            forest_enabled=True,
-            forest_param=self.default_forest_params,
+            forest_param=self.default_forest_params,  # I think this is fine?
         )
         study.save()
-        self._default_study = study
         return study
     
     def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:

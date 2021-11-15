@@ -110,6 +110,31 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             else:
                 print(f"relationship was '{real_relatiosnship.get().relationship}'")
             raise
+    
+    @staticmethod
+    def mutate_variable(var, ignore_bools=False):
+        if isinstance(var, bool):
+            return var if ignore_bools else not var
+        elif isinstance(var, (float, int)):
+            return var + 1
+        elif isinstance(var, str):
+            return var + "aaa"
+        else:
+            raise TypeError(f"Unhandled type: {type(var)}")
+    
+    @staticmethod
+    def un_mutate_variable(var, ignore_bools=False):
+        if isinstance(var, bool):
+            return not var if ignore_bools else var
+        elif isinstance(var, (float, int)):
+            return var - 1
+        elif isinstance(var, str):
+            if not var.endswith("eee"):
+                raise Exception(f"string '{var} was not a mutated variable")
+            return var[-3:]
+        else:
+            raise TypeError(f"Unhandled type: {type(var)}")
+
 
 
 class BasicSessionTestCase(CommonTestCase):
