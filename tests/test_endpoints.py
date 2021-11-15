@@ -1332,6 +1332,7 @@ class TestDeleteSurvey(RedirectSessionApiTest):
         self.assertEqual(Survey.objects.filter(deleted=False).count(), 0)
 
 
+# FIXME: implement more details of survey object updates
 class TestUpdateSurvey(SessionApiTest):
     ENDPOINT_NAME = "survey_api.update_survey"
     
