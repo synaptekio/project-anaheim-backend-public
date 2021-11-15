@@ -1347,3 +1347,14 @@ class TestUpdateSurvey(SessionApiTest):
         survey.refresh_from_db()
         self.assertEqual(survey.settings, '[]')
         self.assertEqual(resp.status_code, 201)
+
+
+# fixme: add interventions and survey schedules
+class TestRenderEditSurvey(GeneralPageTest):
+    ENDPOINT_NAME = "survey_designer.render_edit_survey"
+    
+    def test(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
+        self.do_test_status_code(200, study_id=self.session_study.id, survey_id=survey.id)
+        
