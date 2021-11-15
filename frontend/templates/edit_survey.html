@@ -168,7 +168,7 @@
         <button type="submit" class="btn btn-success btn-lg save_and_deploy_button" onclick="end('{{ domain_name }}'); return false;">
           <span class="glyphicon glyphicon-upload"></span> Save & Deploy
         </button>
-        <a class="btn btn-lg btn-danger pull-right" href="/delete_survey/{{ survey.id }}" onclick="return confirm('Are you sure you want to delete this survey? The survey questions will be lost forever, and if you want them back, you will have to re-create the survey from scratch. Also, people in the study will no longer get notifications for this survey or be able to answer it.')">
+        <a class="btn btn-lg btn-danger pull-right" href="/delete_survey/{{ study.id }}/{{ survey.id }}" onclick="return confirm('Are you sure you want to delete this survey? The survey questions will be lost forever, and if you want them back, you will have to re-create the survey from scratch. Also, people in the study will no longer get notifications for this survey or be able to answer it.')">
           <span class="glyphicon glyphicon-trash"></span> Delete survey</a>
       </div>
       <br>

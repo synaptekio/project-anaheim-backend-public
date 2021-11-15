@@ -12,7 +12,6 @@ from libs.internal_types import ResearcherRequest
 from libs.json_logic import do_validate_survey
 from libs.push_notification_helpers import (repopulate_absolute_survey_schedule_events,
     repopulate_relative_survey_schedule_events, repopulate_weekly_survey_schedule_events)
-from middleware.abort_middleware import abort
 
 
 ################################################################################
@@ -22,19 +21,15 @@ from middleware.abort_middleware import abort
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def create_survey(request: ResearcherRequest, study_id=None, survey_type='tracking_survey'):
+def create_survey(request: ResearcherRequest, study_id=None, survey_type: str = 'tracking_survey'):
     new_survey = Survey.create_with_settings(study_id=study_id, survey_type=survey_type)
     return redirect(f'/edit_survey/{new_survey.id}')
 
 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
-def delete_survey(request: ResearcherRequest, survey_id=None):
-    try:
-        survey = Survey.objects.get(pk=survey_id)
-    except Survey.DoesNotExist:
-        return abort(404)
-
+def delete_survey(request: ResearcherRequest, study_id=None, survey_id=None):
+    survey: Survey = Survey.get_or_404(pk=survey_id)
     # mark as deleted, delete all schedules and schedule events
     survey.deleted = True
     survey.save()
@@ -56,16 +51,14 @@ def update_survey(request: ResearcherRequest, survey_id=None):
     Updates the survey when the 'Save & Deploy button on the edit_survey page is hit. Expects
     content, weekly_timings, absolute_timings, relative_timings, and settings in the request body
     """
-    try:
-        survey = Survey.objects.get(pk=survey_id)
-    except Survey.DoesNotExist:
-        return abort(404)
+    survey = Survey.get_or_404(pk=survey_id)
+    
     # BUG: There is an unknown situation where the frontend sends a string requiring an extra
     # deserialization operation, causing 'content' to be a string containing a json string
     # containing a json list, instead of just a string containing a json list.
-    json_content = request.values.get('content')
+    json_content = request.POST.get('content')
     content = None
-
+    
     # Weird corner case: the Image survey does not have any content associated with it. Therefore,
     # when you try and make a post request to save any settings you have, it gives you a 500 error
     # because the request.values.get('content') returns a json item of "". The recursive_survey_content_json_decode
@@ -80,7 +73,7 @@ def update_survey(request: ResearcherRequest, survey_id=None):
         errors = do_validate_survey(content)
         if len(errors) > 1:
             return HttpResponse(json.dumps(errors), status_code=400)
-
+    
     # For each of the schedule types, creates Schedule objects and ScheduledEvent objects
     weekly_timings = json.loads(request.values['weekly_timings'])
     w_duplicated = WeeklySchedule.create_weekly_schedules(weekly_timings, survey)
@@ -91,12 +84,12 @@ def update_survey(request: ResearcherRequest, survey_id=None):
     relative_timings = json.loads(request.values['relative_timings'])
     r_duplicated = RelativeSchedule.create_relative_schedules(relative_timings, survey)
     repopulate_relative_survey_schedule_events(survey)
-
+    
     # These three all stay JSON when added to survey
     content = json.dumps(content)
     settings = request.values['settings']
     survey.update(content=content, settings=settings)
-
+    
     # if any duplicate schedules were submitted, flash a message
     if w_duplicated or a_duplicated or r_duplicated:
         messages.succcess('Duplicate schedule was submitted. Only one of the duplicates was created.')

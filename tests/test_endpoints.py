@@ -23,6 +23,7 @@ from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID
 from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
+from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Researcher
 from libs.copy_study import format_study
@@ -1290,3 +1291,41 @@ class TestImportStudySettingsFile(RedirectSessionApiTest):
             self.assertEqual(study2.device_settings.gps, not device_settings)
         # return the page, we always need it
         return self.smart_get_redirect(study2.id)
+
+
+
+class TestICreateSurvey(RedirectSessionApiTest):
+    ENDPOINT_NAME = "survey_api.create_survey"
+    REDIRECT_ENDPOINT_NAME = "survey_designer.render_edit_survey"
+    
+    def test_tracking(self):
+        self._test(Survey.TRACKING_SURVEY)
+    
+    def test_audio(self):
+        self._test(Survey.AUDIO_SURVEY)
+    
+    def test_image(self):
+        self._test(Survey.IMAGE_SURVEY)
+    
+    def _test(self, survey_type: str):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.assertEqual(Survey.objects.count(), 0)
+        resp = self.smart_get(self.session_study.id, survey_type)
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(Survey.objects.count(), 1)
+        survey: Survey = Survey.objects.get()
+        self.assertEqual(survey_type, survey.survey_type)
+
+
+class TestDeleteSurvey(RedirectSessionApiTest):
+    ENDPOINT_NAME = "survey_api.delete_survey"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
+    
+    def test(self):
+        self.assertEqual(Survey.objects.count(), 0)
+        self.set_session_study_relation(ResearcherRole.study_admin)
+        survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
+        self.assertEqual(Survey.objects.count(), 1)
+        self.smart_post(self.session_study.id, survey.id)
+        self.assertEqual(Survey.objects.count(), 1)
+        self.assertEqual(Survey.objects.filter(deleted=False).count(), 0)

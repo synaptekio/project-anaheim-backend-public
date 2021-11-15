@@ -262,7 +262,7 @@ urlpatterns = [
         survey_api.create_survey,
         name="survey_api.create_survey"),
     path(
-        'delete_survey/<str:survey_id>',
+        'delete_survey/<str:study_id>/<str:survey_id>',
         survey_api.delete_survey,
         name="survey_api.delete_survey"),
     path(
