@@ -34,7 +34,7 @@ def study_participants_api(request: ResearcherRequest, study_id: int):
         "recordsFiltered": filtered_participants_count,
         "data": data
     }
-    return HttpResponse(json.dumps(table_data), status_code=200)
+    return HttpResponse(json.dumps(table_data), status=200)
 
 
 @require_http_methods(['GET', 'POST'])
