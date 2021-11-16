@@ -1,7 +1,8 @@
-from io import BytesIO
 import json
 from copy import copy
+from io import BytesIO
 from typing import List
+from unittest.case import skip
 from unittest.mock import MagicMock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -9,6 +10,7 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+from urls import urlpatterns
 
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
@@ -28,8 +30,57 @@ from database.system_models import FileAsText
 from database.user_models import Researcher
 from libs.copy_study import format_study
 from libs.security import generate_easy_alphanumeric_string
-from tests.common import (BasicSessionTestCase, GeneralPageTest, PopulatedSessionTestCase,
+from tests.common import (BasicSessionTestCase, CommonTestCase, GeneralPageTest,
     RedirectSessionApiTest, SessionApiTest)
+
+
+class TestAllEndpoints(CommonTestCase):
+    
+    EXCEPTIONS_ENDPOINTS = [
+        # special case, these are manually tested
+        "login_pages.validate_login",
+        "login_pages.login_page",
+        "admin_pages.logout_admin",
+    ]
+    
+    EXCEPTIONS_TESTS = []
+    
+    @skip("meta")
+    def test(self):
+        SEPARATOR = '\n\t'  # no special chars in the {} section of an f-string? okaysurewhatever.
+        
+        # a counter that can indicate "was not present".
+        names_of_paths_counter = {path.name: 0 for path in urlpatterns}
+        
+        # map of test class enpoinds to test classes
+        test_classes_by_endpoint_name = {
+            obj.ENDPOINT_NAME: obj
+            for obj in globals().values()
+            if hasattr(obj, "ENDPOINT_NAME") and obj.ENDPOINT_NAME is not None
+        }
+        
+        for obj_endpoint_name in test_classes_by_endpoint_name.keys():
+            if obj_endpoint_name in names_of_paths_counter:
+                names_of_paths_counter[obj_endpoint_name] += 1
+            else:
+                names_of_paths_counter[obj_endpoint_name] = None
+        
+        has_no_tests = [
+            endpoint_name for endpoint_name, count in names_of_paths_counter.items()
+            if count == 0 and endpoint_name not in self.EXCEPTIONS_ENDPOINTS
+        ]
+        has_no_endpoint = [
+            test_classes_by_endpoint_name[endpoint_name].__name__
+            for endpoint_name, count in names_of_paths_counter.items()
+            if count is None and endpoint_name not in self.EXCEPTIONS_TESTS
+        ]
+        
+        msg = ""
+        if has_no_endpoint:
+            msg = msg + f"\nThese tests have no matching endpoint:\n\t{SEPARATOR.join(has_no_endpoint)}"
+        if has_no_tests:
+            msg = msg + f"\nThese endpoints have no tests:\n\t{SEPARATOR.join(has_no_tests)}"
+        self.assertTrue(not has_no_tests and not has_no_endpoint, msg)
 
 
 class TestLoginPages(BasicSessionTestCase):
@@ -291,31 +342,25 @@ class TestDashboard(GeneralPageTest):
 
 
 # FIXME: dashboard is going to require a fixture to populate data.
-class TestDashboardStream(PopulatedSessionTestCase):
+class TestDashboardStream(GeneralPageTest):
+    ENDPOINT_NAME = "dashboard_api.get_data_for_dashboard_datastream_display"
+    
     # this  url doesn't fit any helpers I've built yet
     # dashboard_api.get_data_for_dashboard_datastream_display
     def test_data_streams(self):
         # test is currently limited to rendering the page for each data stream but with no data in it
         self.set_session_study_relation()
         for data_stream in ALL_DATA_STREAMS:
-            url = reverse(
-                "dashboard_api.get_data_for_dashboard_datastream_display",
-                kwargs=dict(study_id=self.session_study.id, data_stream=data_stream),
-            )
-            resp = self.client.get(url)
-            self.assertEqual(resp.status_code, 200)
+            self.do_test_status_code(200, self.session_study.id, data_stream)
+
+
+# FIXME: this page renders with almost no data
+class TestPatientDisplay(GeneralPageTest):
+    ENDPOINT_NAME = "dashboard_api.dashboard_participant_page"
     
-    # dashboard_api.dashboard_participant_page
     def test_patient_display(self):
-        # this page renders with almost no data
-        self.session_researcher
         self.set_session_study_relation()
-        url = reverse(
-            "dashboard_api.dashboard_participant_page",
-            kwargs=dict(study_id=self.session_study.id, patient_id=self.default_participant.patient_id),
-        )
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
+        self.do_test_status_code(200, self.session_study.id, self.default_participant.patient_id)
 
 
 # system_admin_pages.manage_researchers
@@ -524,7 +569,7 @@ class TestCreateNewResearcher(SessionApiTest):
         for user_role in ALL_RESEARCHER_TYPES:
             prior_researcher_count = Researcher.objects.count()
             self.assign_role(self.session_researcher, user_role)
-            resp = self.client.get(reverse(self.ENDPOINT_NAME))
+            resp = self.smart_get()
             if user_role in ADMIN_ROLES:
                 self.assertEqual(resp.status_code, 200)
             else:
@@ -572,15 +617,15 @@ class TestEditStudy(GeneralPageTest):
         for user_role in ALL_TESTING_ROLES:
             self.assign_role(self.session_researcher, user_role)
             self.do_test_status_code(
-                status_code=200 if user_role in ADMIN_ROLES else 403,
-                study_id=self.session_study.id
+                200 if user_role in ADMIN_ROLES else 403,
+                self.session_study.id
             )
     
     def test_content_study_admin(self):
         """ tests that various important pieces of information are present """
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.session_study.update(is_test=True, forest_enabled=False)
-        resp = self.do_test_status_code(200, study_id=self.session_study.id)
+        resp = self.do_test_status_code(200, self.session_study.id)
         self.assert_present("Forest is currently disabled.", resp.content)
         self.assert_present("This is a test study", resp.content)
         self.assert_present(self.session_researcher.username, resp.content)
@@ -588,7 +633,7 @@ class TestEditStudy(GeneralPageTest):
         self.session_study.update(is_test=False, forest_enabled=True)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
         
-        resp = self.do_test_status_code(200, study_id=self.session_study.id)
+        resp = self.do_test_status_code(200, self.session_study.id)
         self.assert_present(self.session_researcher.username, resp.content)
         self.assert_present(r2.username, resp.content)
         self.assert_present("Forest is currently enabled.", resp.content)
@@ -1356,5 +1401,4 @@ class TestRenderEditSurvey(GeneralPageTest):
     def test(self):
         self.set_session_study_relation(ResearcherRole.researcher)
         survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
-        self.do_test_status_code(200, study_id=self.session_study.id, survey_id=survey.id)
-        
+        self.do_test_status_code(200, self.session_study.id, survey.id)

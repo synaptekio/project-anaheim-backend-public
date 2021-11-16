@@ -202,10 +202,10 @@ class SmartRequestsTestCase(PopulatedSessionTestCase):
             reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
         )
     
-    def smart_get(self, *reverse_params, get_kwargs=None, **reverse_kwargs) -> HttpResponse:
+    def smart_get(self, *reverse_params, reverse_kwargs=None, **get_kwargs) -> HttpResponse:
         """ A wrapper to do a get request, using reverse on the ENDPOINT_NAME, and with a reasonable
         pattern for providing parameters to both reverse and get. """
-        get_kwargs = get_kwargs or {}
+        reverse_kwargs = reverse_kwargs or {}
         # print(f"*reverse_params: {reverse_params}\n**get_kwargs: {get_kwargs}\n**reverse_kwargs: {reverse_kwargs}\n")
         self._detect_obnoxious_type_error("smart_get", reverse_params, reverse_kwargs, get_kwargs)
         return self.client.get(
@@ -280,10 +280,12 @@ class GeneralPageTest(SmartRequestsTestCase):
     ENDPOINT_NAME = None
     
     def do_test_status_code(
-        self, status_code: int, *reverse_params, get_kwargs=None, **reverse_kwargs
+        self, status_code: int, *reverse_params, reverse_kwargs=None, **get_kwargs
     ) -> HttpResponse:
         if not isinstance(status_code, int):
             raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.smart_get(*reverse_params, get_kwargs=get_kwargs, **reverse_kwargs)
+        if status_code < 200 or status_code > 600:
+            raise ImproperlyConfigured(f"'{status_code}' ({type(status_code)}) is definetely not a status code.")
+        resp = self.smart_get(*reverse_params, reverse_kwargs=reverse_kwargs, **get_kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp
