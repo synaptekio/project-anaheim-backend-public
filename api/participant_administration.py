@@ -2,7 +2,7 @@ from csv import writer
 from re import sub
 
 from django.contrib import messages
-from django.http.response import HttpResponse
+from django.http.response import FileResponse
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
 
@@ -90,7 +90,7 @@ def unregister_participant(request: ResearcherRequest):
     
     if participant.study.id != int(study_id):
         messages.error(
-            request, 
+            request,
             f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}'
         )
         # FIXME: this was a request.referrer redirect
@@ -148,11 +148,12 @@ def create_many_patients(request: ResearcherRequest, study_id=None):
     filename = sub(r'[^a-zA-Z0-9_\.=]', '', filename_spaces_to_underscores)
     if not filename.endswith('.csv'):
         filename += ".csv"
-    return HttpResponse(
-        request,
+        
+    return FileResponse(
         participant_csv_generator(study_id, number_of_new_patients),
-        mimetype="csv",
-        headers={'Content-Disposition': 'attachment; filename="%s"' % filename}
+        content_type="text/csv",
+        as_attachment=True,
+        filename=filename,
     )
 
 

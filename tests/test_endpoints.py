@@ -1589,6 +1589,7 @@ class TestUnregisterParticipant(RedirectSessionApiTest):
         self.assertEqual(self.default_participant.unregistered, True)
 
 
+# FIXME: test extended database effects of generating participants
 class CreateNewParticipant(RedirectSessionApiTest):
     ENDPOINT_NAME = "participant_administration.create_new_participant"
     REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
@@ -1606,4 +1607,26 @@ class CreateNewParticipant(RedirectSessionApiTest):
         new_participant: Participant = Participant.objects.first()
         self.assert_present("Created a new patient", content)
         self.assert_present(new_participant.patient_id, content)
+
+
+class CreateManyParticipant(SessionApiTest):
+    ENDPOINT_NAME = "participant_administration.create_many_patients"
+    
+    @patch("api.participant_administration.s3_upload")
+    @patch("api.participant_administration.create_client_key_pair")
+    def test(self, create_client_keypair: MagicMock, s3_upload: MagicMock):
+        # this test does not make calls to S3
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.assertFalse(Participant.objects.exists())
         
+        resp: FileResponse = self.smart_post(
+            self.session_study.id, desired_filename="something.csv", number_of_new_patients=10
+        )
+        output_file = b""
+        for i, file_bytes in enumerate(resp.streaming_content, start=1):
+            output_file = output_file + file_bytes
+        
+        self.assertEqual(i, 10)
+        self.assertEqual(Participant.objects.count(), 10)
+        for patient_id in Participant.objects.values_list("patient_id", flat=True):
+            self.assert_present(patient_id, output_file)
