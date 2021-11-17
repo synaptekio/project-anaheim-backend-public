@@ -51,7 +51,6 @@ MIDDLEWARE = [
     'middleware.abort_middleware.AbortMiddleware',
 ]
 
-
 TIME_ZONE = 'UTC'
 USE_TZ = True
 
@@ -121,8 +120,7 @@ TEMPLATES = [
                 "middleware.context_processors.researcher_context_processor",
                 "django.contrib.messages.context_processors.messages",
             ],
-        "environment": "config.jinja2.environment"
-
+        "environment": "config.jinja2.environment",
         },
     },
 ]
@@ -132,3 +130,8 @@ TEMPLATES = [
 # or it cannot serialize a datitime object.
 # SESSION_SERIALIZER = "django.core.serializers.json.DjangoJSONEncoder"
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
+
+
+# Changing this causes a runtime warning, but has no effect. Enabling this feature is not equivalent
+# to the feature in urls.py.
+APPEND_SLASH = False

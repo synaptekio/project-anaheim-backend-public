@@ -10,6 +10,7 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+from django.urls.base import resolve
 from urls import urlpatterns
 
 from config.jinja2 import easy_url
@@ -100,7 +101,7 @@ class TestLoginPages(BasicSessionTestCase):
         self.do_default_login()
         response = self.client.post(reverse("login_pages.login_page"))
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("admin_pages.choose_study"))
+        self.assert_resolve_equal(response.url, reverse("admin_pages.choose_study"))
         # this should uniquely identify the login page
         self.assertNotIn(b'<form method="POST" action="/validate_login">', response.content)
     
@@ -108,12 +109,12 @@ class TestLoginPages(BasicSessionTestCase):
         self.session_researcher  # create the default researcher
         r = self.do_default_login()
         self.assertEqual(r.status_code, 302)
-        self.assertEqual(r.url, reverse("admin_pages.choose_study"))
+        self.assert_resolve_equal(r.url, reverse("admin_pages.choose_study"))
     
     def test_logging_in_fail(self):
         r = self.do_default_login()
         self.assertEqual(r.status_code, 302)
-        self.assertEqual(r.url, reverse("login_pages.login_page"))
+        self.assert_resolve_equal(r.url, reverse("login_pages.login_page"))
     
     def test_logging_out(self):
         # create the default researcher, login, logout, attempt going to main page,
@@ -122,7 +123,7 @@ class TestLoginPages(BasicSessionTestCase):
         self.client.get(reverse("admin_pages.logout_admin"))
         r = self.client.get(reverse("admin_pages.choose_study"))
         self.assertEqual(r.status_code, 302)
-        self.assertEqual(r.url, reverse("login_pages.login_page"))
+        self.assert_resolve_equal(r.url, reverse("login_pages.login_page"))
 
 
 class TestViewStudy(GeneralPageTest):
@@ -676,7 +677,7 @@ class TestCreateStudy(SessionApiTest):
         target_url = easy_url(
             "system_admin_pages.device_settings", study_id=self.get_the_new_study.id
         )
-        self.assertEqual(resp.url, target_url)
+        self.assert_resolve_equal(resp.url, target_url)
         resp = self.client.get(target_url)
         self.assertEqual(resp.status_code, 200)
         self.assert_present(f"Successfully created study {self.get_the_new_study.name}.", resp.content)
@@ -717,7 +718,7 @@ class TestToggleForest(RedirectSessionApiTest):
         self.session_study.update(forest_enabled=not enable)  # directly mutate the database.
         # resp = self.smart_post(study_id=self.session_study.id)  # nope this does not follow the normal pattern
         resp = self.smart_post(self.session_study.id)
-        self.assertEqual(resp.url, redirect_endpoint)
+        self.assert_resolve_equal(resp.url, redirect_endpoint)
         self.session_study.refresh_from_db()
         if enable:
             self.assertTrue(self.session_study.forest_enabled)

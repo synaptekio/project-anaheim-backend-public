@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.conf.urls.static import static
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import path
+from django.urls.resolvers import RoutePattern
 
 from api import (admin_api, copy_study_api, dashboard_api, data_access_api, mobile_api,
     other_researcher_apis, participant_administration, push_notifications_api, study_api,
@@ -27,7 +29,7 @@ urlpatterns = [
         "logout",
         admin_pages.logout_admin,
         name="admin_pages.logout_admin"),
-
+    
     # Admin
     path(
         "view_study/<int:study_id>",
@@ -53,7 +55,7 @@ urlpatterns = [
         "disable_tableau_api_key",
         admin_pages.disable_tableau_api_key,
         name="admin_pages.disable_tableau_api_key"),
-
+    
     # Dashboard
     path(
         "dashboard/<int:study_id>",
@@ -67,7 +69,7 @@ urlpatterns = [
         "dashboard/<int:study_id>/patient/<str:patient_id>",
         dashboard_api.dashboard_participant_page,
         name="dashboard_api.dashboard_participant_page"),
-
+    
     # system admin pages
     path(
         "manage_researchers",
@@ -141,7 +143,7 @@ urlpatterns = [
         "delete_ios_firebase_cert",
         system_admin_pages.delete_ios_firebase_cert,
         name="system_admin_pages.delete_ios_firebase_cert"),
-
+    
     # data access web form
     path(
         "data_access_web_form",
@@ -151,7 +153,7 @@ urlpatterns = [
         "pipeline_access_web_form",
         data_access_web_form.pipeline_download_page,
         name="data_access_web_form.pipeline_download_page"),
-
+    
     # admin api
     path(
         'set_study_timezone/<str:study_id>',
@@ -205,7 +207,7 @@ urlpatterns = [
         "privacy_policy",
         admin_api.download_privacy_policy,
         name="admin_api.download_privacy_policy"),
-
+    
     # study api
     path(
         'study/<str:study_id>/get_participants_api',
@@ -235,7 +237,7 @@ urlpatterns = [
         'edit_custom_field/<str:study_id>',
         study_api.edit_custom_field,
         name="study_api.edit_custom_field"),
-
+    
     # participant pages
     path(
         'view_study/<int:study_id>/participant/<str:patient_id>/notification_history',
@@ -245,7 +247,7 @@ urlpatterns = [
         'view_study/<int:study_id>/participant/<str:patient_id>',
         participant_pages.participant_page,
         name="participant_pages.participant_page"),
-
+    
     # copy study api
     path(
         'export_study_settings_file/<str:study_id>',
@@ -255,7 +257,7 @@ urlpatterns = [
         'import_study_settings_file/<str:study_id>',
         copy_study_api.import_study_settings_file,
         name="copy_study_api.import_study_settings_file"),
-
+    
     # survey_api
     path(
         'create_survey/<str:study_id>/<str:survey_type>',
@@ -269,13 +271,13 @@ urlpatterns = [
         'update_survey/<str:study_id>/<str:survey_id>',
         survey_api.update_survey,
         name="survey_api.update_survey"),
-
+    
     # survey designer
     path(
         'edit_survey/<str:study_id>/<str:survey_id>',
         survey_designer.render_edit_survey,
         name="survey_designer.render_edit_survey"),
-
+    
     # participant administration
     path(
         'reset_participant_password',
@@ -297,7 +299,7 @@ urlpatterns = [
         'create_many_patients/<str:study_id>',
         participant_administration.create_many_patients,
         name="participant_administration.create_many_patients"),
-
+    
     # other researcher apis
     path(
         "get-studies/v1",
@@ -307,7 +309,7 @@ urlpatterns = [
         "get-users/v1",
         other_researcher_apis.get_users_in_study,
         name="other_researcher_apis,get_users_in_study"),
-
+    
     # data_access_api
     path(
         "get-data/v1",
@@ -317,7 +319,7 @@ urlpatterns = [
         "get-pipeline/v1",
         data_access_api.pipeline_data_download,
         name="data_access_api.get_pipeline"),
-
+    
     # Mobile api
     path(
         'upload',
@@ -351,7 +353,7 @@ urlpatterns = [
         'download_surveys/ios',
         mobile_api.get_latest_surveys,
         name="mobile_api.get_latest_surveys_ios"),
-
+    
     # push notification api
     path(
         'set_fcm_token',
@@ -365,13 +367,13 @@ urlpatterns = [
         'send_survey_notification',
         push_notifications_api.send_survey_notification,
         name="push_notifications_api.send_survey_notification"),
-
+    
     # mobile pages
     path(
         'graph',
         mobile_pages.fetch_graph,
         name="mobile_pages.fetch_graph"),
-
+    
     # forest pages
     path(
         'studies/<str:study_id>/forest/progress',
@@ -397,7 +399,7 @@ urlpatterns = [
         "studies/<str:study_id>/forest/tasks/<str:forest_task_external_id>/download",
         forest_pages.download_task_data,
         name="forest_pages.download_task_data"),
-
+    
     # tableau
     path(
         # "summary_statistics_daily_study_view",
@@ -409,3 +411,32 @@ urlpatterns = [
         tableau_api.web_data_connector,
         name="tableau_api.web_data_connector")
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+
+# Take every endpoint and add an identical variant with a trailing slash, and ensure that nothing is
+# declared with a trailing slash.  This exists to preserve a pattern from Flask that is difficult to
+# route out (heh), where we did the same thing. (This reduces developer frustration, but if we 100%
+# use the reverse / easy_url helpers we can purge this.)  The Django APPEND_SLASH setting does not
+# provide equivalent functionality.
+extra_paths = []
+for urlpattern in urlpatterns:
+    if not isinstance(urlpattern.pattern, RoutePattern):
+        raise ImproperlyConfigured(  # I don't actually know if this is correct?
+            "non-RoutePattern paths are not implemented for generating trailing slashes -"
+            f"{urlpattern} - did you use a RegexPattern?"
+        )
+    if urlpattern.pattern._route.endswith("/"):
+        raise ImproperlyConfigured(
+            f"urls patterns must not end in a slash - {urlpattern.pattern._route} - "
+            "we autogenerate all such endpoints."
+        )
+    if urlpattern.default_args:
+        raise ImproperlyConfigured(
+            "default_args are not implemented for generating trailing slashes - "
+            f"{urlpattern.pattern._route}"
+        )
+    extra_paths.append(
+        path(urlpattern.pattern._route + "/", urlpattern.callback, name=urlpattern.name)
+    )
+
+urlpatterns.extend(extra_paths)
