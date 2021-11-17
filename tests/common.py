@@ -171,43 +171,7 @@ class BasicSessionTestCase(CommonTestCase):
         )
 
 
-class PopulatedSessionTestCase(BasicSessionTestCase):
-    """ This class sets up a logged-in researcher user (using the variable name "session_researcher"
-    to mimic the convenience variable in the real code).  This is the base test class that all
-    researcher endpoints should use. """
-    
-    def setUp(self) -> None:
-        """ Log in the session researcher. """
-        self.session_researcher
-        self.do_default_login()
-        return super().setUp()
-    
-    def assign_role(self, researcher: Researcher, role: str):
-        """ Helper function to assign a user role to a Researcher.  Clears all existing roles on
-        that user. """
-        if role in REAL_ROLES:
-            researcher.study_relations.all().delete()
-            self.generate_study_relation(researcher, self.session_study, role)
-            researcher.update(site_admin=False)
-        elif role is None:
-            researcher.study_relations.all().delete()
-            researcher.update(site_admin=False)
-        elif role == ResearcherRole.site_admin:
-            researcher.study_relations.all().delete()
-            researcher.update(site_admin=True)
-    
-    def iterate_researcher_permutations(self):
-        """ Iterates over all possible combinations of user types for the session researcher and a
-        target researcher. """
-        session_researcher = self.session_researcher
-        r2 = self.generate_researcher()
-        for session_researcher_role, target_researcher_role in ALL_ROLE_PERMUTATIONS:
-            self.assign_role(session_researcher, session_researcher_role)
-            self.assign_role(r2, target_researcher_role)
-            yield session_researcher, r2
-
-
-class SmartRequestsTestCase(PopulatedSessionTestCase):
+class SmartRequestsTestCase(BasicSessionTestCase):
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
@@ -257,7 +221,29 @@ class SmartRequestsTestCase(PopulatedSessionTestCase):
                 raise TypeError(f"encountered {type(arg)} passed to {function_name}.")
 
 
-class RedirectSessionApiTest(SmartRequestsTestCase):
+class PopulatedSessionTestCase(BasicSessionTestCase):
+    """ This class sets up a logged-in researcher user (using the variable name "session_researcher"
+    to mimic the convenience variable in the real code).  This is the base test class that all
+    researcher endpoints should use. """
+    
+    def setUp(self) -> None:
+        """ Log in the session researcher. """
+        self.session_researcher  # populate the session researcher
+        self.do_default_login()
+        return super().setUp()
+    
+    def iterate_researcher_permutations(self):
+        """ Iterates over all possible combinations of user types for the session researcher and a
+        target researcher. """
+        session_researcher = self.session_researcher
+        r2 = self.generate_researcher()
+        for session_researcher_role, target_researcher_role in ALL_ROLE_PERMUTATIONS:
+            self.assign_role(session_researcher, session_researcher_role)
+            self.assign_role(r2, target_researcher_role)
+            yield session_researcher, r2
+
+
+class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
     """ Some api calls return only redirects, and the fact of an error is reported only via the
     django.contrib.messages library.  This class implements some specific helper functions to handle
     very common cases.
@@ -290,7 +276,7 @@ class RedirectSessionApiTest(SmartRequestsTestCase):
         return resp.content
 
 
-class SessionApiTest(SmartRequestsTestCase):
+class SessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
     """ This class is for non-redirect api endpoints.  It includes helper functions for issuing a
     post request to the endpoint declared for ENDPOINT_NAME and testing its return code. """
     ENDPOINT_NAME = None
@@ -307,7 +293,7 @@ class SessionApiTest(SmartRequestsTestCase):
         return resp
 
 
-class GeneralPageTest(SmartRequestsTestCase):
+class GeneralPageTest(PopulatedSessionTestCase, SmartRequestsTestCase):
     """ This class implements a do_get and a do_test_status_code function for implementing concise
     tests on normal, non-api web pages. """
     ENDPOINT_NAME = None
@@ -322,3 +308,18 @@ class GeneralPageTest(SmartRequestsTestCase):
         resp = self.smart_get(*reverse_params, reverse_kwargs=reverse_kwargs, **get_kwargs)
         self.assertEqual(resp.status_code, status_code)
         return resp
+
+
+class DataApiTest(SmartRequestsTestCase):
+    
+    def setUp(self) -> None:
+        self.session_access_key, self.session_secret_key = \
+            self.session_researcher.reset_access_credentials()
+        return super().setUp()
+    
+    def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+        post_params["access_key"] = self.session_access_key
+        post_params["secret_key"] = self.session_secret_key
+        return self.client.post(
+            reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
+        )

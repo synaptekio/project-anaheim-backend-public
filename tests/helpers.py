@@ -81,6 +81,21 @@ class ReferenceObjectMixin:
         relation.save()
         return relation
     
+    # I seem to have built this and then forgotten about it because I stuck in somewhere weird.
+    def assign_role(self, researcher: Researcher, role: str):
+        """ Helper function to assign a user role to a Researcher.  Clears all existing roles on
+        that user. """
+        if role in REAL_ROLES:
+            researcher.study_relations.all().delete()
+            self.generate_study_relation(researcher, self.session_study, role)
+            researcher.update(site_admin=False)
+        elif role is None:
+            researcher.study_relations.all().delete()
+            researcher.update(site_admin=False)
+        elif role == ResearcherRole.site_admin:
+            researcher.study_relations.all().delete()
+            researcher.update(site_admin=True)
+    
     #
     ## Researcher objects
     #
