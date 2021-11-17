@@ -79,27 +79,27 @@ def reset_device(request: ResearcherRequest):
 @authenticate_researcher_study_access
 def unregister_participant(request: ResearcherRequest):
     """ Block participant from uploading further data """
-    patient_id = request.POST['patient_id']
-    study_id = request.POST['study_id']
+    patient_id = request.POST.get('patient_id', None)
+    study_id = request.POST.get('study_id', None)
     
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
         messages.error(f'The participant {patient_id} does not exist')
-        return redirect(request, f'/view_study/{study_id}/')
+        return redirect(f'/view_study/{study_id}/')
     
     if participant.study.id != int(study_id):
         messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
-        return redirect(request, request.referrer)
+        return redirect(request.referrer)
     
     if participant.unregistered:
         messages.error(f'Participant {patient_id} is already unregistered')
-        return redirect(request, request.referrer)
+        return redirect(request.referrer)
     
     participant.unregistered = True
     participant.save()
     messages.error(f'{patient_id} was successfully unregisted from the study. They will not be able to upload further data. ')
-    return redirect(request, request.referrer)
+    return redirect(request.referrer)
 
 
 @require_POST
@@ -123,7 +123,7 @@ def create_new_participant(request: ResearcherRequest):
     
     response_string = f'Created a new patient\npatient_id: {patient_id}\npassword: {password}'
     messages.success(response_string)
-    return redirect(request, f'/view_study/{study_id}')
+    return redirect(f'/view_study/{study_id}')
 
 
 @require_POST
