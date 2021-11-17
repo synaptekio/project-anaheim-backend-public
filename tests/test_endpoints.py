@@ -1097,6 +1097,33 @@ class TestRemoveResearcherFromStudy(SessionApiTest):
             self.assertEqual(redirect.url, f"/edit_study/{self.session_study.id}")
 
 
+class TestDeleteResearcher(SessionApiTest):
+    ENDPOINT_NAME = "admin_api.delete_researcher"
+    
+    def test_site_admin(self):
+        self._test(302, ResearcherRole.site_admin, True)
+    
+    def test_study_admin(self):
+        self._test(403, ResearcherRole.study_admin, False)
+    
+    def test_researcher(self):
+        self._test(403, ResearcherRole.researcher, False)
+    
+    def test_no_relation(self):
+        self._test(403, None, False)
+    
+    def test_nonexistent(self):
+        self.set_session_study_relation(ResearcherRole.site_admin)
+        # 0 is not a valid database key.
+        self.do_test_status_code(404, 0)
+    
+    def _test(self, status_code: int, relation: str, success: bool):
+        self.set_session_study_relation(relation)
+        r2 = self.generate_researcher()
+        resp = self.do_test_status_code(status_code, r2.id)
+        self.assertEqual(Researcher.objects.filter(id=r2.id).count(), 0 if success else 1)
+
+
 # FIXME: add failure case tests, user type tests
 class TestSetResearcherPassword(SessionApiTest):
     ENDPOINT_NAME = "admin_api.set_researcher_password"

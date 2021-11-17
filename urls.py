@@ -420,23 +420,18 @@ urlpatterns = [
 # provide equivalent functionality.
 extra_paths = []
 for urlpattern in urlpatterns:
+    if "document_root" in urlpattern.default_args:
+        continue
     if not isinstance(urlpattern.pattern, RoutePattern):
-        raise ImproperlyConfigured(  # I don't actually know if this is correct?
-            "non-RoutePattern paths are not implemented for generating trailing slashes -"
-            f"{urlpattern} - did you use a RegexPattern?"
-        )
+        continue
     if urlpattern.pattern._route.endswith("/"):
         raise ImproperlyConfigured(
-            f"urls patterns must not end in a slash - {urlpattern.pattern._route} - "
+            f"urls patterns must not end in a slash - `{urlpattern.pattern._route}` - "
             "we autogenerate all such endpoints."
         )
-    if urlpattern.default_args:
-        raise ImproperlyConfigured(
-            "default_args are not implemented for generating trailing slashes - "
-            f"{urlpattern.pattern._route}"
-        )
+    
     extra_paths.append(
         path(urlpattern.pattern._route + "/", urlpattern.callback, name=urlpattern.name)
     )
-
+    
 urlpatterns.extend(extra_paths)

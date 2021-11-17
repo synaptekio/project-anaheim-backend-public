@@ -82,11 +82,7 @@ def delete_researcher(request: ResearcherRequest, researcher_id):
     # only site admins can delete researchers from the system.
     if not request.session_researcher.site_admin:
         return abort(403)
-    
-    try:
-        researcher = Researcher.objects.get(pk=researcher_id)
-    except Researcher.DoesNotExist:
-        return abort(404)
+    researcher = Researcher.get_or_404(pk=researcher_id)
     
     StudyRelation.objects.filter(researcher=researcher).delete()
     researcher.delete()
