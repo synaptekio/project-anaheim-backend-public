@@ -85,21 +85,31 @@ def unregister_participant(request: ResearcherRequest):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
-        messages.error(f'The participant {patient_id} does not exist')
+        messages.error(request, f'The participant {patient_id} does not exist')
         return redirect(f'/view_study/{study_id}/')
     
     if participant.study.id != int(study_id):
-        messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
-        return redirect(request.referrer)
+        messages.error(
+            request, 
+            f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}'
+        )
+        # FIXME: this was a request.referrer redirect
+        return redirect(f'/view_study/{study_id}/')
     
     if participant.unregistered:
-        messages.error(f'Participant {patient_id} is already unregistered')
-        return redirect(request.referrer)
+        messages.error(request, f'Participant {patient_id} is already unregistered')
+        # FIXME: this was a request.referrer redirect
+        return redirect(f'/view_study/{study_id}/')
     
     participant.unregistered = True
     participant.save()
-    messages.error(f'{patient_id} was successfully unregisted from the study. They will not be able to upload further data. ')
-    return redirect(request.referrer)
+    messages.error(
+        request,
+        f'{patient_id} was successfully unregisted from the study. '
+        'They will not be able to upload further data.'
+    )
+    # FIXME: this was a request.referrer redirect
+    return redirect(f'/view_study/{study_id}/')
 
 
 @require_POST

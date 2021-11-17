@@ -1526,3 +1526,64 @@ class TestResetDevice(RedirectSessionApiTest):
                             self.get_redirect_content(self.session_study.id))
         self.default_participant.refresh_from_db()
         self.assertEqual(self.default_participant.device_id, "")
+
+
+
+class TestUnregisterParticipant(RedirectSessionApiTest):
+    ENDPOINT_NAME = "participant_administration.unregister_participant"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
+    # most of this was copy-pasted from TestResetDevice
+    
+    def test_bad_study_id(self):
+        self.default_participant.update(unregistered=False)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self._smart_post(patient_id=self.default_participant.patient_id, study_id=0)
+        self.assertEqual(resp.status_code, 404)
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.unregistered, False)
+    
+    def test_wrong_study_id(self):
+        self.default_participant.update(unregistered=False)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        study2 = self.generate_study("study2")
+        self.generate_study_relation(self.session_researcher, study2, ResearcherRole.researcher)
+        self.smart_post(patient_id=self.default_participant.patient_id, study_id=study2.id)
+        self.assert_present("is not in study", self.get_redirect_content(self.session_study.id))
+        self.assertEqual(Participant.objects.count(), 1)
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.unregistered, False)
+    
+    def test_bad_participant(self):
+        self.default_participant.update(unregistered=False)
+        self.assertEqual(Participant.objects.count(), 1)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(patient_id="invalid", study_id=self.session_study.id)
+        self.assert_present("does not exist", self.get_redirect_content(self.session_study.id))
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.unregistered, False)
+    
+    def test_participant_unregistered_true(self):
+        self.default_participant.update(unregistered=True)
+        self.assertEqual(Participant.objects.count(), 1)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(
+            patient_id=self.default_participant.patient_id, study_id=self.session_study.id
+        )
+        self.assert_present(
+            "is already unregistered", self.get_redirect_content(self.session_study.id)
+        )
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.unregistered, True)
+    
+    def test_success(self):
+        self.default_participant.update(unregistered=False)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(
+            patient_id=self.default_participant.patient_id, study_id=self.session_study.id
+        )
+        self.assert_present(
+            "was successfully unregisted from the study",
+            self.get_redirect_content(self.session_study.id)
+        )
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.unregistered, True)
