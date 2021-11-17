@@ -300,6 +300,20 @@ urlpatterns = [
         participant_administration.create_many_patients,
         name="participant_administration.create_many_patients"),
     
+    # push notification api
+    path(
+        'set_fcm_token',
+        push_notifications_api.set_fcm_token,
+        name="push_notifications_api.set_fcm_token"),
+    path(
+        'test_notification',
+        push_notifications_api.send_test_notification,
+        name="push_notifications_api.test_notification"),
+    path(
+        'send_survey_notification',
+        push_notifications_api.send_survey_notification,
+        name="push_notifications_api.send_survey_notification"),
+    
     # other researcher apis
     path(
         "get-studies/v1",
@@ -353,20 +367,6 @@ urlpatterns = [
         'download_surveys/ios',
         mobile_api.get_latest_surveys,
         name="mobile_api.get_latest_surveys_ios"),
-    
-    # push notification api
-    path(
-        'set_fcm_token',
-        push_notifications_api.set_fcm_token,
-        name="push_notifications_api.set_fcm_token"),
-    path(
-        'test_notification',
-        push_notifications_api.send_test_notification,
-        name="push_notifications_api.test_notification"),
-    path(
-        'send_survey_notification',
-        push_notifications_api.send_survey_notification,
-        name="push_notifications_api.send_survey_notification"),
     
     # mobile pages
     path(
