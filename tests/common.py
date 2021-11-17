@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
 
-from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, SITE_ADMIN
+from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from tests.helpers import ReferenceObjectMixin
@@ -79,7 +79,7 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
     
     def assert_researcher_relation(self, researcher: Researcher, study: Study, relationship: str):
         try:
-            if relationship == SITE_ADMIN:
+            if relationship == ResearcherRole.site_admin:
                 researcher.refresh_from_db()
                 self.assertTrue(researcher.site_admin)
                 # no relationships because it is a site admin
@@ -173,7 +173,7 @@ class PopulatedSessionTestCase(BasicSessionTestCase):
         elif role is None:
             researcher.study_relations.all().delete()
             researcher.update(site_admin=False)
-        elif role == SITE_ADMIN:
+        elif role == ResearcherRole.site_admin:
             researcher.study_relations.all().delete()
             researcher.update(site_admin=True)
     

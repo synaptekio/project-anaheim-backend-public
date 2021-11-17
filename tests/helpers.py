@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from constants.celery_constants import ScheduleTypes
 from constants.researcher_constants import ResearcherRole
-from constants.testing_constants import REAL_ROLES, SITE_ADMIN
+from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
 from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
 from database.study_models import DeviceSettings, Study, StudyField
@@ -70,9 +70,9 @@ class ReferenceObjectMixin:
     
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         """ Creates a study relation based on the input values, returns it. """
-        if relation == SITE_ADMIN:
+        if relation == ResearcherRole.site_admin:
             self.session_researcher.update(site_admin=True)
-            return SITE_ADMIN
+            return ResearcherRole.site_admin
         self.assertIn(relation, REAL_ROLES)  # assertIn is part of TestCase.
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()
@@ -101,12 +101,12 @@ class ReferenceObjectMixin:
             username=name or generate_easy_alphanumeric_string(),
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
-            site_admin=relation_to_session_study == SITE_ADMIN,
+            site_admin=relation_to_session_study == ResearcherRole.site_admin,
             is_batch_user=False,
         )
         # set password saves...
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)
-        if relation_to_session_study not in (None, SITE_ADMIN):
+        if relation_to_session_study not in (None, ResearcherRole.site_admin):
             self.generate_study_relation(researcher, self.session_study, relation_to_session_study)
         
         return researcher

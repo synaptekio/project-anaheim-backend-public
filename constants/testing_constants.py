@@ -15,7 +15,7 @@ TEST_USERNAME = "automated_test_user"
 # from constants.researcher_constants import ResearcherRole
 # from itertools import permutations
 #     two_options for two_options in permutations(
-#     (SITE_ADMIN, ResearcherRole.study_admin, ResearcherRole.researcher, None), 2)
+#     (ResearcherRole.site_admin, ResearcherRole.study_admin, ResearcherRole.researcher, None), 2)
 # )
 
 ALL_ROLE_PERMUTATIONS = (
@@ -33,10 +33,9 @@ ALL_ROLE_PERMUTATIONS = (
     (None, 'study_researcher'),
 )
 
-SITE_ADMIN = "site_admin"
 REAL_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher)
-ALL_TESTING_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, SITE_ADMIN, None)
-ADMIN_ROLES = (ResearcherRole.study_admin, SITE_ADMIN)
+ALL_TESTING_ROLES = (ResearcherRole.study_admin, ResearcherRole.researcher, ResearcherRole.site_admin, None)
+ADMIN_ROLES = (ResearcherRole.study_admin, ResearcherRole.site_admin)
 
 
 BACKEND_CERT = """{
