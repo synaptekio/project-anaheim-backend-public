@@ -28,7 +28,7 @@ from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.system_models import FileAsText
-from database.user_models import Researcher
+from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, CommonTestCase, GeneralPageTest,
@@ -1403,3 +1403,35 @@ class TestRenderEditSurvey(GeneralPageTest):
         self.set_session_study_relation(ResearcherRole.researcher)
         survey = self.generate_survey(self.session_study, Survey.TRACKING_SURVEY)
         self.do_test_status_code(200, self.session_study.id, survey.id)
+
+
+# FIXME: this endpoint doesn't validate the researcher on the study
+# FIXME: redirect was based on referrer.
+class TestResetParticipantPassword(RedirectSessionApiTest):
+    ENDPOINT_NAME = "participant_administration.reset_participant_password"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
+    
+    def test_success(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        old_password = self.default_participant.password
+        self.smart_post(study_id=self.session_study.id, patient_id=self.default_participant.patient_id)
+        self.default_participant.refresh_from_db()
+        self.assert_present("password has been reset to",
+                            self.get_redirect_content(self.session_study.id))
+        self.assertNotEqual(self.default_participant.password, old_password)
+    
+    def test_bad_participant(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(study_id=self.session_study.id, patient_id="why hello")
+        self.assertFalse(Participant.objects.filter(patient_id="why hello").exists())
+        self.assert_present("does not exist", self.get_redirect_content(self.session_study.id))
+    
+    def test_bad_study(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        study2 = self.generate_study("study2")
+        self.generate_study_relation(self.session_researcher, study2, ResearcherRole.researcher)
+        old_password = self.default_participant.password
+        self.smart_post(study_id=study2.id, patient_id=self.default_participant.patient_id)
+        self.assert_present("is not in study", self.get_redirect_content(self.session_study.id))
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.password, old_password)

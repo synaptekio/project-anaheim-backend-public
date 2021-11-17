@@ -55,7 +55,7 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
         return super().tearDown()
     
     def assert_resolve_equal(self, a, b):
-        # when a url comes in from a response object (e.g. response.url) the / characters are 
+        # when a url comes in from a response object (e.g. response.url) the / characters are
         # encoded in html escape format.  This causes an error in the call to resolve
         a = a.replace(r"%2F", "/")
         b = b.replace(r"%2F", "/")
@@ -64,31 +64,35 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
         return self.assertIs(resolve(a).func, resolve(b).func, msg)
     
     def assert_not_present(self, test_str, corpus):
-        # does a test for "in" and also handles the type coersion for bytes and strings, which is
-        # common due to response.content being a bytes object.
+        """ Tests "in" and also handles the type coersion for bytes and strings, and suppresses 
+        excessively long output that can occur when testing for presence of substrings in html."""
         return self._assert_present(False, test_str, corpus)
     
     def assert_present(self, test_str, corpus):
+        """ Tests "not in" and also handles the type coersion for bytes and strings, and suppresses 
+        excessively long output that can occur when testing for presence of substrings in html."""
         return self._assert_present(True, test_str, corpus)
     
     def _assert_present(self, the_test: bool, test_str, corpus):
-        # True does a test for "in", False does a test for "not in", and we handle the type coersion
-        # for bytes and strings, which is common due to response.content being a bytes object.
         t_test = type(test_str)
         t_corpus = type(corpus)
+        test_str = test_str.encode() if t_test == str and t_corpus == bytes else test_str
+        test_str = test_str.decode() if t_test == bytes and t_corpus == str else test_str
         the_test_function = self.assertIn if the_test else self.assertNotIn
-        if the_test and len(corpus) > 1000:
-            msg = f"'{test_str}' was not found in the provided text. (Provided text was over 1000 characters, not printing it)."
-        else:
-            msg = None
-        if t_test == t_corpus:
-            return the_test_function(test_str, corpus, msg)
-        elif t_test == str and t_corpus == bytes:
-            return the_test_function(test_str.encode(), corpus, msg)
-        elif t_test == bytes and t_corpus == str:
-            return the_test_function(test_str.decode(), corpus, msg)
-        else:
-            raise TypeError(f"type mismatch, test_str ({t_test}) is not a ({t_corpus})")
+        msg_param = "was not found" if the_test else "was found"
+        
+        try:
+            return the_test_function(test_str, corpus)
+        except AssertionError:
+            if len(corpus) > 1000:
+                test_str = test_str.decode() if isinstance(test_str, bytes) else test_str
+                raise AssertionError(
+                    f"'{test_str}' {msg_param} in the provided text. (The provided text was over "
+                    "1000 characters, try self.assertIn or self.assertNotIn for full text of failure."
+                ) from None
+                # from None suppresses the original stack trace.
+            else:
+                raise
     
     def assert_researcher_relation(self, researcher: Researcher, study: Study, relationship: str):
         try:

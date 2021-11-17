@@ -20,22 +20,29 @@ from libs.streaming_bytes_io import StreamingStringsIO
 @authenticate_researcher_study_access
 def reset_participant_password(request: ResearcherRequest):
     """ Takes a patient ID and resets its password. Returns the new random password."""
-    patient_id = request.POST['patient_id']
-    study_id = request.POST['study_id']
-
+    # FIXME: validate researcher on study
+    patient_id = request.POST.get('patient_id', None)
+    study_id = request.POST.get('study_id', None)
+    
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
-        messages.error(f'The participant {patient_id} does not exist')
-        return redirect(request, f'/view_study/{study_id}/')
+        # Fixme: bleach this
+        messages.error(request, f'The participant "{patient_id}" does not exist')
+        return redirect(f'/view_study/{study_id}/')
 
     if participant.study.id != int(study_id):
-        messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
-        return redirect(request, request.referrer)
-
+        messages.error(
+            request,
+            f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}'
+        )
+        # FIXME: this  was a referrer redirect
+        return redirect(f'/view_study/{study_id}/')
+    
     new_password = participant.reset_password()
-    messages.success(f'Patient {patient_id}\'s password has been reset to {new_password}.')
-    return redirect(request, request.referrer)
+    messages.success(request, f'Patient {patient_id}\'s password has been reset to {new_password}.')
+    # FIXME: this  was a referrer redirect
+    return redirect(f'/view_study/{study_id}/')
 
 
 @require_POST
@@ -45,17 +52,17 @@ def reset_device(request: ResearcherRequest):
     register a new device. """
     patient_id = request.POST['patient_id']
     study_id = request.POST['study_id']
-
+    
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
         messages.error(f'The participant {patient_id} does not exist')
         return redirect(request, f'/view_study/{study_id}/')
-
+    
     if participant.study.id != int(study_id):
         messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
         return redirect(request, request.referrer)
-
+    
     participant.device_id = ""
     participant.save()
     messages.success(f'For patient {patient_id}, device was reset; password is untouched.')
@@ -68,21 +75,21 @@ def unregister_participant(request: ResearcherRequest):
     """ Block participant from uploading further data """
     patient_id = request.POST['patient_id']
     study_id = request.POST['study_id']
-
+    
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
         messages.error(f'The participant {patient_id} does not exist')
         return redirect(request, f'/view_study/{study_id}/')
-
+    
     if participant.study.id != int(study_id):
         messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
         return redirect(request, request.referrer)
-
+    
     if participant.unregistered:
         messages.error(f'Participant {patient_id} is already unregistered')
         return redirect(request, request.referrer)
-
+    
     participant.unregistered = True
     participant.save()
     messages.error(f'{patient_id} was successfully unregisted from the study. They will not be able to upload further data. ')
@@ -95,19 +102,19 @@ def create_new_participant(request: ResearcherRequest):
     """ Creates a new user, generates a password and keys, pushes data to s3 and user database, adds
     user to the study they are supposed to be attached to and returns a string containing
     password and patient id. """
-
+    
     study_id = request.POST['study_id']
     patient_id, password = Participant.create_with_password(study_id=study_id)
     participant = Participant.objects.get(patient_id=patient_id)
     study = Study.objects.get(id=study_id)
     add_fields_and_interventions(participant, study)
-
+    
     # Create an empty file on S3 indicating that this user exists
     study_object_id = Study.objects.filter(pk=study_id).values_list('object_id', flat=True).get()
     s3_upload(patient_id, b"", study_object_id)
     create_client_key_pair(patient_id, study_object_id)
     repopulate_all_survey_scheduled_events(study, participant)
-
+    
     response_string = f'Created a new patient\npatient_id: {patient_id}\npassword: {password}'
     messages.success(response_string)
     return redirect(request, f'/view_study/{study_id}')
@@ -139,7 +146,7 @@ def participant_csv_generator(study_id, number_of_new_patients):
     si = StreamingStringsIO()
     filewriter = writer(si)
     filewriter.writerow(['Patient ID', "Registration password"])
-
+    
     for _ in range(number_of_new_patients):
         patient_id, password = Participant.create_with_password(study_id=study_id)
         participant = Participant.objects.get(patient_id=patient_id)
@@ -148,7 +155,7 @@ def participant_csv_generator(study_id, number_of_new_patients):
         s3_upload(patient_id, b"", study.object_id)
         create_client_key_pair(patient_id, study.object_id)
         repopulate_all_survey_scheduled_events(study, participant)
-
+        
         filewriter.writerow([patient_id, password])
         yield si.getvalue()
         si.empty()
