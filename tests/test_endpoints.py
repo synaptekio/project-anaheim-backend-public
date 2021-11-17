@@ -1388,7 +1388,6 @@ class TestImportStudySettingsFile(RedirectSessionApiTest):
         return self.smart_get_redirect(study2.id)
 
 
-
 class TestICreateSurvey(RedirectSessionApiTest):
     ENDPOINT_NAME = "survey_api.create_survey"
     REDIRECT_ENDPOINT_NAME = "survey_designer.render_edit_survey"
@@ -1484,3 +1483,46 @@ class TestResetParticipantPassword(RedirectSessionApiTest):
         self.assert_present("is not in study", self.get_redirect_content(self.session_study.id))
         self.default_participant.refresh_from_db()
         self.assertEqual(self.default_participant.password, old_password)
+
+
+class TestResetDevice(RedirectSessionApiTest):
+    ENDPOINT_NAME = "participant_administration.reset_device"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
+    
+    def test_bad_study_id(self):
+        self.default_participant.update(device_id="12345")
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self._smart_post(patient_id=self.default_participant.patient_id, study_id=0)
+        self.assertEqual(resp.status_code, 404)
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.device_id, "12345")
+    
+    def test_wrong_study_id(self):
+        self.default_participant.update(device_id="12345")
+        self.set_session_study_relation(ResearcherRole.researcher)
+        study2 = self.generate_study("study2")
+        self.generate_study_relation(self.session_researcher, study2, ResearcherRole.researcher)
+        self.smart_post(patient_id=self.default_participant.patient_id, study_id=study2.id)
+        self.assert_present("is not in study", self.get_redirect_content(self.session_study.id))
+        self.assertEqual(Participant.objects.count(), 1)
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.device_id, "12345")
+    
+    def test_bad_participant(self):
+        self.default_participant.update(device_id="12345")
+        self.assertEqual(Participant.objects.count(), 1)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(patient_id="invalid", study_id=self.session_study.id)
+        self.assert_present("does not exist", self.get_redirect_content(self.session_study.id))
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.device_id, "12345")
+    
+    def test_success(self):
+        self.default_participant.update(device_id="12345")
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.smart_post(patient_id=self.default_participant.patient_id,
+                        study_id=self.session_study.id)
+        self.assert_present("device was reset; password is untouched",
+                            self.get_redirect_content(self.session_study.id))
+        self.default_participant.refresh_from_db()
+        self.assertEqual(self.default_participant.device_id, "")

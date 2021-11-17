@@ -14,6 +14,9 @@ from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from tests.helpers import ReferenceObjectMixin
 
+from urls import urlpatterns
+
+ALL_ENDPOINT_NAMES = set([pattern.name for pattern in urlpatterns])
 
 # this makes print statements during debugging easier to read by bracketting the statement of which
 # test is running with some separater.
@@ -208,6 +211,16 @@ class SmartRequestsTestCase(PopulatedSessionTestCase):
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
+    @classmethod
+    def setUpClass(cls) -> None:
+        if cls.ENDPOINT_NAME not in ALL_ENDPOINT_NAMES:
+            print(f"{cls.__name__}'s ENDPOINT_NAME `{cls.ENDPOINT_NAME}` does not exist.")
+        if (cls.REDIRECT_ENDPOINT_NAME is not None
+        and cls.REDIRECT_ENDPOINT_NAME not in ALL_ENDPOINT_NAMES):
+            print(f"{cls.__name__}'s REDIRECT_ENDPOINT_NAME "
+                  f"{cls.REDIRECT_ENDPOINT_NAME}` does not exist.")
+        return super().setUpClass()
+    
     def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         """ A wrapper to do a post request, using reverse on the ENDPOINT_NAME, and with a
         reasonable pattern for providing parameters to both reverse and post. """
@@ -252,6 +265,10 @@ class RedirectSessionApiTest(SmartRequestsTestCase):
     used to populate the http post operation, the second is part of validation inside do_post. """
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
+    
+    def _smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+        """ we need the passthrough and calling super() in an implementation class is dumb.... """
+        return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
     
     def smart_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
         # As smart post, but assert that the request was redirected, and that it points to the

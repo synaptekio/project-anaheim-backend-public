@@ -30,7 +30,7 @@ def reset_participant_password(request: ResearcherRequest):
         # Fixme: bleach this
         messages.error(request, f'The participant "{patient_id}" does not exist')
         return redirect(f'/view_study/{study_id}/')
-
+    
     if participant.study.id != int(study_id):
         messages.error(
             request,
@@ -50,23 +50,29 @@ def reset_participant_password(request: ResearcherRequest):
 def reset_device(request: ResearcherRequest):
     """ Resets a participant's device. The participant will not be able to connect until they
     register a new device. """
-    patient_id = request.POST['patient_id']
-    study_id = request.POST['study_id']
+    
+    patient_id = request.POST.get('patient_id', None)
+    study_id = request.POST.get('study_id', None)
     
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
-        messages.error(f'The participant {patient_id} does not exist')
-        return redirect(request, f'/view_study/{study_id}/')
+        messages.error(request, f'The participant {patient_id} does not exist')
+        return redirect(f'/view_study/{study_id}/')
     
     if participant.study.id != int(study_id):
-        messages.error(f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}')
-        return redirect(request, request.referrer)
+        messages.error(
+            request,
+            f'Participant {patient_id} is not in study {Study.objects.get(id=study_id).name}'
+        )
+        # FIXME: this was originally request.referrer
+        return redirect(f'/view_study/{study_id}/')
     
     participant.device_id = ""
     participant.save()
-    messages.success(f'For patient {patient_id}, device was reset; password is untouched.')
-    return redirect(request, request.referrer)
+    messages.success(request, f'For patient {patient_id}, device was reset; password is untouched.')
+    # FIXME: this was originally request.referrer
+    return redirect(f'/view_study/{study_id}/')
 
 
 @require_POST
