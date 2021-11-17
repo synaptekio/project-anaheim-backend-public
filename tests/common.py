@@ -153,7 +153,6 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             raise TypeError(f"Unhandled type: {type(var)}")
 
 
-
 class BasicSessionTestCase(CommonTestCase):
     """ This class has the basics needed to do login operations, but runs no extra setup before each
     test.  This class is probably only useful to test the login pages. """

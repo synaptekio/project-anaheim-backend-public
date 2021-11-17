@@ -126,6 +126,28 @@ class TestLoginPages(BasicSessionTestCase):
         self.assert_resolve_equal(r.url, reverse("login_pages.login_page"))
 
 
+class TestChooseStudy(GeneralPageTest):
+    ENDPOINT_NAME = "admin_pages.choose_study"
+    
+    def test_2_studies(self):
+        study2 = self.generate_study("study2")
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.generate_study_relation(self.session_researcher, study2, ResearcherRole.researcher)
+        resp = self.do_test_status_code(200)
+        self.assert_present(self.session_study.name, resp.content)
+        self.assert_present(study2.name, resp.content)
+    
+    def test_1_study(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self.do_test_status_code(302)
+        self.assert_(resp.url, easy_url("admin_pages.view_study", study_id=self.session_study.id))
+    
+    def test_no_study(self):
+        self.set_session_study_relation(None)
+        resp = self.do_test_status_code(200)
+        self.assert_not_present(self.session_study.name, resp.content)
+
+
 class TestViewStudy(GeneralPageTest):
     """ view_study is pretty simple, no custom content in the :
     tests push_notifications_enabled, is_site_admin, study.is_test, study.forest_enabled

@@ -70,10 +70,13 @@ class ReferenceObjectMixin:
     
     def generate_study_relation(self, researcher: Researcher, study: Study, relation: str) -> StudyRelation:
         """ Creates a study relation based on the input values, returns it. """
+        if relation is None:
+            self.session_researcher.study_relations.filter(study=self.session_study).delete()
+            return relation
+        
         if relation == ResearcherRole.site_admin:
             self.session_researcher.update(site_admin=True)
-            return ResearcherRole.site_admin
-        self.assertIn(relation, REAL_ROLES)  # assertIn is part of TestCase.
+            return relation
         relation = StudyRelation(researcher=researcher, study=study, relationship=relation)
         relation.save()
         return relation
