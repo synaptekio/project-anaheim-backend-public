@@ -1587,3 +1587,23 @@ class TestUnregisterParticipant(RedirectSessionApiTest):
         )
         self.default_participant.refresh_from_db()
         self.assertEqual(self.default_participant.unregistered, True)
+
+
+class CreateNewParticipant(RedirectSessionApiTest):
+    ENDPOINT_NAME = "participant_administration.create_new_participant"
+    REDIRECT_ENDPOINT_NAME = "admin_pages.view_study"
+    
+    @patch("api.participant_administration.s3_upload")
+    @patch("api.participant_administration.create_client_key_pair")
+    def test(self, create_client_keypair: MagicMock, s3_upload: MagicMock):
+        # this test does not make calls to S3
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.assertFalse(Participant.objects.exists())
+        self.smart_post(study_id=self.session_study.id)
+        self.assertEqual(Participant.objects.count(), 1)
+        
+        content = self.get_redirect_content(self.session_study.id)
+        new_participant: Participant = Participant.objects.first()
+        self.assert_present("Created a new patient", content)
+        self.assert_present(new_participant.patient_id, content)
+        

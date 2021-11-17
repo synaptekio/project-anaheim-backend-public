@@ -119,7 +119,7 @@ def create_new_participant(request: ResearcherRequest):
     user to the study they are supposed to be attached to and returns a string containing
     password and patient id. """
     
-    study_id = request.POST['study_id']
+    study_id = request.POST.get('study_id', None)
     patient_id, password = Participant.create_with_password(study_id=study_id)
     participant = Participant.objects.get(patient_id=patient_id)
     study = Study.objects.get(id=study_id)
@@ -131,8 +131,7 @@ def create_new_participant(request: ResearcherRequest):
     create_client_key_pair(patient_id, study_object_id)
     repopulate_all_survey_scheduled_events(study, participant)
     
-    response_string = f'Created a new patient\npatient_id: {patient_id}\npassword: {password}'
-    messages.success(response_string)
+    messages.success(request, f'Created a new patient\npatient_id: {patient_id}\npassword: {password}')
     return redirect(f'/view_study/{study_id}')
 
 
