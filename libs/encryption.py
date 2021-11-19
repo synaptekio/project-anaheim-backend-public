@@ -265,7 +265,7 @@ def extract_aes_key(
         if STORE_DECRYPTION_KEY_ERRORS:
             DecryptionKeyError.do_create(
                 file_path=request.values['file_name'],
-                contents=original_data.decode(),
+                contents=original_data,
                 traceback=an_traceback,
                 participant=participant,
             )
