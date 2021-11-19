@@ -1,5 +1,6 @@
 import json
 
+from django.http.response import HttpResponse
 from django.views.decorators.http import require_http_methods
 
 from authentication.data_access_authentication import (api_credential_check,
@@ -18,10 +19,11 @@ def get_studies(request: ApiResearcherRequest):
     request body.
     :return: string: JSON-dumped dict {object_id: name}
     """
-    return json.dumps(
-        dict(
-            StudyRelation.objects.filter(researcher=request.api_researcher)
-                .values_list("study__object_id", "study__name")
+    return HttpResponse(
+        json.dumps(
+            dict(StudyRelation.objects.filter(
+                researcher=request.api_researcher).values_list("study__object_id", "study__name")
+            )
         )
     )
 

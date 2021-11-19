@@ -8,13 +8,13 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
+from urls import urlpatterns
 
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from tests.helpers import ReferenceObjectMixin
 
-from urls import urlpatterns
 
 ALL_ENDPOINT_NAMES = set([pattern.name for pattern in urlpatterns])
 
@@ -214,6 +214,31 @@ class SmartRequestsTestCase(BasicSessionTestCase):
             reverse(self.REDIRECT_ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs), **get_kwargs
         )
     
+    def smart_post_status_code(
+        self, status_code: int, *reverse_args, reverse_kwargs=None, **post_params
+    ) -> HttpResponse:
+        """ This helper function takes a status code in addition to post paramers, and tests for
+        it.  Use for writing concise tests. """
+        if not isinstance(status_code, int):
+            raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
+        resp = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
+        self.assertEqual(resp.status_code, status_code)
+        return resp
+    
+    def smart_get_status_code(
+        self, status_code: int, *reverse_params, reverse_kwargs=None, **get_kwargs
+    ) -> HttpResponse:
+        if not isinstance(status_code, int):
+            raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
+        if status_code < 200 or status_code > 600:
+            raise ImproperlyConfigured(
+                f"'{status_code}' ({type(status_code)}) is definetely not a status code."
+            )
+        resp = self.smart_get(*reverse_params, reverse_kwargs=reverse_kwargs, **get_kwargs)
+        self.assertEqual(resp.status_code, status_code)
+        return resp
+    
+    
     @staticmethod
     def _detect_obnoxious_type_error(function_name: str, args: tuple, kwargs1: dict, kwargs2: dict):
         for arg in chain(args, kwargs1.values(), kwargs2.values()):
@@ -252,6 +277,8 @@ class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
     
+    # this class exists due to an older factoring that is currently too tedious to refactor out.j
+    # smart_post pretty much functions as a smart_post_status_code(302, ...)
     def _smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         """ we need the passthrough and calling super() in an implementation class is dumb.... """
         return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
@@ -261,7 +288,7 @@ class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
         # appropriate endpoint.
         if self.REDIRECT_ENDPOINT_NAME is None:
             raise ImproperlyConfigured("You must provide a value for REDIRECT_ENDPOINT_NAME.")
-        response = super().smart_post(*reverse_args, reverse_params=reverse_kwargs, **post_params)
+        response = super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
         self.assertEqual(response.status_code, 302)
         self.assertIsInstance(response, HttpResponseRedirect)
         self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
@@ -276,38 +303,8 @@ class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
         return resp.content
 
 
-class SessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
-    """ This class is for non-redirect api endpoints.  It includes helper functions for issuing a
-    post request to the endpoint declared for ENDPOINT_NAME and testing its return code. """
+class ResearcherSessionTest(PopulatedSessionTestCase, SmartRequestsTestCase):
     ENDPOINT_NAME = None
-    
-    def do_test_status_code(
-        self, status_code: int, *reverse_args, reverse_kwargs=None, **post_params
-    ) -> HttpResponse:
-        """ This helper function takes a status code in addition to post paramers, and tests for
-        it.  Use for writing concise tests. """
-        if not isinstance(status_code, int):
-            raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        resp = self.smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
-        self.assertEqual(resp.status_code, status_code)
-        return resp
-
-
-class GeneralPageTest(PopulatedSessionTestCase, SmartRequestsTestCase):
-    """ This class implements a do_get and a do_test_status_code function for implementing concise
-    tests on normal, non-api web pages. """
-    ENDPOINT_NAME = None
-    
-    def do_test_status_code(
-        self, status_code: int, *reverse_params, reverse_kwargs=None, **get_kwargs
-    ) -> HttpResponse:
-        if not isinstance(status_code, int):
-            raise TypeError(f"received {type(status_code)} '{status_code}' for status_code?")
-        if status_code < 200 or status_code > 600:
-            raise ImproperlyConfigured(f"'{status_code}' ({type(status_code)}) is definetely not a status code.")
-        resp = self.smart_get(*reverse_params, reverse_kwargs=reverse_kwargs, **get_kwargs)
-        self.assertEqual(resp.status_code, status_code)
-        return resp
 
 
 class DataApiTest(SmartRequestsTestCase):
@@ -317,9 +314,9 @@ class DataApiTest(SmartRequestsTestCase):
             self.session_researcher.reset_access_credentials()
         return super().setUp()
     
-    def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+    def smart_post(self, *reverse_args, reverse_kwargs={}, **post_params) -> HttpResponseRedirect:
+        # As smart post, but assert that the request was redirected, and that it points to the
+        # appropriate endpoint.
         post_params["access_key"] = self.session_access_key
         post_params["secret_key"] = self.session_secret_key
-        return self.client.post(
-            reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
-        )
+        return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
