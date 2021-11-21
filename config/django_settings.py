@@ -1,14 +1,12 @@
 # names in this file's scope are passed in to the django settings.configure command in load_django.
 
 import os
-from os.path import dirname, join
+from os.path import join
 
 from config import DB_MODE, DB_MODE_POSTGRES, DB_MODE_SQLITE
 from config.settings import FLASK_SECRET_KEY
+from constants.data_processing_constants import BEIWE_PROJECT_ROOT
 
-
-DB_PATH = join(dirname(dirname(__file__)), "private/beiwe_db.sqlite")
-TEST_DATABASE_PATH = join(dirname(dirname(__file__)), 'private/tests_db.sqlite')
 
 # SECRET KEY is required by the django management commands, using the flask key is fine because
 # we are not actually using it in any server runtime capacity.
@@ -17,7 +15,7 @@ if DB_MODE == DB_MODE_SQLITE:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': DB_PATH,
+            'NAME': join(BEIWE_PROJECT_ROOT, "private/beiwe_db.sqlite"),
             'CONN_MAX_AGE': None,
         },
     }

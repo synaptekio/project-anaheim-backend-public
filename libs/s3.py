@@ -22,7 +22,6 @@ TypeError: Object type <class 'botocore.response.StreamingBody'> cannot be passe
 """
 
 
-
 class S3VersionException(Exception): pass
 class NoSuchKeyException(Exception): pass
 

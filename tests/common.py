@@ -13,6 +13,7 @@ from urls import urlpatterns
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
+from libs import s3
 from tests.helpers import ReferenceObjectMixin
 
 
@@ -22,6 +23,8 @@ ALL_ENDPOINT_NAMES = set([pattern.name for pattern in urlpatterns])
 # test is running with some separater.
 VERBOSE_2_OR_3 = ("-v2" in argv or "-v3" in argv) and "-v1" not in argv
 
+# force disable potentially active s3 connections
+s3.S3_BUCKET = None  # must retain import stucture to function.
 
 # extra printout of calls to the messages library
 if VERBOSE_2_OR_3:
