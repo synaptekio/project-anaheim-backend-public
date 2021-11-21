@@ -28,12 +28,12 @@ def is_object_id(object_id: str) -> bool:
     # to strings prepended with b'
     if not isinstance(object_id, str) or object_id.startswith("b'"):
         raise BadObjectIdType(str(object_id))
-
+    
     # need to be composed of alphanumerics
     for c in object_id:
         if c not in OBJECT_ID_ALLOWED_CHARS:
             return False
-
+    
     return len(object_id) == 24
 
 
@@ -62,11 +62,9 @@ def api_study_credential_check(block_test_studies: bool=False) -> callable:
             request: ApiStudyResearcherRequest = args[0]
             assert isinstance(request, HttpRequest), \
                 f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
-
             # populate the ApiStudyResearcherRequest
             request.api_study, request.api_researcher = \
                 api_check_researcher_study_access(request, block_test_studies)
-
             return some_function(*args, **kwargs)
         return the_inner_wrapper
     return the_decorator
@@ -75,15 +73,15 @@ def api_study_credential_check(block_test_studies: bool=False) -> callable:
 def api_get_and_validate_researcher(request: HttpRequest) -> Researcher:
     access_key, secret_key = api_get_and_validate_credentials(request)
     try:
-        researcher = Researcher.objects.get(access_key_id=access_key)
+        researcher: Researcher = Researcher.objects.get(access_key_id=access_key)
     except Researcher.DoesNotExist:
         log("no such researcher")
         return abort(403)  # access key DNE
-
+    
     if not researcher.validate_access_credentials(secret_key):
         log("key did not match researcher")
         return abort(403)  # incorrect secret key
-
+    
     return researcher
 
 
@@ -99,15 +97,15 @@ def api_check_researcher_study_access(request: ResearcherRequest, block_test_stu
     Parameter allows control of whether to allow the api call to hit a test study. """
     study = api_get_study_confirm_exists(request)
     researcher = api_get_validate_researcher_on_study(request, study)
-
+    
     user_exceptions = researcher.site_admin or researcher.is_batch_user
     do_block = block_test_studies and not study.is_test
-
+    
     if not user_exceptions and do_block:
         # You're only allowed to download chunked data from test studies, otherwise doesn't exist.
         log("study not accessible to researcher")
         return abort(404)
-
+    
     return study, researcher
 
 
@@ -115,12 +113,12 @@ def api_get_and_validate_credentials(request: HttpRequest) -> Tuple[str, str]:
     """ Sanitize access and secret keys from request """
     access_key = request.POST.get("access_key", None)
     secret_key = request.POST.get("secret_key", None)
-
+    
     # reject empty strings and value-not-present cases
     if not access_key or not secret_key:
         log("missing cred")
         return abort(400)
-
+    
     # access keys use generic base64
     for c in access_key:
         if c not in BASE64_GENERIC_ALLOWED_CHARACTERS:
@@ -130,31 +128,26 @@ def api_get_and_validate_credentials(request: HttpRequest) -> Tuple[str, str]:
         if c not in BASE64_GENERIC_ALLOWED_CHARACTERS:
             log("bad cred secret key")
             return abort(400)
-
+    
     return access_key, secret_key
 
 
 def api_get_validate_researcher_on_study(request: ResearcherRequest, study: Study) -> Researcher:
-    """
-    Finds researcher based on the secret key provided.
-    Returns 403 if researcher doesn't exist, is not credentialed on the study, or if
-    the secret key does not match.
-    """
+    """ Finds researcher based on the secret key provided.
+
+    Returns 403 if researcher doesn't exist, is not credentialed on the study, or if the secret key
+    does not match. """
     researcher = api_get_and_validate_researcher(request)
+    
     # if the researcher has no relation to the study, and isn't a batch user or site admin, 403.
     # case: batch users and site admins have access to everything.
     # case: researcher is not credentialed for this study.
-    if (
-        not StudyRelation.objects.filter(study_id=study.pk, researcher=researcher).exists()
-        and not researcher.site_admin
-        and not researcher.is_batch_user
-    ):
-        log(f"study found: {StudyRelation.objects.filter(study_id=study.pk, researcher=researcher).exists()}")
+    query = StudyRelation.objects.filter(study_id=study.pk, researcher=researcher)
+    if not query.exists() and not researcher.site_admin:
+        log(f"study relation found: {list(query.values())}")
         log(f"researcher.site_admin: {researcher.site_admin}")
-        log(f"researcher.is_batch_user: {researcher.is_batch_user}")
         log("no study access")
         return abort(403)
-
     return researcher
 
 
@@ -166,21 +159,21 @@ def api_get_study_confirm_exists(request: ResearcherRequest) -> Study:
     """
     study_object_id = request.POST.get('study_id', None)
     study_pk = request.POST.get('study_pk', None)
-
+    
     if study_object_id is not None:
-
+        
         # If the ID is incorrectly sized, we return a 400
         if not is_object_id(study_object_id):
             log("bad study obj id: ", study_object_id)
             return abort(400)
-
+        
         # If no Study with the given ID exists, we return a 404
         try:
             return Study.objects.get(object_id=study_object_id)
         except Study.DoesNotExist:
             log(f"study '{study_object_id}' does not exist (obj id)")
             return abort(404)
-
+    
     elif study_pk is not None:
         # study pk must coerce to an int
         try:
@@ -188,14 +181,14 @@ def api_get_study_confirm_exists(request: ResearcherRequest) -> Study:
         except ValueError:
             log("bad study pk")
             return abort(400)
-
+        
         # If no Study with the given ID exists, we return a 404
         try:
             return Study.objects.get(pk=study_pk)
         except Study.DoesNotExist:
             log("study '%s' does not exist (study pk)" % study_object_id)
             return abort(404)
-
+    
     else:
         log("no study provided at all")
         return abort(400)

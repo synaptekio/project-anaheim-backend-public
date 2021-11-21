@@ -1,7 +1,7 @@
 import json
 
 from django.http.response import HttpResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST
 
 from authentication.data_access_authentication import (api_credential_check,
     api_study_credential_check)
@@ -9,7 +9,7 @@ from database.user_models import StudyRelation
 from libs.internal_types import ApiResearcherRequest, ApiStudyResearcherRequest
 
 
-@require_http_methods(['POST', "GET"])
+@require_POST
 @api_credential_check
 def get_studies(request: ApiResearcherRequest):
     """
@@ -28,9 +28,10 @@ def get_studies(request: ApiResearcherRequest):
     )
 
 
-@require_http_methods(['POST', "GET"])
-@api_study_credential_check
+@require_POST
+@api_study_credential_check()
 def get_users_in_study(request: ApiStudyResearcherRequest):
-    return json.dumps(  # json can't operate on queryset, need as list.
-        list(request.api_study.participants.values_list('patient_id', flat=True))
+    # json can't operate on queryset, need as list.
+    return HttpResponse(
+        json.dumps(list(request.api_study.participants.values_list('patient_id', flat=True)))
     )

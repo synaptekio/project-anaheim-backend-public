@@ -82,7 +82,7 @@ class ReferenceObjectMixin:
         return relation
     
     # I seem to have built this and then forgotten about it because I stuck in somewhere weird.
-    def assign_role(self, researcher: Researcher, role: str):
+    def assign_role(self, researcher: Researcher, role: ResearcherRole):
         """ Helper function to assign a user role to a Researcher.  Clears all existing roles on
         that user. """
         if role in REAL_ROLES:

@@ -190,6 +190,7 @@ class SmartRequestsTestCase(BasicSessionTestCase):
         reasonable pattern for providing parameters to both reverse and post. """
         reverse_kwargs = reverse_kwargs or {}
         # print(f"*reverse_args: {reverse_args}\n**reverse_kwargs: {reverse_kwargs}\n**post_params: {post_params}\n")
+        # print(reverse(self.ENDPOINT_NAME, args=reverse_args))
         self._detect_obnoxious_type_error("smart_post", reverse_args, reverse_kwargs, post_params)
         return self.client.post(
             reverse(self.ENDPOINT_NAME, args=reverse_args, kwargs=reverse_kwargs), data=post_params
@@ -319,4 +320,8 @@ class DataApiTest(SmartRequestsTestCase):
         # appropriate endpoint.
         post_params["access_key"] = self.session_access_key
         post_params["secret_key"] = self.session_secret_key
+        return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
+    
+    def less_smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+        """ we need the passthrough and calling super() in an implementation class is dumb.... """
         return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)

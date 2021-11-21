@@ -318,11 +318,11 @@ urlpatterns = [
     path(
         "get-studies/v1",
         other_researcher_apis.get_studies,
-        name="other_researcher_apis,get_studies"),
+        name="other_researcher_apis.get_studies"),
     path(
         "get-users/v1",
         other_researcher_apis.get_users_in_study,
-        name="other_researcher_apis,get_users_in_study"),
+        name="other_researcher_apis.get_users_in_study"),
     
     # data_access_api
     path(
