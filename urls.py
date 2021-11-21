@@ -329,10 +329,10 @@ urlpatterns = [
         "get-data/v1",
         data_access_api.get_data,
         name="data_access_api.get_data"),
-    path(
-        "get-pipeline/v1",
-        data_access_api.pipeline_data_download,
-        name="data_access_api.get_pipeline"),
+    # path(
+    #     "get-pipeline/v1",
+    #     data_access_api.pipeline_data_download,
+    #     name="data_access_api.get_pipeline"),
     
     # Mobile api
     path(

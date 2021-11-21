@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from django.db.models import QuerySet
-from django.http.response import StreamingHttpResponse
+from django.http.response import FileResponse
 from django.views.decorators.http import require_http_methods
 
 from authentication.data_access_authentication import api_study_credential_check
@@ -29,57 +29,48 @@ def get_data(request: ApiStudyResearcherRequest):
         missing creds or study, invalid researcher or study, researcher does not have access
         researcher creds are invalid
     Returns a zip file of all data files found by the query. """
-
+    
     # FIXME: this comment:
     # (Flask automatically returns a 400 response if a parameter is accessed
     #    but does not exist in request.POST() )
-
+    
     query_args = {}
     determine_data_streams_for_db_query(request, query_args)
     determine_users_for_db_query(request, query_args)
     determine_time_range_for_db_query(request, query_args)
-
-    # Do query! (this is actually a generator)
-    get_these_files = handle_database_query(request.api_study.pk, query_args, registry_dict=parse_registry(request))
-
-    # If the request is from the web form we need to indicate that it is an attachment,
-    # and don't want to create a registry file.
-    # Oddly, it is the presence of  mimetype=zip that causes the streaming response to actually stream.
-    if 'web_form' in request.POST:
-        return StreamingHttpResponse(
-            request,
-            zip_generator(get_these_files, construct_registry=False),
-            mimetype="zip",
-            headers={'Content-Disposition': 'attachment; filename="data.zip"'}
-        )
-    else:
-        return StreamingHttpResponse(
-            request,
-            zip_generator(get_these_files, construct_registry=True),
-            mimetype="zip",
-        )
-
-
-@require_http_methods(["GET", "POST"])
-@api_study_credential_check()
-def pipeline_data_download(request: ApiStudyResearcherRequest):
-    # the following two cases are for difference in content wrapping between the CLI script and
-    # the download page.
-    if 'tags' in request.POST:
-        try:
-            tags = json.loads(request.POST['tags'])
-        except ValueError:
-            tags = request.POST.getlist('tags')
-        query = PipelineUpload.objects.filter(study__id=request.api_study.id, tags__tag__in=tags)
-    else:
-        query = PipelineUpload.objects.filter(study__id=request.api_study.id)
-
-    return StreamingHttpResponse(
-        request,
-        zip_generator_for_pipeline(query),
-        mimetype="zip",
-        headers={'Content-Disposition': 'attachment; filename="data.zip"'}
+    
+    # Do query! (this is actually a generator, it can only be iterated over once)
+    get_these_files = handle_database_query(
+        request.api_study.pk, query_args, registry_dict=parse_registry(request)
     )
+    return FileResponse(
+            zip_generator(get_these_files, construct_registry=False),
+            content_type="zip",
+            as_attachment='web_form' in request.POST,
+            filename="data.zip",
+        )
+
+
+# @require_http_methods(["GET", "POST"])
+# @api_study_credential_check()
+# def pipeline_data_download(request: ApiStudyResearcherRequest):
+#     # the following two cases are for difference in content wrapping between the CLI script and
+#     # the download page.
+#     if 'tags' in request.POST:
+#         try:
+#             tags = json.loads(request.POST['tags'])
+#         except ValueError:
+#             tags = request.POST.getlist('tags')
+#         query = PipelineUpload.objects.filter(study__id=request.api_study.id, tags__tag__in=tags)
+#     else:
+#         query = PipelineUpload.objects.filter(study__id=request.api_study.id)
+
+#     return StreamingHttpResponse(
+#         request,
+#         zip_generator_for_pipeline(query),
+#         mimetype="zip",
+#         headers={'Content-Disposition': 'attachment; filename="data.zip"'}
+#     )
 
 
 def parse_registry(request: ApiStudyResearcherRequest):
@@ -89,15 +80,15 @@ def parse_registry(request: ApiStudyResearcherRequest):
     registry = request.POST.get("registry", None)
     if registry is None:
         return None
-
+    
     try:
         ret = json.loads(registry)
     except ValueError:
         return abort(400)
-
+    
     if not isinstance(ret, dict):
         return abort(400)
-
+    
     return ret
 
 
@@ -125,7 +116,7 @@ def determine_data_streams_for_db_query(request: ApiStudyResearcherRequest, quer
             query_dict['data_types'] = json.loads(request.POST['data_streams'])
         except ValueError:
             query_dict['data_types'] = request.POST.getlist('data_streams')
-
+        
         for data_stream in query_dict['data_types']:
             if data_stream not in ALL_DATA_STREAMS:
                 return abort(404)
@@ -140,7 +131,7 @@ def determine_users_for_db_query(request: ApiStudyResearcherRequest, query: dict
             query['user_ids'] = [user for user in json.loads(request.POST['user_ids'])]
         except ValueError:
             query['user_ids'] = request.POST.getlist('user_ids')
-
+        
         # Ensure that all user IDs are patient_ids of actual Participants
         if not Participant.objects.filter(patient_id__in=query['user_ids']).count() == len(query['user_ids']):
             return abort(404)
@@ -159,25 +150,23 @@ def determine_time_range_for_db_query(request: ApiStudyResearcherRequest, query:
 def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict = None) -> QuerySet:
     """ Runs the database query and returns a QuerySet. """
     chunks = ChunkRegistry.get_chunks_time_range(study_id, **query_dict)
-
+    
     if not registry_dict:
         return chunks.values(*chunk_fields)
-
+    
     # If there is a registry, we need to filter on the chunks
     else:
         # Get all chunks whose path and hash are both in the registry
-        possible_registered_chunks = (
-            chunks
-                .filter(chunk_path__in=registry_dict, chunk_hash__in=registry_dict.values())
-                .values('pk', 'chunk_path', 'chunk_hash')
-        )
-
+        possible_registered_chunks =  chunks \
+            .filter(chunk_path__in=registry_dict, chunk_hash__in=registry_dict.values()) \
+            .values('pk', 'chunk_path', 'chunk_hash')
+        
         # determine those chunks that we do not want present in the download
         # (get a list of pks that have hashes that don't match the database)
         registered_chunk_pks = [
             c['pk'] for c in possible_registered_chunks
             if registry_dict[c['chunk_path']] == c['chunk_hash']
         ]
-
+        
         # add the exclude and return the queryset
         return chunks.exclude(pk__in=registered_chunk_pks).values(*chunk_fields)

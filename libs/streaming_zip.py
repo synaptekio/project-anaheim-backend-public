@@ -19,10 +19,11 @@ def determine_file_name(chunk):
     extension = chunk["chunk_path"][-3:]  # get 3 letter file extension from the source.
     if chunk["data_type"] == SURVEY_ANSWERS:
         # add the survey_id from the file path.
+        # output: patient_id/data_type/survey_id/time.csv
         return "%s/%s/%s/%s.%s" % (chunk["participant__patient_id"], chunk["data_type"],
                                    chunk["chunk_path"].rsplit("/", 2)[1], # this is the survey id
                                    str(chunk["time_bin"]).replace(":", "_"), extension)
-
+    
     elif chunk["data_type"] == IMAGE_FILE:
         # add the survey_id from the file path.
         return "%s/%s/%s/%s/%s" % (
@@ -32,13 +33,13 @@ def determine_file_name(chunk):
             chunk["chunk_path"].rsplit("/", 2)[1],  # this is the instance of the user taking a survey
             chunk["chunk_path"].rsplit("/", 1)[1]
         )
-
+    
     elif chunk["data_type"] == SURVEY_TIMINGS:
         # add the survey_id from the database entry.
         return "%s/%s/%s/%s.%s" % (chunk["participant__patient_id"], chunk["data_type"],
                                    chunk["survey__object_id"],  # this is the survey id
                                    str(chunk["time_bin"]).replace(":", "_"), extension)
-
+    
     elif chunk["data_type"] == VOICE_RECORDING:
         # Due to a bug that was not noticed until July 2016 audio surveys did not have the survey id
         # that they were associated with.  Later versions of the app (legacy update 1 and Android 6)
@@ -48,7 +49,7 @@ def determine_file_name(chunk):
             return "%s/%s/%s/%s.%s" % (chunk["participant__patient_id"], chunk["data_type"],
                                        chunk["chunk_path"].rsplit("/", 2)[1],  # this is the survey id
                                        str(chunk["time_bin"]).replace(":", "_"), extension)
-
+    
     # all other files have this form:
     return "%s/%s/%s.%s" % (chunk['participant__patient_id'], chunk["data_type"],
                             str(chunk["time_bin"]).replace(":", "_"), extension)
@@ -59,7 +60,7 @@ def batch_retrieve_s3(chunk: dict) -> Tuple[dict, bytes]:
     return chunk, s3_retrieve(
         chunk["chunk_path"],
         study_object_id=Study.objects.get(id=chunk["study_id"]).object_id,
-        raw_path=True
+        raw_path=True,
     )
 
 
@@ -68,7 +69,7 @@ def zip_generator(files_list, construct_registry=False):
     """ Pulls in data from S3 in a multithreaded network operation, constructs a zip file of that
     data. This is a generator, advantage is it starts returning data (file by file, but wrapped
     in zip compression) almost immediately. """
-
+    
     processed_files = set()
     duplicate_files = set()
     pool = ThreadPool(3)
@@ -76,10 +77,10 @@ def zip_generator(files_list, construct_registry=False):
     # to be overloaded, and provides more-or-less the maximum data download speed.  This was tested
     # on an m4.large instance (dual core, 8GB of ram).
     file_registry = {}
-
+    
     zip_output = StreamingBytesIO()
     zip_input = ZipFile(zip_output, mode="w", compression=ZIP_STORED, allowZip64=True)
-
+    
     try:
         # chunks_and_content is a list of tuples, of the chunk and the content of the file.
         # chunksize (which is a keyword argument of imap, not to be confused with Beiwe Chunks)
@@ -96,27 +97,26 @@ def zip_generator(files_list, construct_registry=False):
                 duplicate_files.add((file_name, chunk['chunk_path']))
                 continue
             processed_files.add(file_name)
-
+            
             zip_input.writestr(file_name, file_contents)
             # These can be large, and we don't want them sticking around in memory as we wait for the yield
             del file_contents, chunk
-
+            
             x = zip_output.getvalue()
             total_size += len(x)
             # print "%s: %sK, %sM" % (random_id, total_size / 1024, total_size / 1024 / 1024)
             yield x  # yield the (compressed) file information
             del x
             zip_output.empty()
-
+        
         if construct_registry:
             zip_input.writestr("registry", json.dumps(file_registry))
             yield zip_output.getvalue()
             zip_output.empty()
-
+        
         # close, then yield all remaining data in the zip.
         zip_input.close()
         yield zip_output.getvalue()
-
     except DummyError:
         # The try-except-finally block is here to guarantee the Threadpool is closed and terminated.
         # we don't handle any errors, we just re-raise any error that shows up.
@@ -148,11 +148,11 @@ def zip_generator_for_pipeline(files_list):
             del file_contents, pipeline_upload
             yield zip_output.getvalue()  # yield the (compressed) file information
             zip_output.empty()
-
+        
         # close, then yield all remaining data in the zip.
         zip_input.close()
         yield zip_output.getvalue()
-
+    
     except DummyError:
         # The try-except-finally block is here to guarantee the Threadpool is closed and terminated.
         # we don't handle any errors, we just re-raise any error that shows up.
@@ -171,13 +171,3 @@ def batch_retrieve_pipeline_s3(pipeline_upload):
     return pipeline_upload, s3_retrieve(pipeline_upload.s3_path,
                                         study.object_id,
                                         raw_path=True)
-
-
-
-# class dummy_threadpool():
-#     def imap_unordered(self, *args, **kwargs): #the existence of that self variable is key
-#         # we actually want to cut off any threadpool args, which is conveniently easy because map does not use kwargs!
-#         return map(*args)
-#     def terminate(self): pass
-#     def close(self): pass
-

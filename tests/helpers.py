@@ -6,6 +6,7 @@ from constants.celery_constants import ScheduleTypes
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
+from database.data_access_models import ChunkRegistry
 from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
@@ -22,7 +23,8 @@ class ReferenceObjectMixin:
     DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
     DEFAULT_STUDY_NAME = "session_study"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
-    
+    DEFAULT_PARTICIPANT_NAME = "particip"  # has to be 8 characters
+
     # For all defaults make sure to maintain the pattern that includes the use of the save function,
     # this codebase implements a special save function that validates before passing through.
     
@@ -58,7 +60,9 @@ class ReferenceObjectMixin:
         study.save()
         return study
     
-    def set_session_study_relation(self, relation: str = ResearcherRole.researcher) -> StudyRelation:
+    def set_session_study_relation(
+        self, relation: ResearcherRole = ResearcherRole.researcher
+    ) -> StudyRelation:
         """ Applies the study relation to the session researcher to the session study. """
         if hasattr(self, "_default_study_relation"):
             raise Exception("can only be called once per test (currently?)")
@@ -182,7 +186,7 @@ class ReferenceObjectMixin:
             return self._default_participant
         except AttributeError:
             pass
-        self._default_participant = self.generate_participant(self.session_study, "particip")
+        self._default_participant = self.generate_participant(self.session_study, self.DEFAULT_PARTICIPANT_NAME)
         return self._default_participant
     
     def generate_participant(self, study: Study, patient_id: str = None, ios=False):
@@ -245,6 +249,35 @@ class ReferenceObjectMixin:
         # there is an actual default ForestParams defined in a migration.
         self._default_forest_params = ForestParam.objects.get(default=True)
         return self._default_forest_params
+    
+    #
+    ## ChunkRegistry
+    #
+    def generate_chunk_registry(
+        self,
+        study: Study,
+        participant: Participant,
+        data_type: str,
+        path: str = None,
+        hash_value: str = None,
+        time_bin: datetime = None,
+        file_size: int = None,
+        survey: Survey = None,
+        is_chunkable: bool = False,
+    ) -> ChunkRegistry:
+        chunk_reg = ChunkRegistry(
+            study=study,
+            participant=participant,
+            data_type=data_type,
+            chunk_path=path or generate_easy_alphanumeric_string(),
+            chunk_hash=hash_value or generate_easy_alphanumeric_string(),
+            time_bin=time_bin or timezone.now(),
+            file_size=file_size or 0,
+            is_chunkable=is_chunkable,
+            survey=survey,
+        )
+        chunk_reg.save()
+        return chunk_reg
 
 
 def compare_dictionaries(reference, comparee, ignore=None):
@@ -283,3 +316,23 @@ def compare_dictionaries(reference, comparee, ignore=None):
             print("\t", x, y)
     
     return False
+
+
+class DummyThreadPool():
+    """ a dummy threadpool object because the test suite has weird problems with ThreadPool """
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+    
+    # @staticmethod
+    def imap_unordered(self, func, iterable, **kwargs):
+        # we actually want to cut off any threadpool args, which is conveniently easy because map
+        # does not use kwargs
+        return map(func, iterable)
+    
+    # @staticmethod
+    def terminate(self):
+        pass
+    
+    # @staticmethod
+    def close(self):
+        pass

@@ -1,5 +1,6 @@
 import json
 from copy import copy
+from datetime import datetime
 from io import BytesIO
 from typing import List
 from unittest.case import skip
@@ -15,13 +16,14 @@ from urls import urlpatterns
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     IOS_FIREBASE_CREDENTIALS)
-from constants.data_stream_constants import ALL_DATA_STREAMS
+from constants.data_stream_constants import ALL_DATA_STREAMS, SURVEY_TIMINGS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
     IOS_CERT, ResearcherRole)
+from database.data_access_models import ChunkRegistry
 from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
@@ -29,9 +31,10 @@ from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
-from libs.security import generate_easy_alphanumeric_string, generate_user_hash_and_salt
+from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, RedirectSessionApiTest,
     ResearcherSessionTest)
+from tests.helpers import DummyThreadPool
 
 
 class TestAllEndpoints(CommonTestCase):
@@ -1782,20 +1785,20 @@ class TestAPIStudyUserAccess(DataApiTest):
         )
         # no such user, forbidden
         self.assertEqual(403, resp.status_code)
-
+    
     def test_no_such_study_pk(self):
         # 0 is an invalid study id
         self.smart_post_status_code(404, study_pk=0)
-
+    
     def test_no_such_study_obj(self):
         # 0 is an invalid study id
         self.smart_post_status_code(404, study_id='a'*24)
-
+    
     def test_bad_object_id(self):
         # 0 is an invalid study id
         self.smart_post_status_code(400, study_id='['*24)
         self.smart_post_status_code(400, study_id='a'*5)
-
+    
     def test_access_key_special_characters(self):
         self.session_access_key = "\x00" * 64
         self.smart_post_status_code(400, study_pk=self.session_study.pk)
@@ -1845,3 +1848,104 @@ class TestGetUsersInStudy(DataApiTest):
         resp = self.smart_post_status_code(200, study_id=self.session_study.object_id)
         match = f'["{self.default_participant.patient_id}", "{p2.patient_id}"]'
         self.assertEqual(resp.content, match.encode())
+
+
+class TestGetData(DataApiTest):
+    ENDPOINT_NAME = "data_access_api.get_data"
+    
+    # retain this structure in order to force a test addition on a new file type
+    FILE_NAMES = {
+        "accelerometer": ("something.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/accelerometer/2020-10-05 02_00_00+00_00.csv"),
+        "ambient_audio": ("something.mp4", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/ambient_audio/2020-10-05 02_00_00+00_00.mp4"),
+        "app_log": ("app_log.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/app_log/2020-10-05 02_00_00+00_00.csv"),
+        "bluetooth": ("bluetooth.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/bluetooth/2020-10-05 02_00_00+00_00.csv"),
+        "calls": ("calls.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/calls/2020-10-05 02_00_00+00_00.csv"),
+        "devicemotion": ("devicemotion.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/devicemotion/2020-10-05 02_00_00+00_00.csv"),
+        "gps": ("gps.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/gps/2020-10-05 02_00_00+00_00.csv"),
+        "gyro": ("gyro.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/gyro/2020-10-05 02_00_00+00_00.csv"),
+        "identifiers": ("identifiers.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/identifiers/2020-10-05 02_00_00+00_00.csv"),
+        "image_survey": ("image_survey/survey_obj_id/something/something2.csv", "2020-10-05 02:00", 
+                         # patient_id/data_type/survey_id/survey_instance/name.csv
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/image_survey/survey_obj_id/something/something2.csv"),
+        "ios_log": ("ios_log.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/ios_log/2020-10-05 02_00_00+00_00.csv"),
+        "magnetometer": ("magnetometer.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/magnetometer/2020-10-05 02_00_00+00_00.csv"),
+        "power_state": ("power_state.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/power_state/2020-10-05 02_00_00+00_00.csv"),
+        "proximity": ("proximity.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/proximity/2020-10-05 02_00_00+00_00.csv"),
+        "reachability": ("reachability.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/reachability/2020-10-05 02_00_00+00_00.csv"),
+        "survey_answers": ("survey_obj_id/something2/something3.csv", "2020-10-05 02:00", 
+                          # expecting: patient_id/data_type/survey_id/time.csv
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/survey_answers/something2/2020-10-05 02_00_00+00_00.csv"),
+        "survey_timings": ("something1/something2/something3/something4/something5.csv", "2020-10-05 02:00", 
+                          # expecting: patient_id/data_type/survey_id/time.csv
+                          f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/survey_timings/aaaaaaaaaaaaaaaaaaaaaaaa/2020-10-05 02_00_00+00_00.csv"),
+        "texts": ("texts.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/texts/2020-10-05 02_00_00+00_00.csv"),
+        "audio_recordings": ("audio_recordings.wav", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/audio_recordings/2020-10-05 02_00_00+00_00.wav"),
+        "wifi": ("wifi.csv", "2020-10-05 02:00", 
+                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/wifi/2020-10-05 02_00_00+00_00.csv"),
+    }
+    
+    def test_basics(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        self.assertEqual(resp.status_code, 200)
+        for i, file_bytes in enumerate(resp.streaming_content, start=1):
+            pass
+        self.assertEqual(i, 1)
+        data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        self.assertEqual(file_bytes, data)
+    
+    # as far as I can tell the ThreadPool screws with the test database connection, and internel
+    # database queries either find no data or connect to the wrong database
+    
+    @patch("libs.streaming_zip.ThreadPool")
+    @patch("libs.streaming_zip.s3_retrieve")    #
+    def test_thing(self, s3_retrieve: MagicMock, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        s3_retrieve.return_value = b"this is the file content you are looking for"
+        self.set_session_study_relation(ResearcherRole.researcher)
+
+        self.default_survey.object_id = "a"*24
+        self.default_survey.save()
+
+        for data_type in ALL_DATA_STREAMS:
+            path, timmy_binniford, output_name = self.FILE_NAMES[data_type]
+            survey = self.default_survey if data_type == SURVEY_TIMINGS else None
+            file_contents = self._test_something_realish(data_type, path, timmy_binniford, survey)
+            self.assertIn(output_name.encode(), file_contents)
+            self.assertIn(s3_retrieve.return_value, file_contents)
+            # print(file_contents.replace(b'\x00', b""))
+            ChunkRegistry.objects.all().delete()
+    
+    def _test_something_realish(self, data_type: str, file_path: str, time_bin: datetime, survey: Survey):
+        self.generate_chunk_registry(
+            self.session_study, self.default_participant, data_type,
+            time_bin=time_bin, path=file_path, survey=survey
+        )
+        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        self.assertEqual(resp.status_code, 200)
+        bytes_list = []
+        
+        for i, file_bytes in enumerate(resp.streaming_content, start=1):
+            bytes_list.append(file_bytes)
+            # print(data_type, i, file_bytes)
+        
+        return b"".join(bytes_list)
+        # self.assertEqual(i, 1)
+        # data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        # self.assertEqual(file_bytes, data)

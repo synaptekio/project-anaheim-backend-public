@@ -20,8 +20,6 @@ class UnchunkableDataTypeError(Exception): pass
 class ChunkableDataTypeError(Exception): pass
 
 
-
-
 class PipelineRegistry(TimestampedModel):
     study = models.ForeignKey(
         'Study', on_delete=models.PROTECT, related_name='pipeline_registries', db_index=True
@@ -272,4 +270,3 @@ class PipelineUpload(TimestampedModel):
 class PipelineUploadTags(TimestampedModel):
     pipeline_upload = models.ForeignKey(PipelineUpload, related_name="tags", on_delete=models.CASCADE)
     tag = models.TextField()
-
