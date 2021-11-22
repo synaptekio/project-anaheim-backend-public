@@ -1851,11 +1851,32 @@ class TestGetUsersInStudy(DataApiTest):
 
 
 class TestGetData(DataApiTest):
+    """ WARNING: there are heisenbugs in debugging the download data api endpoint.
+
+    There is a generator that is conditionally present (`handle_database_query`), it can swallow
+    errors. As a generater iterating over it consumes it, so printing it breaks the code.
+    
+    You Must Patch libs.streaming_zip.ThreadPool
+        The database connection breaks throwing errors on queries that should succeed.
+        The iterator inside the zip file generator generally fails, and the zip file is empty.
+
+    You Must Patch libs.streaming_zip.s3_retrieve
+        Otherwise s3_retrieve will fail due to the patch is tests.common.
+    """
+    
+    def test_s3_patch_present(self):
+        from libs import s3
+        self.assertIsNone(s3.S3_BUCKET)
+
     ENDPOINT_NAME = "data_access_api.get_data"
     
-    # retain this structure in order to force a test addition on a new file type.
-    # "particip" is the default participant name
-    FILE_NAMES = {                                          # the Z makes it a timzone'd datetime
+    EMPTY_ZIP = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    SIMPLE_FILE_CONTENTS = b"this is the file content you are looking for"
+    
+    # retain and usethis structure in order to force a test addition on a new file type.
+    # "particip" is the DEFAULT_PARTICIPANT_NAME
+    # 'u1Z3SH7l2xNsw72hN3LnYi96' is the  DEFAULT_SURVEY_OBJECT_ID
+    FILE_NAMES = {                                        # ↓ that Z makes it a timzone'd datetime
         "accelerometer": ("something.csv", "2020-10-05 02:00Z",
                          f"particip/accelerometer/2020-10-05 02_00_00+00_00.csv"),
         "ambient_audio": ("something.mp4", "2020-10-05 02:00Z",
@@ -1892,14 +1913,14 @@ class TestGetData(DataApiTest):
                          f"particip/survey_answers/something2/2020-10-05 02_00_00+00_00.csv"),
         "survey_timings": ("something1/something2/something3/something4/something5.csv", "2020-10-05 02:00Z",
                           # expecting: patient_id/data_type/survey_id/time.csv
-                          f"particip/survey_timings/aaaaaaaaaaaaaaaaaaaaaaaa/2020-10-05 02_00_00+00_00.csv"),
+                          f"particip/survey_timings/u1Z3SH7l2xNsw72hN3LnYi96/2020-10-05 02_00_00+00_00.csv"),
         "texts": ("texts.csv", "2020-10-05 02:00Z",
                          f"particip/texts/2020-10-05 02_00_00+00_00.csv"),
         "audio_recordings": ("audio_recordings.wav", "2020-10-05 02:00Z",
                          f"particip/audio_recordings/2020-10-05 02_00_00+00_00.wav"),
         "wifi": ("wifi.csv", "2020-10-05 02:00Z",
                          f"particip/wifi/2020-10-05 02_00_00+00_00.csv"),
-    }
+        }
     
     def test_basics(self):
         self.set_session_study_relation(ResearcherRole.researcher)
@@ -1910,30 +1931,25 @@ class TestGetData(DataApiTest):
         self.assertEqual(i, 1)
         # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
         # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
-        data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        self.assertEqual(file_bytes, data)
-    
+        self.assertEqual(file_bytes, self.EMPTY_ZIP)
     
     @patch("libs.streaming_zip.ThreadPool")
     def test_downloads_and_file_naming(self, threadpool: MagicMock):
-        """ WARNING: there are heisenbugs in debugging this. There is a generator that is
-        conditionally present that can swallow errors (`handle_database_query`), iterating over it
-        mutate its.  If you poke the [Dummy]ThreadPool the database seems to break, and the  Make
-        the smallest changes possible between test runs until you understand the side effects.  The
-        test_downloads_and_file_naming_heisenbug is present to assist in understanding when
-        interacting with this code, and alert a possibl connection to a known memory leak. Fuuunnnn. """
         threadpool.return_value = DummyThreadPool()
         self._test_downloads_and_file_naming()
     
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_registry_doesnt_download(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_registry_doesnt_download()
     
     def test_downloads_and_file_naming_heisenbug(self):
-        """ As far as I can tell the ThreadPool seems to screw up the connection to the test
-        database, and queries on the non-main thread either find no data or connect to the wrong
-        database (presumably your normal database?).  
-
-        Please retain this behavior and consult me (Eli, Biblicabeebli) during review.  This means a
-        change has occurred to the multithreading, and is probably related to an obscure but known
-        memory leak in the data access api download enpoint that is relevant on large downloads. """
+        # As far as I can tell the ThreadPool seems to screw up the connection to the test
+        # database, and queries on the non-main thread either find no data or connect to the wrong
+        # database (presumably your normal database?).
+        # Please retain this behavior and consult me (Eli, Biblicabeebli) during review.  This means a
+        # change has occurred to the multithreading, and is probably related to an obscure but known
+        # memory leak in the data access api download enpoint that is relevant on large downloads. """
         try:
             self._test_downloads_and_file_naming()
         except AssertionError as e:
@@ -1950,39 +1966,54 @@ class TestGetData(DataApiTest):
                 )
     
     @patch("libs.streaming_zip.s3_retrieve")
-    def _test_downloads_and_file_naming(self, s3_retrieve: MagicMock,):
-        # some easily searchable basic content
-        s3_retrieve.return_value = b"this is the file content you are looking for"
-        
+    def _test_downloads_and_file_naming(self, s3_retrieve: MagicMock):
+        # basics
+        s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
         self.set_session_study_relation(ResearcherRole.researcher)
-        self.default_survey.object_id = "a"*24
-        self.default_survey.save()
         
+        # need to test all data types
         for data_type in ALL_DATA_STREAMS:
-            path, timmy_binniford, output_name = self.FILE_NAMES[data_type]
-            survey = self.default_survey if data_type == SURVEY_TIMINGS else None
-            file_contents = self.generate_and_download(data_type, path, timmy_binniford, survey)
+            path, time_bin, output_name = self.FILE_NAMES[data_type]
+            file_contents = self.generate_and_download(data_type, path, time_bin)
+            # this is an 'in' test because the file name is part of the zip file, as cleartext
             self.assertIn(output_name.encode(), file_contents)
             self.assertIn(s3_retrieve.return_value, file_contents)
-            # print(file_contents.replace(b'\x00', b""))  @ file has a lot of \x00 in it...
+            ChunkRegistry.objects.all().delete()
+    
+    @patch("libs.streaming_zip.s3_retrieve")
+    def _test_registry_doesnt_download(self, s3_retrieve: MagicMock):
+        # basics
+        s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
+        self.set_session_study_relation(ResearcherRole.researcher)
+        
+        for data_type in ALL_DATA_STREAMS:
+            path, time_bin, _ = self.FILE_NAMES[data_type]
+            file_contents = self.generate_and_download(data_type, path, time_bin, include_registry=True)
+            self.assertEqual(file_contents, self.EMPTY_ZIP)
             ChunkRegistry.objects.all().delete()
     
     def generate_and_download(
-        self, data_type: str, file_path: str, time_bin: datetime, survey: Survey
+        self, data_type: str, file_path: str, time_bin: datetime, include_registry: bool = False
     ):
+        post_kwargs = {"study_pk": self.session_study.id}
+        generate_kwargs = {"time_bin": time_bin, "path": file_path}
+        
+        if data_type == SURVEY_TIMINGS:
+            generate_kwargs["survey"] = self.default_survey
+        
+        if include_registry:
+            post_kwargs["registry"] = json.dumps({file_path: "registry_hash"})
+            generate_kwargs["hash_value"] = "registry_hash"  # strings must match
+        
         self.generate_chunk_registry(
-            self.session_study, self.default_participant, data_type,
-            time_bin=time_bin, path=file_path, survey=survey
+            self.session_study, self.default_participant, data_type, **generate_kwargs
         )
-        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        resp: FileResponse = self.smart_post(**post_kwargs)
+        
+        # Test for a 200 code, then iterate over the streaming output and concatenate it.
         self.assertEqual(resp.status_code, 200)
         bytes_list = []
-        
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             bytes_list.append(file_bytes)
             # print(data_type, i, file_bytes)
-        
         return b"".join(bytes_list)
-        # self.assertEqual(i, 1)
-        # data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        # self.assertEqual(file_bytes, data)
