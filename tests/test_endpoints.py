@@ -1853,51 +1853,52 @@ class TestGetUsersInStudy(DataApiTest):
 class TestGetData(DataApiTest):
     ENDPOINT_NAME = "data_access_api.get_data"
     
-    # retain this structure in order to force a test addition on a new file type
-    FILE_NAMES = {
-        "accelerometer": ("something.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/accelerometer/2020-10-05 02_00_00+00_00.csv"),
-        "ambient_audio": ("something.mp4", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/ambient_audio/2020-10-05 02_00_00+00_00.mp4"),
-        "app_log": ("app_log.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/app_log/2020-10-05 02_00_00+00_00.csv"),
-        "bluetooth": ("bluetooth.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/bluetooth/2020-10-05 02_00_00+00_00.csv"),
-        "calls": ("calls.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/calls/2020-10-05 02_00_00+00_00.csv"),
-        "devicemotion": ("devicemotion.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/devicemotion/2020-10-05 02_00_00+00_00.csv"),
-        "gps": ("gps.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/gps/2020-10-05 02_00_00+00_00.csv"),
-        "gyro": ("gyro.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/gyro/2020-10-05 02_00_00+00_00.csv"),
-        "identifiers": ("identifiers.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/identifiers/2020-10-05 02_00_00+00_00.csv"),
-        "image_survey": ("image_survey/survey_obj_id/something/something2.csv", "2020-10-05 02:00", 
+    # retain this structure in order to force a test addition on a new file type.
+    # "particip" is the default participant name
+    FILE_NAMES = {                                          # the Z makes it a timzone'd datetime
+        "accelerometer": ("something.csv", "2020-10-05 02:00Z",
+                         f"particip/accelerometer/2020-10-05 02_00_00+00_00.csv"),
+        "ambient_audio": ("something.mp4", "2020-10-05 02:00Z",
+                         f"particip/ambient_audio/2020-10-05 02_00_00+00_00.mp4"),
+        "app_log": ("app_log.csv", "2020-10-05 02:00Z",
+                         f"particip/app_log/2020-10-05 02_00_00+00_00.csv"),
+        "bluetooth": ("bluetooth.csv", "2020-10-05 02:00Z",
+                         f"particip/bluetooth/2020-10-05 02_00_00+00_00.csv"),
+        "calls": ("calls.csv", "2020-10-05 02:00Z",
+                         f"particip/calls/2020-10-05 02_00_00+00_00.csv"),
+        "devicemotion": ("devicemotion.csv", "2020-10-05 02:00Z",
+                         f"particip/devicemotion/2020-10-05 02_00_00+00_00.csv"),
+        "gps": ("gps.csv", "2020-10-05 02:00Z",
+                         f"particip/gps/2020-10-05 02_00_00+00_00.csv"),
+        "gyro": ("gyro.csv", "2020-10-05 02:00Z",
+                         f"particip/gyro/2020-10-05 02_00_00+00_00.csv"),
+        "identifiers": ("identifiers.csv", "2020-10-05 02:00Z",
+                         f"particip/identifiers/2020-10-05 02_00_00+00_00.csv"),
+        "image_survey": ("image_survey/survey_obj_id/something/something2.csv", "2020-10-05 02:00Z",
                          # patient_id/data_type/survey_id/survey_instance/name.csv
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/image_survey/survey_obj_id/something/something2.csv"),
-        "ios_log": ("ios_log.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/ios_log/2020-10-05 02_00_00+00_00.csv"),
-        "magnetometer": ("magnetometer.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/magnetometer/2020-10-05 02_00_00+00_00.csv"),
-        "power_state": ("power_state.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/power_state/2020-10-05 02_00_00+00_00.csv"),
-        "proximity": ("proximity.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/proximity/2020-10-05 02_00_00+00_00.csv"),
-        "reachability": ("reachability.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/reachability/2020-10-05 02_00_00+00_00.csv"),
-        "survey_answers": ("survey_obj_id/something2/something3.csv", "2020-10-05 02:00", 
+                         f"particip/image_survey/survey_obj_id/something/something2.csv"),
+        "ios_log": ("ios_log.csv", "2020-10-05 02:00Z",
+                         f"particip/ios_log/2020-10-05 02_00_00+00_00.csv"),
+        "magnetometer": ("magnetometer.csv", "2020-10-05 02:00Z",
+                         f"particip/magnetometer/2020-10-05 02_00_00+00_00.csv"),
+        "power_state": ("power_state.csv", "2020-10-05 02:00Z",
+                         f"particip/power_state/2020-10-05 02_00_00+00_00.csv"),
+        "proximity": ("proximity.csv", "2020-10-05 02:00Z",
+                         f"particip/proximity/2020-10-05 02_00_00+00_00.csv"),
+        "reachability": ("reachability.csv", "2020-10-05 02:00Z",
+                         f"particip/reachability/2020-10-05 02_00_00+00_00.csv"),
+        "survey_answers": ("survey_obj_id/something2/something3.csv", "2020-10-05 02:00Z",
                           # expecting: patient_id/data_type/survey_id/time.csv
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/survey_answers/something2/2020-10-05 02_00_00+00_00.csv"),
-        "survey_timings": ("something1/something2/something3/something4/something5.csv", "2020-10-05 02:00", 
+                         f"particip/survey_answers/something2/2020-10-05 02_00_00+00_00.csv"),
+        "survey_timings": ("something1/something2/something3/something4/something5.csv", "2020-10-05 02:00Z",
                           # expecting: patient_id/data_type/survey_id/time.csv
-                          f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/survey_timings/aaaaaaaaaaaaaaaaaaaaaaaa/2020-10-05 02_00_00+00_00.csv"),
-        "texts": ("texts.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/texts/2020-10-05 02_00_00+00_00.csv"),
-        "audio_recordings": ("audio_recordings.wav", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/audio_recordings/2020-10-05 02_00_00+00_00.wav"),
-        "wifi": ("wifi.csv", "2020-10-05 02:00", 
-                         f"{DataApiTest.DEFAULT_PARTICIPANT_NAME}/wifi/2020-10-05 02_00_00+00_00.csv"),
+                          f"particip/survey_timings/aaaaaaaaaaaaaaaaaaaaaaaa/2020-10-05 02_00_00+00_00.csv"),
+        "texts": ("texts.csv", "2020-10-05 02:00Z",
+                         f"particip/texts/2020-10-05 02_00_00+00_00.csv"),
+        "audio_recordings": ("audio_recordings.wav", "2020-10-05 02:00Z",
+                         f"particip/audio_recordings/2020-10-05 02_00_00+00_00.wav"),
+        "wifi": ("wifi.csv", "2020-10-05 02:00Z",
+                         f"particip/wifi/2020-10-05 02_00_00+00_00.csv"),
     }
     
     def test_basics(self):
@@ -1907,32 +1908,68 @@ class TestGetData(DataApiTest):
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             pass
         self.assertEqual(i, 1)
+        # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
+        # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
         data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         self.assertEqual(file_bytes, data)
     
-    # as far as I can tell the ThreadPool screws with the test database connection, and internel
-    # database queries either find no data or connect to the wrong database
     
     @patch("libs.streaming_zip.ThreadPool")
-    @patch("libs.streaming_zip.s3_retrieve")    #
-    def test_thing(self, s3_retrieve: MagicMock, threadpool: MagicMock):
+    def test_downloads_and_file_naming(self, threadpool: MagicMock):
+        """ WARNING: there are heisenbugs in debugging this. There is a generator that is
+        conditionally present that can swallow errors (`handle_database_query`), iterating over it
+        mutate its.  If you poke the [Dummy]ThreadPool the database seems to break, and the  Make
+        the smallest changes possible between test runs until you understand the side effects.  The
+        test_downloads_and_file_naming_heisenbug is present to assist in understanding when
+        interacting with this code, and alert a possibl connection to a known memory leak. Fuuunnnn. """
         threadpool.return_value = DummyThreadPool()
-        s3_retrieve.return_value = b"this is the file content you are looking for"
-        self.set_session_study_relation(ResearcherRole.researcher)
+        self._test_downloads_and_file_naming()
+    
+    
+    def test_downloads_and_file_naming_heisenbug(self):
+        """ As far as I can tell the ThreadPool seems to screw up the connection to the test
+        database, and queries on the non-main thread either find no data or connect to the wrong
+        database (presumably your normal database?).  
 
+        Please retain this behavior and consult me (Eli, Biblicabeebli) during review.  This means a
+        change has occurred to the multithreading, and is probably related to an obscure but known
+        memory leak in the data access api download enpoint that is relevant on large downloads. """
+        try:
+            self._test_downloads_and_file_naming()
+        except AssertionError as e:
+            # this will happen on the first file it tests, accelerometer.
+            literal_string_of_error_message = "b'particip/accelerometer/2020-10-05 " \
+                "02_00_00+00_00.csv' not found in b'PK\\x05\\x06\\x00\\x00\\x00\\x00\\x00" \
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'"
+            
+            if str(e) != literal_string_of_error_message:
+                raise Exception(
+                    f"\n'{literal_string_of_error_message}'\nwas not equal to\n'{str(e)}'\n"
+                     "\n  You have changed something that is possibly related to "
+                     "threading via a ThreadPool or DummyThreadPool"
+                )
+    
+    @patch("libs.streaming_zip.s3_retrieve")
+    def _test_downloads_and_file_naming(self, s3_retrieve: MagicMock,):
+        # some easily searchable basic content
+        s3_retrieve.return_value = b"this is the file content you are looking for"
+        
+        self.set_session_study_relation(ResearcherRole.researcher)
         self.default_survey.object_id = "a"*24
         self.default_survey.save()
-
+        
         for data_type in ALL_DATA_STREAMS:
             path, timmy_binniford, output_name = self.FILE_NAMES[data_type]
             survey = self.default_survey if data_type == SURVEY_TIMINGS else None
-            file_contents = self._test_something_realish(data_type, path, timmy_binniford, survey)
+            file_contents = self.generate_and_download(data_type, path, timmy_binniford, survey)
             self.assertIn(output_name.encode(), file_contents)
             self.assertIn(s3_retrieve.return_value, file_contents)
-            # print(file_contents.replace(b'\x00', b""))
+            # print(file_contents.replace(b'\x00', b""))  @ file has a lot of \x00 in it...
             ChunkRegistry.objects.all().delete()
     
-    def _test_something_realish(self, data_type: str, file_path: str, time_bin: datetime, survey: Survey):
+    def generate_and_download(
+        self, data_type: str, file_path: str, time_bin: datetime, survey: Survey
+    ):
         self.generate_chunk_registry(
             self.session_study, self.default_participant, data_type,
             time_bin=time_bin, path=file_path, survey=survey
