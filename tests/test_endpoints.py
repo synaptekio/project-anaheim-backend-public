@@ -1867,7 +1867,7 @@ class TestGetData(DataApiTest):
     def test_s3_patch_present(self):
         from libs import s3
         self.assertIsNone(s3.S3_BUCKET)
-
+    
     ENDPOINT_NAME = "data_access_api.get_data"
     
     EMPTY_ZIP = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -1922,16 +1922,11 @@ class TestGetData(DataApiTest):
                          f"particip/wifi/2020-10-05 02_00_00+00_00.csv"),
         }
     
-    def test_basics(self):
-        self.set_session_study_relation(ResearcherRole.researcher)
-        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
-        self.assertEqual(resp.status_code, 200)
-        for i, file_bytes in enumerate(resp.streaming_content, start=1):
-            pass
-        self.assertEqual(i, 1)
-        # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
-        # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
-        self.assertEqual(file_bytes, self.EMPTY_ZIP)
+    # setting the threadpool needs to apply to each test, following this pattern because its easy.
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_basics(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_basics()
     
     @patch("libs.streaming_zip.ThreadPool")
     def test_downloads_and_file_naming(self, threadpool: MagicMock):
@@ -1943,6 +1938,12 @@ class TestGetData(DataApiTest):
         threadpool.return_value = DummyThreadPool()
         self._test_registry_doesnt_download()
     
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_time_bin(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_time_bin()
+    
+    # but don't patch ThreadPool for this one
     def test_downloads_and_file_naming_heisenbug(self):
         # As far as I can tell the ThreadPool seems to screw up the connection to the test
         # database, and queries on the non-main thread either find no data or connect to the wrong
@@ -1965,6 +1966,17 @@ class TestGetData(DataApiTest):
                      "threading via a ThreadPool or DummyThreadPool"
                 )
     
+    def _test_basics(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        self.assertEqual(resp.status_code, 200)
+        for i, file_bytes in enumerate(resp.streaming_content, start=1):
+            pass
+        self.assertEqual(i, 1)
+        # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
+        # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
+        self.assertEqual(file_bytes, self.EMPTY_ZIP)
+    
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_downloads_and_file_naming(self, s3_retrieve: MagicMock):
         # basics
@@ -1974,7 +1986,7 @@ class TestGetData(DataApiTest):
         # need to test all data types
         for data_type in ALL_DATA_STREAMS:
             path, time_bin, output_name = self.FILE_NAMES[data_type]
-            file_contents = self.generate_and_download(data_type, path, time_bin)
+            file_contents = self.generate_chunkregistry_and_download(data_type, path, time_bin)
             # this is an 'in' test because the file name is part of the zip file, as cleartext
             self.assertIn(output_name.encode(), file_contents)
             self.assertIn(s3_retrieve.return_value, file_contents)
@@ -1985,15 +1997,109 @@ class TestGetData(DataApiTest):
         # basics
         s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
         self.set_session_study_relation(ResearcherRole.researcher)
-        
+        # this doesn't really need to go over everydata type
         for data_type in ALL_DATA_STREAMS:
             path, time_bin, _ = self.FILE_NAMES[data_type]
-            file_contents = self.generate_and_download(data_type, path, time_bin, include_registry=True)
+            file_contents = self.generate_chunkregistry_and_download(data_type, path, time_bin, include_registry=True)
             self.assertEqual(file_contents, self.EMPTY_ZIP)
             ChunkRegistry.objects.all().delete()
     
-    def generate_and_download(
-        self, data_type: str, file_path: str, time_bin: datetime, include_registry: bool = False
+    @patch("libs.streaming_zip.s3_retrieve")
+    def _test_time_bin(self, s3_retrieve: MagicMock):
+        # basics
+        s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
+        self.set_session_study_relation(ResearcherRole.researcher)
+        basic_args = ("accelerometer", "some_file_path.csv", "2020-10-05 02:00Z")
+        
+        # generic request should succeed
+        file_contents = self.generate_chunkregistry_and_download(*basic_args)
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # the api time parameter format is "%Y-%m-%dT%H:%M:%S"
+        # from a time before time_bin of chunkregistry
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_start="2020-10-05T01:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # inner check should be equal to or after the given date
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_start="2020-10-05T02:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+
+        # inner check should be equal to or before the given date
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_end="2020-10-05T02:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # this should fail, start date is late
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_start="2020-10-05T03:00:00",
+        )
+        self.assertEqual(file_contents, self.EMPTY_ZIP)
+        ChunkRegistry.objects.all().delete()
+        
+        # this should succeed, end date is after start date
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_end="2020-10-05T03:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # should succeed, within time range
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args,
+            query_time_bin_start="2020-10-05T02:00:00",
+            query_time_bin_end="2020-10-05T03:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # test with bad time bins, returns no data, user error, no special case handling
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args,
+            query_time_bin_start="2020-10-05T03:00:00",
+            query_time_bin_end="2020-10-05T02:00:00",
+        )
+        self.assertEqual(file_contents, self.EMPTY_ZIP)
+        ChunkRegistry.objects.all().delete()
+        
+        # test inclusive
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args,
+            query_time_bin_start="2020-10-05T02:00:00",
+            query_time_bin_end="2020-10-05T02:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        #
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args,
+            query_time_bin_start="2020-10-05T02:00:00",
+            query_time_bin_end="2020-10-05T02:00:00",
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+    
+    
+    def generate_chunkregistry_and_download(
+        self, data_type: str, file_path: str, time_bin: str,
+        include_registry: bool = False,
+        query_time_bin_start: str = None, query_time_bin_end: str = None,
     ):
         post_kwargs = {"study_pk": self.session_study.id}
         generate_kwargs = {"time_bin": time_bin, "path": file_path}
@@ -2004,6 +2110,11 @@ class TestGetData(DataApiTest):
         if include_registry:
             post_kwargs["registry"] = json.dumps({file_path: "registry_hash"})
             generate_kwargs["hash_value"] = "registry_hash"  # strings must match
+        
+        if query_time_bin_start:
+            post_kwargs['time_start'] = query_time_bin_start
+        if query_time_bin_end:
+            post_kwargs['time_end'] = query_time_bin_end
         
         self.generate_chunk_registry(
             self.session_study, self.default_participant, data_type, **generate_kwargs

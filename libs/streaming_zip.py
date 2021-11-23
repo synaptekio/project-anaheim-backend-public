@@ -108,7 +108,7 @@ def zip_generator(files_list, construct_registry=False):
             yield x  # yield the (compressed) file information
             del x
             zip_output.empty()
-        
+
         if construct_registry:
             zip_input.writestr("registry", json.dumps(file_registry))
             yield zip_output.getvalue()
