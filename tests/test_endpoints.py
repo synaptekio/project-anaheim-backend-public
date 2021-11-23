@@ -1943,6 +1943,11 @@ class TestGetData(DataApiTest):
         threadpool.return_value = DummyThreadPool()
         self._test_time_bin()
     
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_user_query(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_user_query()
+    
     # but don't patch ThreadPool for this one
     def test_downloads_and_file_naming_heisenbug(self):
         # As far as I can tell the ThreadPool seems to screw up the connection to the test
@@ -2033,7 +2038,7 @@ class TestGetData(DataApiTest):
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
         ChunkRegistry.objects.all().delete()
-
+        
         # inner check should be equal to or before the given date
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_time_bin_end="2020-10-05T02:00:00",
@@ -2095,11 +2100,60 @@ class TestGetData(DataApiTest):
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
     
+    @patch("libs.streaming_zip.s3_retrieve")
+    def _test_user_query(self, s3_retrieve: MagicMock):
+        # basics
+        s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
+        self.set_session_study_relation(ResearcherRole.researcher)
+        basic_args = ("accelerometer", "some_file_path.csv", "2020-10-05 02:00Z")
+        
+        # generic request should succeed
+        file_contents = self.generate_chunkregistry_and_download(*basic_args)
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+        
+        # Test bad username
+        output_status_code = self.generate_chunkregistry_and_download(
+            *basic_args, query_patient_ids=["jeff"], status_code=404
+        )
+        self.assertEqual(output_status_code, 404)  # redundant, whatever
+        ChunkRegistry.objects.all().delete()
+
+        # test working participant filter
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_patient_ids=[self.default_participant.patient_id],
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+
+        # test empty patients doesn't do anything
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_patient_ids=[],
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        ChunkRegistry.objects.all().delete()
+
+        # test no matching data. create user, query for that user
+        self.generate_participant(self.session_study, "jeff")
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_patient_ids=["jeff"],
+        )
+        self.assertEqual(file_contents, self.EMPTY_ZIP)
+        ChunkRegistry.objects.all().delete()
+    
     
     def generate_chunkregistry_and_download(
-        self, data_type: str, file_path: str, time_bin: str,
+        self, data_type: str,
+        file_path: str,
+        time_bin: str,
+        status_code: int = 200,
         include_registry: bool = False,
-        query_time_bin_start: str = None, query_time_bin_end: str = None,
+        query_time_bin_start: str = None,
+        query_time_bin_end: str = None,
+        query_patient_ids: str = None,
     ):
         post_kwargs = {"study_pk": self.session_study.id}
         generate_kwargs = {"time_bin": time_bin, "path": file_path}
@@ -2111,6 +2165,9 @@ class TestGetData(DataApiTest):
             post_kwargs["registry"] = json.dumps({file_path: "registry_hash"})
             generate_kwargs["hash_value"] = "registry_hash"  # strings must match
         
+        if query_patient_ids:
+            post_kwargs["user_ids"] = json.dumps(query_patient_ids)
+        
         if query_time_bin_start:
             post_kwargs['time_start'] = query_time_bin_start
         if query_time_bin_end:
@@ -2121,8 +2178,12 @@ class TestGetData(DataApiTest):
         )
         resp: FileResponse = self.smart_post(**post_kwargs)
         
-        # Test for a 200 code, then iterate over the streaming output and concatenate it.
-        self.assertEqual(resp.status_code, 200)
+        # Test for a status code, dufault 200
+        self.assertEqual(resp.status_code, status_code)
+        if resp.status_code != 200:
+            return resp.status_code
+        
+        # then iterate over the streaming output and concatenate it.
         bytes_list = []
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             bytes_list.append(file_bytes)
