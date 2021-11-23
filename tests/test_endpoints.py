@@ -1949,6 +1949,11 @@ class TestGetData(DataApiTest):
         threadpool.return_value = DummyThreadPool()
         self._test_user_query()
     
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_data_streams(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_data_streams()
+    
     # but don't patch ThreadPool for this one
     def test_downloads_and_file_naming_heisenbug(self):
         # As far as I can tell the ThreadPool seems to screw up the connection to the test
@@ -1998,6 +2003,40 @@ class TestGetData(DataApiTest):
             self.assertIn(s3_retrieve.return_value, file_contents)
     
     @patch("libs.streaming_zip.s3_retrieve")
+    def _test_data_streams(self, s3_retrieve: MagicMock):
+        # basics
+        s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
+        self.set_session_study_relation(ResearcherRole.researcher)
+        file_path = "some_file_path.csv"
+        basic_args = ("accelerometer", file_path, "2020-10-05 02:00Z")
+        
+        # assert normal args actually work
+        file_contents = self.generate_chunkregistry_and_download(*basic_args)
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        
+        # test matching data type downloads
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_data_streams='["accelerometer"]'
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        # same with only the string (no brackets, client.post handles serialization)
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_data_streams="accelerometer"
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        
+        # test invalid data stream
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_data_streams='"[accelerometer,gyro]', status_code=404
+        )
+
+        # test valid, non-matching data type does not download
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_data_streams='["gyro"]'
+        )
+        self.assertEqual(file_contents, self.EMPTY_ZIP)
+    
+    @patch("libs.streaming_zip.s3_retrieve")
     def _test_registry_doesnt_download(self, s3_retrieve: MagicMock):
         # basics
         s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
@@ -2014,13 +2053,13 @@ class TestGetData(DataApiTest):
             *basic_args, registry=json.dumps({file_path: self.REGISTRY_HASH})
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
-
+        
         # test that a non-matching hash does not block download.
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, registry=json.dumps({file_path: "bad hash value"})
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
-
+        
         # test bad json objects
         self.generate_chunkregistry_and_download(
             *basic_args, registry=json.dumps([self.REGISTRY_HASH]), status_code=400
@@ -2106,14 +2145,10 @@ class TestGetData(DataApiTest):
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
         
-        #
-        file_contents = self.generate_chunkregistry_and_download(
-            *basic_args,
-            query_time_bin_start="2020-10-05T02:00:00",
-            query_time_bin_end="2020-10-05T02:00:00",
+        # test bad time format
+        self.generate_chunkregistry_and_download(
+            *basic_args, query_time_bin_start="2020-10-05 01:00:00", status_code=400
         )
-        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
-        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
     
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_user_query(self, s3_retrieve: MagicMock):
@@ -2129,7 +2164,7 @@ class TestGetData(DataApiTest):
         
         # Test bad username
         output_status_code = self.generate_chunkregistry_and_download(
-            *basic_args, query_patient_ids=["jeff"], status_code=404
+            *basic_args, query_patient_ids='["jeff"]', status_code=404
         )
         self.assertEqual(output_status_code, 404)  # redundant, whatever
         
@@ -2139,10 +2174,16 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
+        # same but just the string
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, query_patient_ids=self.default_participant.patient_id,
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
         
         # test empty patients doesn't do anything
         file_contents = self.generate_chunkregistry_and_download(
-            *basic_args, query_patient_ids=[],
+            *basic_args, query_patient_ids='[]',
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
@@ -2150,12 +2191,13 @@ class TestGetData(DataApiTest):
         # test no matching data. create user, query for that user
         self.generate_participant(self.session_study, "jeff")
         file_contents = self.generate_chunkregistry_and_download(
-            *basic_args, query_patient_ids=["jeff"],
+            *basic_args, query_patient_ids='["jeff"]',
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
     
     def generate_chunkregistry_and_download(
-        self, data_type: str,
+        self,
+        data_type: str,
         file_path: str,
         time_bin: str,
         status_code: int = 200,
@@ -2163,6 +2205,7 @@ class TestGetData(DataApiTest):
         query_time_bin_start: str = None,
         query_time_bin_end: str = None,
         query_patient_ids: str = None,
+        query_data_streams: str = None,
     ):
         post_kwargs = {"study_pk": self.session_study.id}
         generate_kwargs = {"time_bin": time_bin, "path": file_path}
@@ -2174,8 +2217,11 @@ class TestGetData(DataApiTest):
             post_kwargs["registry"] = registry
             generate_kwargs["hash_value"] = self.REGISTRY_HASH  # strings must match
         
-        if query_patient_ids:
-            post_kwargs["user_ids"] = json.dumps(query_patient_ids)
+        if query_data_streams is not None:
+            post_kwargs["data_streams"] = query_data_streams
+        
+        if query_patient_ids is not None:
+            post_kwargs["user_ids"] = query_patient_ids
         
         if query_time_bin_start:
             post_kwargs['time_start'] = query_time_bin_start

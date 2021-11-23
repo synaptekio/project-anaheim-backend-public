@@ -129,13 +129,12 @@ def determine_data_streams_for_db_query(request: ApiStudyResearcherRequest, quer
         try:
             query_dict['data_types'] = json.loads(request.POST['data_streams'])
         except ValueError:
-            # FIXME: I don't know how to test this?
             log("did not receive json data streams")
             query_dict['data_types'] = request.POST.getlist('data_streams')
         
         for data_stream in query_dict['data_types']:
             if data_stream not in ALL_DATA_STREAMS:
-                log("invalid data stream")
+                log("invalid data stream:", data_stream)
                 return abort(404)
 
 
