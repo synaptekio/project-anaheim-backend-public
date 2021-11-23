@@ -1995,7 +1995,6 @@ class TestGetData(DataApiTest):
             # this is an 'in' test because the file name is part of the zip file, as cleartext
             self.assertIn(output_name.encode(), file_contents)
             self.assertIn(s3_retrieve.return_value, file_contents)
-            ChunkRegistry.objects.all().delete()
     
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_registry_doesnt_download(self, s3_retrieve: MagicMock):
@@ -2007,7 +2006,6 @@ class TestGetData(DataApiTest):
             path, time_bin, _ = self.FILE_NAMES[data_type]
             file_contents = self.generate_chunkregistry_and_download(data_type, path, time_bin, include_registry=True)
             self.assertEqual(file_contents, self.EMPTY_ZIP)
-            ChunkRegistry.objects.all().delete()
     
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_time_bin(self, s3_retrieve: MagicMock):
@@ -2020,7 +2018,6 @@ class TestGetData(DataApiTest):
         file_contents = self.generate_chunkregistry_and_download(*basic_args)
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # the api time parameter format is "%Y-%m-%dT%H:%M:%S"
         # from a time before time_bin of chunkregistry
@@ -2029,7 +2026,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # inner check should be equal to or after the given date
         file_contents = self.generate_chunkregistry_and_download(
@@ -2037,7 +2033,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # inner check should be equal to or before the given date
         file_contents = self.generate_chunkregistry_and_download(
@@ -2045,14 +2040,12 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # this should fail, start date is late
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_time_bin_start="2020-10-05T03:00:00",
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
-        ChunkRegistry.objects.all().delete()
         
         # this should succeed, end date is after start date
         file_contents = self.generate_chunkregistry_and_download(
@@ -2060,7 +2053,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # should succeed, within time range
         file_contents = self.generate_chunkregistry_and_download(
@@ -2070,7 +2062,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # test with bad time bins, returns no data, user error, no special case handling
         file_contents = self.generate_chunkregistry_and_download(
@@ -2079,7 +2070,6 @@ class TestGetData(DataApiTest):
             query_time_bin_end="2020-10-05T02:00:00",
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
-        ChunkRegistry.objects.all().delete()
         
         # test inclusive
         file_contents = self.generate_chunkregistry_and_download(
@@ -2089,7 +2079,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         #
         file_contents = self.generate_chunkregistry_and_download(
@@ -2111,14 +2100,12 @@ class TestGetData(DataApiTest):
         file_contents = self.generate_chunkregistry_and_download(*basic_args)
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
         
         # Test bad username
         output_status_code = self.generate_chunkregistry_and_download(
             *basic_args, query_patient_ids=["jeff"], status_code=404
         )
         self.assertEqual(output_status_code, 404)  # redundant, whatever
-        ChunkRegistry.objects.all().delete()
 
         # test working participant filter
         file_contents = self.generate_chunkregistry_and_download(
@@ -2126,7 +2113,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
 
         # test empty patients doesn't do anything
         file_contents = self.generate_chunkregistry_and_download(
@@ -2134,7 +2120,6 @@ class TestGetData(DataApiTest):
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-        ChunkRegistry.objects.all().delete()
 
         # test no matching data. create user, query for that user
         self.generate_participant(self.session_study, "jeff")
@@ -2142,8 +2127,6 @@ class TestGetData(DataApiTest):
             *basic_args, query_patient_ids=["jeff"],
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
-        ChunkRegistry.objects.all().delete()
-    
     
     def generate_chunkregistry_and_download(
         self, data_type: str,
@@ -2181,6 +2164,8 @@ class TestGetData(DataApiTest):
         # Test for a status code, dufault 200
         self.assertEqual(resp.status_code, status_code)
         if resp.status_code != 200:
+            # no iteration, clear db
+            ChunkRegistry.objects.all().delete()
             return resp.status_code
         
         # then iterate over the streaming output and concatenate it.
@@ -2188,4 +2173,7 @@ class TestGetData(DataApiTest):
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             bytes_list.append(file_bytes)
             # print(data_type, i, file_bytes)
+
+        # database cleanup has to be after the iteration over the file contents
+        ChunkRegistry.objects.all().delete()
         return b"".join(bytes_list)
