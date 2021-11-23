@@ -20,6 +20,13 @@ from middleware.abort_middleware import abort
 chunk_fields = ("pk", "participant_id", "data_type", "chunk_path", "time_bin", "chunk_hash",
                 "participant__patient_id", "study_id", "survey_id", "survey__object_id")
 
+ENABLE_DATA_API_DEBUG = False
+
+def log(*args, **kwargs):
+    if ENABLE_DATA_API_DEBUG:
+        print(*args, **kwargs)
+
+
 @require_http_methods(['POST', "GET"])
 @api_study_credential_check(block_test_studies=True)
 def get_data(request: ApiStudyResearcherRequest):
@@ -46,12 +53,11 @@ def get_data(request: ApiStudyResearcherRequest):
         request.api_study.pk, query_args, registry_dict=parse_registry(request)
     )
     return FileResponse(
-            zip_generator(get_these_files, construct_registry=False),
-            content_type="zip",
-            as_attachment='web_form' in request.POST,
-            filename="data.zip",
-        )
-
+        zip_generator(get_these_files, construct_registry=False),
+        content_type="zip",
+        as_attachment='web_form' in request.POST,
+        filename="data.zip",
+    )
 
 # @require_http_methods(["GET", "POST"])
 # @api_study_credential_check()
@@ -81,14 +87,17 @@ def parse_registry(request: ApiStudyResearcherRequest):
     a list of file names and hashes.) """
     registry = request.POST.get("registry", None)
     if registry is None:
+        log("no registry")
         return None
     
     try:
         ret = json.loads(registry)
     except ValueError:
+        log("bad json registry")
         return abort(400)
     
     if not isinstance(ret, dict):
+        log("json was not a dict")
         return abort(400)
     
     return ret
@@ -100,7 +109,10 @@ def str_to_datetime(time_string):
         return make_aware(datetime.strptime(time_string, API_TIME_FORMAT), tz.UTC)
     except ValueError as e:
         if "does not match format" in str(e):
+            log("does not match format")
+            log(str(e))
             return abort(400)
+        raise  # not best practice but I'm okay with a potential 500 error alerting us to new cases
 
 
 #########################################################################################
@@ -117,10 +129,13 @@ def determine_data_streams_for_db_query(request: ApiStudyResearcherRequest, quer
         try:
             query_dict['data_types'] = json.loads(request.POST['data_streams'])
         except ValueError:
+            # FIXME: I don't know how to test this?
+            log("did not receive json data streams")
             query_dict['data_types'] = request.POST.getlist('data_streams')
         
         for data_stream in query_dict['data_types']:
             if data_stream not in ALL_DATA_STREAMS:
+                log("invalid data stream")
                 return abort(404)
 
 
@@ -136,6 +151,7 @@ def determine_users_for_db_query(request: ApiStudyResearcherRequest, query: dict
         
         # Ensure that all user IDs are patient_ids of actual Participants
         if not Participant.objects.filter(patient_id__in=query['user_ids']).count() == len(query['user_ids']):
+            log("invalid participant")
             return abort(404)
 
 
@@ -159,7 +175,7 @@ def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict =
     # If there is a registry, we need to filter on the chunks
     else:
         # Get all chunks whose path and hash are both in the registry
-        possible_registered_chunks =  chunks \
+        possible_registered_chunks = chunks \
             .filter(chunk_path__in=registry_dict, chunk_hash__in=registry_dict.values()) \
             .values('pk', 'chunk_path', 'chunk_hash')
         

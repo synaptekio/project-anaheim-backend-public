@@ -1872,6 +1872,7 @@ class TestGetData(DataApiTest):
     
     EMPTY_ZIP = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
     SIMPLE_FILE_CONTENTS = b"this is the file content you are looking for"
+    REGISTRY_HASH = "registry_hash"
     
     # retain and usethis structure in order to force a test addition on a new file type.
     # "particip" is the DEFAULT_PARTICIPANT_NAME
@@ -2001,11 +2002,36 @@ class TestGetData(DataApiTest):
         # basics
         s3_retrieve.return_value = self.SIMPLE_FILE_CONTENTS
         self.set_session_study_relation(ResearcherRole.researcher)
-        # this doesn't really need to go over everydata type
-        for data_type in ALL_DATA_STREAMS:
-            path, time_bin, _ = self.FILE_NAMES[data_type]
-            file_contents = self.generate_chunkregistry_and_download(data_type, path, time_bin, include_registry=True)
-            self.assertEqual(file_contents, self.EMPTY_ZIP)
+        file_path = "some_file_path.csv"
+        basic_args = ("accelerometer", file_path, "2020-10-05 02:00Z")
+        
+        # assert normal args actually work
+        file_contents = self.generate_chunkregistry_and_download(*basic_args)
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+        
+        # test that file is not downloaded when a valid json registry is present
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, registry=json.dumps({file_path: self.REGISTRY_HASH})
+        )
+        self.assertEqual(file_contents, self.EMPTY_ZIP)
+
+        # test that a non-matching hash does not block download.
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, registry=json.dumps({file_path: "bad hash value"})
+        )
+        self.assertNotEqual(file_contents, self.EMPTY_ZIP)
+
+        # test bad json objects
+        self.generate_chunkregistry_and_download(
+            *basic_args, registry=json.dumps([self.REGISTRY_HASH]), status_code=400
+        )
+        self.generate_chunkregistry_and_download(
+            *basic_args, registry=json.dumps([file_path]), status_code=400
+        )
+        # empty string is probably worth testing
+        file_contents = self.generate_chunkregistry_and_download(
+            *basic_args, registry="", status_code=400
+        )
     
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_time_bin(self, s3_retrieve: MagicMock):
@@ -2106,21 +2132,21 @@ class TestGetData(DataApiTest):
             *basic_args, query_patient_ids=["jeff"], status_code=404
         )
         self.assertEqual(output_status_code, 404)  # redundant, whatever
-
+        
         # test working participant filter
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_patient_ids=[self.default_participant.patient_id],
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-
+        
         # test empty patients doesn't do anything
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_patient_ids=[],
         )
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         self.assertIn(self.SIMPLE_FILE_CONTENTS, file_contents)
-
+        
         # test no matching data. create user, query for that user
         self.generate_participant(self.session_study, "jeff")
         file_contents = self.generate_chunkregistry_and_download(
@@ -2133,7 +2159,7 @@ class TestGetData(DataApiTest):
         file_path: str,
         time_bin: str,
         status_code: int = 200,
-        include_registry: bool = False,
+        registry: bool = None,
         query_time_bin_start: str = None,
         query_time_bin_end: str = None,
         query_patient_ids: str = None,
@@ -2144,9 +2170,9 @@ class TestGetData(DataApiTest):
         if data_type == SURVEY_TIMINGS:
             generate_kwargs["survey"] = self.default_survey
         
-        if include_registry:
-            post_kwargs["registry"] = json.dumps({file_path: "registry_hash"})
-            generate_kwargs["hash_value"] = "registry_hash"  # strings must match
+        if registry is not None:
+            post_kwargs["registry"] = registry
+            generate_kwargs["hash_value"] = self.REGISTRY_HASH  # strings must match
         
         if query_patient_ids:
             post_kwargs["user_ids"] = json.dumps(query_patient_ids)
@@ -2173,7 +2199,7 @@ class TestGetData(DataApiTest):
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             bytes_list.append(file_bytes)
             # print(data_type, i, file_bytes)
-
+        
         # database cleanup has to be after the iteration over the file contents
         ChunkRegistry.objects.all().delete()
         return b"".join(bytes_list)
