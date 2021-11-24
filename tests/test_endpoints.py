@@ -1,9 +1,7 @@
 import json
 from copy import copy
-from datetime import datetime
 from io import BytesIO
 from typing import List
-from unittest.case import skip
 from unittest.mock import MagicMock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -32,8 +30,8 @@ from database.system_models import FileAsText
 from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
 from libs.security import generate_easy_alphanumeric_string
-from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, RedirectSessionApiTest,
-    ResearcherSessionTest)
+from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, ParticipantSessionTest,
+    RedirectSessionApiTest, ResearcherSessionTest)
 from tests.helpers import DummyThreadPool
 
 
@@ -2249,3 +2247,20 @@ class TestGetData(DataApiTest):
         # database cleanup has to be after the iteration over the file contents
         ChunkRegistry.objects.all().delete()
         return b"".join(bytes_list)
+
+
+class TestParticipantSetPassword(ParticipantSessionTest):
+    ENDPOINT_NAME = "mobile_api.set_password"
+
+    def test_no_paramaters(self):
+        self.smart_post_status_code(400)
+        self.session_participant.refresh_from_db()
+        self.assertFalse(self.session_participant.validate_password(self.DEFAULT_PARTICIPANT_PASSWORD))
+        self.assertTrue(self.session_participant.debug_validate_password(self.DEFAULT_PARTICIPANT_PASSWORD))
+    
+    def test_no_paramaters(self):
+        self.smart_post_status_code(200, new_password="jeff")
+        self.session_participant.refresh_from_db()
+        self.assertFalse(self.session_participant.validate_password("jeff"))
+        self.assertTrue(self.session_participant.debug_validate_password("jeff"))
+    

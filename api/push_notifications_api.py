@@ -23,7 +23,7 @@ from libs.internal_types import ParticipantRequest
 def set_fcm_token(request: ParticipantRequest):
     """ Sets a participants Firebase CLoud Messaging (FCM) instance token, called whenever a new
     token is generated. Expects a patient_id and and fcm_token in the request body. """
-    participant = request.participant
+    participant = request.session_participant
     token = request.POST.get('fcm_token', "")
     now = timezone.now()
 
@@ -46,7 +46,7 @@ def set_fcm_token(request: ParticipantRequest):
 
     participant.push_notification_unreachable_count = 0
     participant.save()
-    return HttpResponse(request, status_code=204)
+    return HttpResponse(status_code=204)
 
 
 @require_POST
@@ -60,11 +60,11 @@ def send_test_notification(request: ParticipantRequest):
             'type': 'fake',
             'content': 'hello good sir',
         },
-        token=request.participant.get_fcm_token().token,
+        token=request.session_participant.get_fcm_token().token,
     )
     response = messaging.send(message)
     print('Successfully sent notification message:', response)
-    return HttpResponse(request, status_code=204)
+    return HttpResponse(status_code=204)
 
 
 @require_POST
@@ -72,7 +72,7 @@ def send_test_notification(request: ParticipantRequest):
 def send_survey_notification(request: ParticipantRequest):
     """ Sends a push notification to the participant with survey data, used for testing
     Expects a patient_id in the request body """
-    participant = request.participant
+    participant = request.session_participant
     survey_ids = list(
         participant.study.surveys.filter(deleted=False).exclude(survey_type="image_survey")
             .values_list("object_id", flat=True)[:4]
@@ -87,4 +87,4 @@ def send_survey_notification(request: ParticipantRequest):
     )
     response = messaging.send(message)
     print('Successfully sent survey message:', response)
-    return HttpResponse(request, status_code=204)
+    return HttpResponse(status_code=204)

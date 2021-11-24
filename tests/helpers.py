@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import date, datetime
 
 from django.utils import timezone
 
@@ -24,7 +24,9 @@ class ReferenceObjectMixin:
     DEFAULT_STUDY_NAME = "session_study"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
     DEFAULT_PARTICIPANT_NAME = "particip"  # has to be 8 characters
-
+    DEFAULT_PARTICIPANT_PASSWORD = "abcABC123"
+    DEFAULT_PARTICIPANT_DEVICE_ID = "default_device_id"
+    
     # For all defaults make sure to maintain the pattern that includes the use of the save function,
     # this codebase implements a special save function that validates before passing through.
     
@@ -186,19 +188,19 @@ class ReferenceObjectMixin:
             return self._default_participant
         except AttributeError:
             pass
-        self._default_participant = self.generate_participant(self.session_study, self.DEFAULT_PARTICIPANT_NAME)
+        self._default_participant = self.generate_participant(
+            self.session_study, self.DEFAULT_PARTICIPANT_NAME
+        )
         return self._default_participant
     
-    def generate_participant(self, study: Study, patient_id: str = None, ios=False):
+    def generate_participant(self, study: Study, patient_id: str = None, ios=False, device_id=None):
         participant = Participant(
             patient_id=patient_id or generate_easy_alphanumeric_string(),
             os_type=Participant.IOS_API if ios else Participant.ANDROID_API,
             study=study,
-            device_id='_xjeWARoRevoDoL9OKDwRMpYcDhuAxm4nwedUgABxWA=',
-            password='2oWT7-6Su2WMDRWpclT0q2glam7AD5taUzHIWRnO490=',
-            salt='1NB2kCxOOYzayIYGZYlhHw==',
+            device_id=device_id or self.DEFAULT_PARTICIPANT_DEVICE_ID,
         )
-        participant.save()
+        participant.set_password(self.DEFAULT_PARTICIPANT_PASSWORD)  # saves
         return participant
     
     def generate_intervention_date(

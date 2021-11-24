@@ -8,51 +8,68 @@ from libs.internal_types import ParticipantRequest
 from middleware.abort_middleware import abort
 
 
+DEBUG_PARTICIPANT_AUTHENTICATION = True
+
+
+def log(*args, **kwargs):
+    if DEBUG_PARTICIPANT_AUTHENTICATION:
+        print(*args, **kwargs)
+
+
+def validate_post(request: HttpRequest, require_password: bool, validate_device_id: bool) -> bool:
+    """Check if user exists, check if the provided passwords match, and if the device id matches."""
+    # even if the password won't be checked we want the key to be present.
+    rp = request.POST
+    if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
+        log("missing parameters entirely.")
+        log("patient_id:", "patient_id" in rp)
+        log("password:", "password" in rp)
+        log("device_id:", "device_id" in rp)
+        return False
+    
+    # FIXME: need to check the app expectations on response codes
+    #  this used to throw a 400 if the there was no patient_id field in the post request,
+    #  and 404 when there was no such user, when it was get_session_participant.
+    # This isn't True? the old code included the test for presence of keys, and returned False,
+    #  triggering the os-specific failure codes.
+    try:
+        session_participant: Participant = Participant.objects.get(patient_id=request.POST['patient_id'])
+    except Participant.DoesNotExist:
+        log("invalid patient_id")
+        return False
+    
+    if require_password:
+        if not session_participant.validate_password(request.POST['password']):
+            log("incorrect password")
+            return False
+    
+    if validate_device_id:
+        if not session_participant.device_id == request.POST['device_id']:
+            log("incorrect device_id")
+            return False
+    
+    # attach session participant to request object, defining the ParticipantRequest class.
+    request.session_participant = session_participant
+    return True
+
 ####################################################################################################
 
 
 def minimal_validation(some_function) -> callable:
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        request = args[0]
+        request: ParticipantRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
-
-        # handle ios requests, they require basic auth
-        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
         correct_for_basic_auth(request)
-        if validate_post_ignore_password(request, is_ios):
+        
+        if validate_post(request, require_password=False, validate_device_id=False):
             return some_function(*args, **kwargs)
-
+        
         # ios requires different http codes
+        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
         return abort(401 if is_ios else 403)
     return authenticate_and_call
-
-
-def validate_post_ignore_password(request: ParticipantRequest, is_ios: bool) -> bool:
-    """Check if user exists, that a password was provided but IGNORES its validation, and if the
-    device id matches.
-    IOS apparently has problems retaining the device id, so we want to bypass it when it is an ios user
-    """
-    rp = request.POST
-    if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
-        return False
-
-    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
-    if not participant_query.exists():
-        return False
-
-    try:
-        request.participant = participant_query.get()
-    except Participant.DoesNotExist:
-        # FIXME: need to check the app expectations on response codes
-        #  this used to throw a 400 if the there was no patient_id field in the post request,
-        #  and 404 when there was no such user, when it was get_session_participant.
-        return False  # invalid participant id
-
-    return True
-
-####################################################################################################
 
 
 def authenticate_participant(some_function) -> callable:
@@ -60,43 +77,21 @@ def authenticate_participant(some_function) -> callable:
     (forbidden) or 401 (depending on beiwei-api-version) if the identifying info (usernames,
     passwords device IDs are invalid.
 
-   In any funcion wrapped with this decorator provide a parameter named "patient_id" (with the
-   user's id), a parameter named "password" with an SHA256 hashed instance of the user's
-   password, a parameter named "device_id" with a unique identifier derived from that device. """
+    In any funcion wrapped with this decorator provide a parameter named "patient_id" (with the
+    user's id), a parameter named "password" with an SHA256 hashed instance of the user's
+    password, a parameter named "device_id" with a unique identifier derived from that device. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        request = args[0]
+        request: ParticipantRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
-
-        correct_for_basic_auth()
-        if validate_post():
+        correct_for_basic_auth(request)
+        
+        if validate_post(request, require_password=True, validate_device_id=True):
             return some_function(*args, **kwargs)
-        return abort(401 if (kwargs.get("OS_API", None) == Participant.IOS_API) else 403)
+        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
+        return abort(401 if is_ios else 403)
     return authenticate_and_call
-
-
-def validate_post(request: ParticipantRequest) -> bool:
-    """Check if user exists, check if the provided passwords match, and if the device id matches."""
-    rp = request.POST
-    if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
-        return False
-
-    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
-    if not participant_query.exists():
-        return False
-
-    if not request.participant.validate_password(request.POST['password']):
-        return False
-
-    if not request.participant.device_id == request.POST['device_id']:
-        return False
-
-    request.participant = participant_query.get()
-    # FIXME: need to check the app expectations on response codes
-    #  this used to throw a 400 if the there was no patient_id field in the post request,
-    #  and 404 when there was no such user, when it was get_session_participant.
-    return True
 
 
 def authenticate_participant_registration(some_function) -> callable:
@@ -104,37 +99,22 @@ def authenticate_participant_registration(some_function) -> callable:
     403 (forbidden) or 401 (depending on beiwe-api-version) if the identifying info (username,
     password, device ID) are invalid.
 
-   In any function wrapped with this decorator provide a parameter named "patient_id" (with the
-   user's id) and a parameter named "password" with an SHA256 hashed instance of the user's
-   password. """
+    In any function wrapped with this decorator provide a parameter named "patient_id" (with the
+    user's id) and a parameter named "password" with an SHA256 hashed instance of the user's
+    password. """
     @functools.wraps(some_function)
     def authenticate_and_call(*args, **kwargs):
-        request = args[0]
+        request: ParticipantRequest = args[0]
         assert isinstance(request, HttpRequest), \
             f"first parameter of {some_function.__name__} must be an HttpRequest, was {type(request)}."
-
-        correct_for_basic_auth()
-        if validate_registration():
+        correct_for_basic_auth(request)
+        
+        if validate_post(request, require_password=True, validate_device_id=False):
             return some_function(*args, **kwargs)
-        return abort(401 if (kwargs.get("OS_API", None) == Participant.IOS_API) else 403)
+        
+        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
+        return abort(401 if is_ios else 403)
     return authenticate_and_call
-
-
-def validate_registration(request: ParticipantRequest) -> bool:
-    """Check if user exists, check if the provided passwords match"""
-    rv = request.POST
-    if "patient_id" not in rv or "password" not in rv or "device_id" not in rv:
-        return False
-
-    participant_query = Participant.objects.filter(patient_id=request.POST['patient_id'])
-    if not participant_query.exists():
-        return False
-
-    request.participant = participant_query.get()
-    if not request.participant.validate_password(request.POST['password']):
-        return False
-
-    return True
 
 
 # TODO: basic auth is not a good thing, it is only used because it was easy and we enforce
@@ -160,11 +140,24 @@ def correct_for_basic_auth(request: ParticipantRequest):
 
     Check if user exists, check if the provided passwords match.
     """
-    # FIXME: this is broken - django port
+    
+    # from pprint import pprint
+    # pprint(vars(request))
+    # print()
+    # pprint(request.headers)
+    
+    if "Authorization" in request.headers:
+        raise Exception("NOT IMPLEMENTED 1")
+    elif "authorization" in request.headers:
+        raise Exception("NOT IMPLEMENTED 2")
+    else:
+        return
+    
     auth = request.authorization
+    # FIXME: this is broken - django port
     if not auth:
         return
-
+    
     username_parts = auth.username.split('@')
     if len(username_parts) == 2:
         replace_dict = MultiDict(request.POST.to_dict())

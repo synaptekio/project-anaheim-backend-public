@@ -25,7 +25,7 @@ class ApiResearcherRequest(HttpRequest):
 
 
 class ParticipantRequest(HttpRequest):
-    participant: Participant
+    session_participant: Participant
 
 
 class TableauRequest(HttpRequest):

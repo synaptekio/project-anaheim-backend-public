@@ -11,8 +11,7 @@ from libs.internal_types import ParticipantRequest
 def fetch_graph(request: ParticipantRequest):
     """ Fetches the patient's answers to the most recent survey, marked by survey ID. The results
     are dumped into a jinja template and pushed to the device. """
-    participant = request.participant
-    # See docs in config manipulations for details
+    participant = request.session_participant
     study_object_id = participant.study.object_id
     survey_object_id_set = participant.study.surveys.values_list('object_id', flat=True)
     data = []

@@ -8,6 +8,7 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
+from libs.security import device_hash
 from urls import urlpatterns
 
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
@@ -250,7 +251,7 @@ class SmartRequestsTestCase(BasicSessionTestCase):
                 raise TypeError(f"encountered {type(arg)} passed to {function_name}.")
 
 
-class PopulatedSessionTestCase(BasicSessionTestCase):
+class PopulatedResearcherSessionTestCase(BasicSessionTestCase):
     """ This class sets up a logged-in researcher user (using the variable name "session_researcher"
     to mimic the convenience variable in the real code).  This is the base test class that all
     researcher endpoints should use. """
@@ -272,7 +273,7 @@ class PopulatedSessionTestCase(BasicSessionTestCase):
             yield session_researcher, r2
 
 
-class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
+class RedirectSessionApiTest(PopulatedResearcherSessionTestCase, SmartRequestsTestCase):
     """ Some api calls return only redirects, and the fact of an error is reported only via the
     django.contrib.messages library.  This class implements some specific helper functions to handle
     very common cases.
@@ -307,8 +308,25 @@ class RedirectSessionApiTest(PopulatedSessionTestCase, SmartRequestsTestCase):
         return resp.content
 
 
-class ResearcherSessionTest(PopulatedSessionTestCase, SmartRequestsTestCase):
+class ResearcherSessionTest(PopulatedResearcherSessionTestCase, SmartRequestsTestCase):
     ENDPOINT_NAME = None
+
+
+class ParticipantSessionTest(SmartRequestsTestCase):
+    ENDPOINT_NAME = None
+    IOS_ENDPOINT_NAME = None
+    
+    def setUp(self) -> None:
+        """ Log in the session researcher. """
+        self.session_participant = self.default_participant
+        return super().setUp()
+    
+    def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
+        post_params["patient_id"] = self.session_participant.patient_id
+        post_params["device_id"] = self.DEFAULT_PARTICIPANT_DEVICE_ID
+        # the participant password is special.
+        post_params["password"] = device_hash(self.DEFAULT_PARTICIPANT_PASSWORD.encode()).decode()
+        return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
 
 
 class DataApiTest(SmartRequestsTestCase):
