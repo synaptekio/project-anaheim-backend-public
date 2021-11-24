@@ -55,7 +55,7 @@ def validate_post_ignore_password(request: ParticipantRequest, is_ios: bool) -> 
 ####################################################################################################
 
 
-def authenticate_user(some_function) -> callable:
+def authenticate_participant(some_function) -> callable:
     """Decorator for functions (pages) that require a user to provide identification. Returns 403
     (forbidden) or 401 (depending on beiwei-api-version) if the identifying info (usernames,
     passwords device IDs are invalid.
@@ -99,7 +99,7 @@ def validate_post(request: ParticipantRequest) -> bool:
     return True
 
 
-def authenticate_user_registration(some_function) -> callable:
+def authenticate_participant_registration(some_function) -> callable:
     """ Decorator for functions (pages) that require a user to provide identification. Returns
     403 (forbidden) or 401 (depending on beiwe-api-version) if the identifying info (username,
     password, device ID) are invalid.

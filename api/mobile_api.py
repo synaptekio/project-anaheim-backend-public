@@ -9,7 +9,7 @@ from django.http.response import HttpResponse
 from django.utils import timezone
 from werkzeug.datastructures import FileStorage
 
-from authentication.user_authentication import (authenticate_user, authenticate_user_registration,
+from authentication.participant_authentication import (authenticate_participant, authenticate_participant_registration,
     minimal_validation)
 from config.settings import REPORT_DECRYPTION_KEY_ERRORS
 from constants.celery_constants import ANDROID_FIREBASE_CREDENTIALS, IOS_FIREBASE_CREDENTIALS
@@ -63,7 +63,7 @@ def upload(request: ParticipantRequest, OS_API=""):
 
     Request format:
     send an http post request to [domain name]/upload, remember to include security
-    parameters (see user_authentication for documentation). Provide the contents of the file,
+    parameters (see participant_authentication for documentation). Provide the contents of the file,
     encrypted (see encryption specification) and properly converted to Base64 encoded text,
     as a request parameter entitled "file".
     Provide the file name in a request parameter entitled "file_name". """
@@ -205,12 +205,12 @@ def make_upload_error_report(patient_id: str, file_name: str):
 ################################################################################
 
 @determine_os_api
-@authenticate_user_registration
+@authenticate_participant_registration
 def register_user(request: ParticipantRequest, OS_API=""):
     """ Checks that the patient id has been granted, and that there is no device registered with
     that id.  If the patient id has no device registered it registers this device and logs the
     bluetooth mac address.
-    Check the documentation in user_authentication to ensure you have provided the proper credentials.
+    Check the documentation in participant_authentication to ensure you have provided the proper credentials.
     Returns the encryption key for this patient/user. """
 
     # CASE: If the id and password combination do not match, the decorator returns a 403 error.
@@ -305,7 +305,7 @@ def register_user(request: ParticipantRequest, OS_API=""):
 
 
 @determine_os_api
-@authenticate_user
+@authenticate_participant
 def set_password(request: ParticipantRequest, OS_API=""):
     """ After authenticating a user, sets the new password and returns 200.
     Provide the new password in a parameter named "new_password"."""
@@ -337,7 +337,7 @@ def contains_valid_extension(file_name):
 # FIXME: this seems broken? it assumes that the request has been populated with the participant
 #  using type HttpRequest becausee we know that it should be broken
 @determine_os_api
-# @authenticate_user
+# @authenticate_participant
 def get_latest_surveys(request: HttpRequest, OS_API=""):
     study = request.participant.study
     survey_json_list = []

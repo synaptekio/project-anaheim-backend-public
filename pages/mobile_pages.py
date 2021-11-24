@@ -1,13 +1,13 @@
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
-from authentication.user_authentication import authenticate_user
+from authentication.participant_authentication import authenticate_participant
 from libs.graph_data import get_survey_results
 from libs.internal_types import ParticipantRequest
 
 
 @require_http_methods(['GET', 'POST'])
-@authenticate_user
+@authenticate_participant
 def fetch_graph(request: ParticipantRequest):
     """ Fetches the patient's answers to the most recent survey, marked by survey ID. The results
     are dumped into a jinja template and pushed to the device. """

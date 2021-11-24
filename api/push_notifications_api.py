@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from firebase_admin import messaging
 
-from authentication.user_authentication import authenticate_user
+from authentication.participant_authentication import authenticate_participant
 from constants.datetime_constants import API_TIME_FORMAT
 from database.user_models import ParticipantFCMHistory
 from libs.firebase_config import check_firebase_instance
@@ -19,7 +19,7 @@ from libs.internal_types import ParticipantRequest
 ################################################################################
 
 @require_POST
-@authenticate_user
+@authenticate_participant
 def set_fcm_token(request: ParticipantRequest):
     """ Sets a participants Firebase CLoud Messaging (FCM) instance token, called whenever a new
     token is generated. Expects a patient_id and and fcm_token in the request body. """
@@ -50,7 +50,7 @@ def set_fcm_token(request: ParticipantRequest):
 
 
 @require_POST
-@authenticate_user
+@authenticate_participant
 def send_test_notification(request: ParticipantRequest):
     """ Sends a push notification to the participant, used for testing.
     Expects a patient_id in the request body. """
@@ -68,7 +68,7 @@ def send_test_notification(request: ParticipantRequest):
 
 
 @require_POST
-@authenticate_user
+@authenticate_participant
 def send_survey_notification(request: ParticipantRequest):
     """ Sends a push notification to the participant with survey data, used for testing
     Expects a patient_id in the request body """
