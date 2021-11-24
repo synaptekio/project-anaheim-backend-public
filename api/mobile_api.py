@@ -344,4 +344,4 @@ def get_latest_surveys(request: ParticipantRequest, OS_API=""):
         # Exclude image surveys for the Android app to avoid crashing it
         if not (OS_API == "ANDROID" and survey.survey_type == "image_survey"):
             survey_json_list.append(survey.format_survey_for_study())
-    return json.dumps(survey_json_list)
+    return HttpResponse(json.dumps(survey_json_list))

@@ -2,6 +2,7 @@ import json
 from copy import copy
 from io import BytesIO
 from typing import List
+from unittest.case import skip
 from unittest.mock import MagicMock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2027,7 +2028,7 @@ class TestGetData(DataApiTest):
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_data_streams='"[accelerometer,gyro]', status_code=404
         )
-
+        
         # test valid, non-matching data type does not download
         file_contents = self.generate_chunkregistry_and_download(
             *basic_args, query_data_streams='["gyro"]'
@@ -2251,7 +2252,7 @@ class TestGetData(DataApiTest):
 
 class TestParticipantSetPassword(ParticipantSessionTest):
     ENDPOINT_NAME = "mobile_api.set_password"
-
+    
     def test_no_paramaters(self):
         self.smart_post_status_code(400)
         self.session_participant.refresh_from_db()
@@ -2261,6 +2262,30 @@ class TestParticipantSetPassword(ParticipantSessionTest):
     def test_no_paramaters(self):
         self.smart_post_status_code(200, new_password="jeff")
         self.session_participant.refresh_from_db()
+        # participant passwords are weird there's some hashing
         self.assertFalse(self.session_participant.validate_password("jeff"))
         self.assertTrue(self.session_participant.debug_validate_password("jeff"))
+
+
+class TestGetLatestSurveys(ParticipantSessionTest):
+    ENDPOINT_NAME = "mobile_api.get_latest_surveys"
     
+    def test_no_surveys(self):
+        resp = self.smart_post_status_code(200)
+        self.assertEqual(resp.content, b"[]")
+    
+    def test_basic_survey(self):
+        self.default_survey
+        resp = self.smart_post_status_code(200)
+        self.assertTrue(len(resp.content) > 100)
+        output_survey = json.loads(resp.content.decode())
+        basic_survey = [
+            {
+                '_id': self.DEFAULT_SURVEY_OBJECT_ID,
+                'content': [],
+                'settings': {},
+                'survey_type': 'tracking_survey',
+                'timings': [[], [], [], [], [], [], []]
+            }
+        ]
+        self.assertEqual(output_survey, basic_survey)
