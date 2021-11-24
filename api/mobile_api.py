@@ -213,6 +213,14 @@ def register_user(request: ParticipantRequest, OS_API=""):
     Check the documentation in participant_authentication to ensure you have provided the proper credentials.
     Returns the encryption key for this patient/user. """
     
+    if (
+        'patient_id' not in request.POST
+        or 'phone_number' not in request.POST
+        or 'device_id' not in request.POST
+        or 'new_password' not in request.POST
+    ):
+        return abort(400)
+
     # CASE: If the id and password combination do not match, the decorator returns a 403 error.
     # the following parameter values are required.
     patient_id = request.POST['patient_id']
@@ -296,7 +304,7 @@ def register_user(request: ParticipantRequest, OS_API=""):
         'study_name': participant.study.name,
         'study_id': participant.study.object_id,
     }
-    return json.dumps(return_obj), 200
+    return HttpResponse(json.dumps(return_obj))
 
 
 ################################################################################

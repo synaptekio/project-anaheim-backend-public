@@ -30,7 +30,7 @@ from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
-from libs.security import generate_easy_alphanumeric_string
+from libs.security import device_hash, generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest)
 from tests.helpers import DummyThreadPool
@@ -2289,3 +2289,40 @@ class TestGetLatestSurveys(ParticipantSessionTest):
             }
         ]
         self.assertEqual(output_survey, basic_survey)
+
+
+class TestRegisterParticipant(ParticipantSessionTest):
+    ENDPOINT_NAME = "mobile_api.register_user"
+    
+    BASIC_PARAMS = {
+            'patient_id': "abc123AB",
+            'phone_number': "0000000000",
+            'device_id': "pretty_much anything",
+            'device_os': "something",
+            'os_version': "something",
+            "product": "something",
+            "brand": "something",
+            "hardware_id": "something",
+            "manufacturer": "something",
+            "model": "something",
+            "beiwe_version": "something",
+            "new_password": "something_new"
+        }
+    
+    def test_bad_request(self):
+        self.smart_post_status_code(400)
+    
+    @patch("api.mobile_api.s3_upload")
+    @patch("api.mobile_api.get_client_public_key_string")
+    def test_success_never_registered_before(
+        self, get_client_public_key_string: MagicMock, s3_upload: MagicMock
+    ):
+        s3_upload.return_value = None
+        get_client_public_key_string.return_value = "a_private_key"
+      
+        # unregistered participants have no device id
+        self.session_participant.update(device_id="")
+        resp = self.smart_post_status_code(200, **self.BASIC_PARAMS)
+        
+        response_dict = json.loads(resp.content)
+        self.assertEqual("a_private_key", response_dict["client_public_key"])
