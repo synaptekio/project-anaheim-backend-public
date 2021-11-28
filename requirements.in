@@ -12,9 +12,7 @@ python-dateutil==2.8.2
 factory-boy  # version set by listed django compatibiliy
 
 #pycryptodome>=3.9.0
-pycryptodomex==3.9.9  #locked version
-pycrypto
-
+pycryptodomex==3.11.0  #locked version
 
 # error reporting
 raven==6.10  # raven has been sunset at 6.10
@@ -24,7 +22,7 @@ cronutils>=0.3.0
 # You have to upgrade django to greater than 2.2 (apparently) in order to upgrade psycopg2 to 2.9.x
 psycopg2==2.8.6
 
-# ipython has problems past 7.1.1, python for python 3.6.12 the highest compatible version is 7.16.x (as of 2021/1/1)
+# ipython may exhibit issues on older version of python 3.6
 ipython
 
 # Keep these dependencies up to date

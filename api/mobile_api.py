@@ -4,13 +4,12 @@ import plistlib
 import time
 
 from django.core.exceptions import ValidationError
-from django.http.request import HttpRequest
+from django.core.files.base import ContentFile
 from django.http.response import HttpResponse
 from django.utils import timezone
-from werkzeug.datastructures import FileStorage
 
-from authentication.participant_authentication import (authenticate_participant, authenticate_participant_registration,
-    minimal_validation)
+from authentication.participant_authentication import (authenticate_participant,
+    authenticate_participant_registration, minimal_validation)
 from config.settings import REPORT_DECRYPTION_KEY_ERRORS
 from constants.celery_constants import ANDROID_FIREBASE_CREDENTIALS, IOS_FIREBASE_CREDENTIALS
 from constants.message_strings import (DECRYPTION_KEY_ADDITIONAL_MESSAGE,
@@ -98,7 +97,7 @@ def upload(request: ParticipantRequest, OS_API=""):
     
     uploaded_file = get_uploaded_file(request)
     try:
-        uploaded_file = decrypt_device_file(uploaded_file, participant)
+        uploaded_file = decrypt_device_file(file_name, uploaded_file, participant)
     except HandledError:
         return HttpResponse(status=200)
     except DecryptionKeyInvalidError:
@@ -157,21 +156,22 @@ def get_uploaded_file(request: ParticipantRequest):
     # FIXME: This is definitely broken for django.
     # Slightly different values for iOS vs Android behavior.
     # Android sends the file data as standard form post parameter (request.POST)
-    # iOS sends the file as a multipart upload (so ends up in request.files)
-    # if neither is found, consider the "body" of the post the file
-    # ("body" post is not currently used by any client, only here for completeness)
-    if "file" in request.files:
-        uploaded_file = request.files['file']
+    # iOS sends the file as a multipart upload (so ends up in request.FILES)
+    if "file" in request.FILES:
+        # ios
+        uploaded_file = request.FILES['file']
     elif "file" in request.POST:
         # android
         uploaded_file = request.POST['file']
     else:
-        uploaded_file = request.data
+        # FIXME: determine behavior in app, this case to treat the body as the file contents, which
+        # was never a thing.
+        return abort(400)
     
     # force the file to the correct object type.
-    if isinstance(uploaded_file, FileStorage):
+    if isinstance(uploaded_file, ContentFile):
         uploaded_file = uploaded_file.read()
-    elif isinstance(uploaded_file, str):
+    if isinstance(uploaded_file, str):
         # android
         uploaded_file = uploaded_file.encode()
     elif isinstance(uploaded_file, bytes):

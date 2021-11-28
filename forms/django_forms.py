@@ -1,5 +1,5 @@
 from django import forms
-from werkzeug.datastructures import MultiDict
+from django.utils.datastructures import MultiValueDict
 
 from constants.forest_constants import ForestTree
 from constants.tableau_api_constants import (HEADER_IS_REQUIRED, SERIALIZABLE_FIELD_NAMES,
@@ -13,7 +13,7 @@ from forms.django_form_fields import CommaSeparatedListCharField, CommaSeparated
 # tableau_api_permission detail is... bad?
 class NewApiKeyForm(forms.Form):
     readable_name = forms.CharField(required=False)
-
+    
     def clean(self):
         super().clean()
         self.cleaned_data['tableau_api_permission'] = True
@@ -25,7 +25,7 @@ class DisableApiKeyForm(forms.Form):
 
 class AuthenticationForm(forms.Form):
     """ Form for fetching request headers """
-
+    
     def __init__(self, *args, **kwargs):
         """ Define authentication form fields since the keys contain illegal characters for variable
         names. """
@@ -43,11 +43,12 @@ class CreateTasksForm(forms.Form):
     date_end = forms.DateField()
     participant_patient_ids = CommaSeparatedListCharField()
     trees = CommaSeparatedListChoiceField(choices=ForestTree.choices())
-
+    
     def __init__(self, *args, **kwargs):
         self.study = kwargs.pop("study")
         if "data" in kwargs:
-            if isinstance(kwargs["data"], MultiDict):
+            # FIXME: MultiValueDict is a django type, need to test.
+            if isinstance(kwargs["data"], MultiValueDict):
                 # Convert Flask/Werkzeug MultiDict format into comma-separated values. This is
                 # to allow Flask's handling of multi inputs to work with Django's form data
                 # structures.
@@ -56,14 +57,14 @@ class CreateTasksForm(forms.Form):
                     for key, value in kwargs["data"].to_dict(flat=False).items()
                 }
         super().__init__(*args, **kwargs)
-
+    
     def clean(self):
         cleaned_data = super().clean()
         if cleaned_data["date_end"] < cleaned_data["date_start"]:
             error_message = "Start date must be before or the same as end date."
             self.add_error("date_start", error_message)
             self.add_error("date_end", error_message)
-
+    
     def clean_participant_patient_ids(self):
         """
         Filter participants to those who are registered in this study and specified in this field
@@ -77,9 +78,9 @@ class CreateTasksForm(forms.Form):
                 .values("id", "patient_id")
         )
         self.cleaned_data["participant_ids"] = [participant["id"] for participant in participants]
-
+        
         return [participant["patient_id"] for participant in participants]
-
+    
     def save(self):
         forest_tasks = []
         for participant_id in self.cleaned_data["participant_ids"]:
@@ -105,7 +106,7 @@ class ApiQueryForm(forms.Form):
                        "formatted as YYYY-MM-DD"
         },
     )
-
+    
     start_date = forms.DateField(
         required=False,
         error_messages={
@@ -113,7 +114,7 @@ class ApiQueryForm(forms.Form):
                        "formatted as YYYY-MM-DD"
         },
     )
-
+    
     limit = forms.IntegerField(
         required=False,
         error_messages={"invalid": "limit value could not be interpreted as an integer value"},
@@ -125,7 +126,7 @@ class ApiQueryForm(forms.Form):
             "invalid_choice": "%(value)s is not a field that can be used to sort the output"
         },
     )
-
+    
     order_direction = forms.ChoiceField(
         choices=[("ascending", "ascending"), ("descending", "descending")],
         required=False,
@@ -134,16 +135,16 @@ class ApiQueryForm(forms.Form):
                               "should contain either the value 'ascending' or 'descending'"
         },
     )
-
+    
     participant_ids = CommaSeparatedListCharField(required=False)
-
+    
     fields = CommaSeparatedListChoiceField(
         choices=SERIALIZABLE_FIELD_NAMES_DROPDOWN,
         default=SERIALIZABLE_FIELD_NAMES,
         required=False,
         error_messages={"invalid_choice": "%(value)s is not a valid field"},
     )
-
+    
     def clean(self) -> dict:
         """ Retains only members of VALID_QUERY_PARAMETERS and non-falsey-but-not-False objects """
         super().clean()

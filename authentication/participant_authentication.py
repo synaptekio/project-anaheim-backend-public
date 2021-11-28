@@ -1,7 +1,7 @@
 import functools
 
 from django.http.request import HttpRequest
-from werkzeug.datastructures import MultiDict
+from django.utils.datastructures import MultiValueDict
 
 from database.user_models import Participant
 from libs.internal_types import ParticipantRequest
@@ -160,7 +160,7 @@ def correct_for_basic_auth(request: ParticipantRequest):
     
     username_parts = auth.username.split('@')
     if len(username_parts) == 2:
-        replace_dict = MultiDict(request.POST.to_dict())
+        replace_dict = MultiValueDict(request.POST.to_dict())
         if "patient_id" not in replace_dict:
             replace_dict['patient_id'] = username_parts[0]
         if "device_id" not in replace_dict:

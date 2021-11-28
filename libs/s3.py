@@ -1,5 +1,5 @@
 import boto3
-import Crypto
+from Cryptodome.PublicKey import RSA
 
 from config.settings import (BEIWE_SERVER_AWS_ACCESS_KEY_ID, BEIWE_SERVER_AWS_SECRET_ACCESS_KEY,
     S3_BUCKET, S3_REGION_NAME)
@@ -37,7 +37,7 @@ conn = boto3.client(
 def s3_upload(key_path: str, data_string: bytes, study_object_id: str, raw_path=False) -> None:
     if not raw_path:
         key_path = study_object_id + "/" + key_path
-
+    
     data = encrypt_for_server(data_string, study_object_id)
     conn.put_object(Body=data, Bucket=S3_BUCKET, Key=key_path)#, ContentType='string')
 
@@ -56,7 +56,7 @@ def _do_retrieve(bucket_name, key_path, number_retries=3):
     """ Run-logic to do a data retrieval for a file in an S3 bucket."""
     try:
         return conn.get_object(Bucket=bucket_name, Key=key_path, ResponseContentType='string')
-
+    
     except Exception as boto_error_unknowable_type:
         # Some error types cannot be imported because they are generated at runtime through a factory
         if boto_error_unknowable_type.__class__.__name__ == "NoSuchKey":
@@ -88,16 +88,16 @@ def s3_list_versions(prefix, allow_multiple_matches=False):
     If allow_multiple_matches is False the keys are LastModified, VersionId, IsLatest.
     If allow_multiple_matches is True the key 'Key' is added, containing the s3 file path.
     """
-
+    
     paginator = conn.get_paginator('list_object_versions')
     page_iterator = paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix)
-
+    
     versions = []
     for page in page_iterator:
         # versions are not guaranteed, usually this means the file was deleted and only has deletion markers.
         if 'Versions' not in page:
             continue
-
+        
         for s3_version in page['Versions']:
             if not allow_multiple_matches and s3_version['Key'] != prefix:
                 raise S3VersionException("the prefix '%s' was not an exact match" % prefix)
@@ -150,13 +150,13 @@ def get_client_public_key_string(patient_id, study_id) -> str:
     return prepare_X509_key_for_java(key_string).decode()
 
 
-def get_client_public_key(patient_id, study_id) -> Crypto.PublicKey.RSA._RSAobj:
+def get_client_public_key(patient_id, study_id) -> RSA.RsaKey:
     """Grabs a user's public key file from s3."""
     key = s3_retrieve("keys/" + patient_id +"_public", study_id)
     return get_RSA_cipher(key)
 
 
-def get_client_private_key(patient_id, study_id) -> Crypto.PublicKey.RSA._RSAobj:
+def get_client_private_key(patient_id, study_id) -> RSA.RsaKey:
     """Grabs a user's private key file from s3."""
     key = s3_retrieve("keys/" + patient_id +"_private", study_id)
     return get_RSA_cipher(key)
