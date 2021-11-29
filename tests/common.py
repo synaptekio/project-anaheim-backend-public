@@ -180,15 +180,20 @@ class BasicSessionTestCase(CommonTestCase):
 class SmartRequestsTestCase(BasicSessionTestCase):
     ENDPOINT_NAME = None
     REDIRECT_ENDPOINT_NAME = None
+    IGNORE_THIS_ENDPOINT = "ignore this endpoint"  # turns out we need to suppress this sometimes...
     
     @classmethod
     def setUpClass(cls) -> None:
-        if cls.ENDPOINT_NAME not in ALL_ENDPOINT_NAMES:
-            print(f"{cls.__name__}'s ENDPOINT_NAME `{cls.ENDPOINT_NAME}` does not exist.")
-        if (cls.REDIRECT_ENDPOINT_NAME is not None
-        and cls.REDIRECT_ENDPOINT_NAME not in ALL_ENDPOINT_NAMES):
-            print(f"{cls.__name__}'s REDIRECT_ENDPOINT_NAME "
-                  f"{cls.REDIRECT_ENDPOINT_NAME}` does not exist.")
+        # using variable names to shorten thes because wow.
+        end_name = cls.ENDPOINT_NAME
+        ignore = cls.IGNORE_THIS_ENDPOINT
+        r_end_name = cls.REDIRECT_ENDPOINT_NAME
+        
+        if end_name not in ALL_ENDPOINT_NAMES and end_name != ignore:
+            print(f"Test class {cls.__name__}'s ENDPOINT_NAME `{end_name}` does not exist.")
+        
+        if r_end_name is not None and r_end_name not in ALL_ENDPOINT_NAMES and r_end_name != ignore:
+            print(f"{cls.__name__}'s REDIRECT_ENDPOINT_NAME {r_end_name}` does not exist.")
         return super().setUpClass()
     
     def smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:

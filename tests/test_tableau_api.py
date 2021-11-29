@@ -1,4 +1,3 @@
-
 from authentication.tableau_authentication import (check_tableau_permissions,
     TableauAuthenticationFailed, TableauPermissionDenied)
 from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
@@ -52,6 +51,7 @@ class TestGetTableauDaily(TableauAPITest):
 
 class TableauApiAuthTests(TableauAPITest):
     """ Test methods of the api authentication system """
+    ENDPOINT_NAME = TableauAPITest.IGNORE_THIS_ENDPOINT
     
     def test_check_permissions_working(self):
         # if this doesn't raise an error in has succeeded
