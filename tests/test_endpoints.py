@@ -9,6 +9,7 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+from api.tableau_api import FINAL_SERIALIZABLE_FIELD_NAMES
 
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
@@ -33,7 +34,7 @@ from libs.copy_study import format_study
 from libs.encryption import get_RSA_cipher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, DataApiTest, ParticipantSessionTest,
-    RedirectSessionApiTest, ResearcherSessionTest)
+    RedirectSessionApiTest, ResearcherSessionTest, SmartRequestsTestCase)
 from tests.helpers import DummyThreadPool
 
 
@@ -2416,8 +2417,18 @@ class TestMobileUpload(ParticipantSessionTest):
 
 class TestGraph(ParticipantSessionTest):
     ENDPOINT_NAME = "mobile_pages.fetch_graph"
-
+    
     def test(self):
         # testing this requires setting up fake survey answers to see what renders in the javascript?
         resp = self.smart_post_status_code(200)
         self.assert_present("Rendered graph for user", resp.content)
+
+
+class TestWebDataConnector(SmartRequestsTestCase):
+    ENDPOINT_NAME = "tableau_api.web_data_connector"
+    
+    def test(self):
+        resp = self.smart_get(self.session_study.object_id)
+        content = resp.content.decode()
+        for field_name in FINAL_SERIALIZABLE_FIELD_NAMES:
+            self.assert_present(field_name, content)

@@ -402,7 +402,6 @@ urlpatterns = [
     
     # tableau
     path(
-        # "summary_statistics_daily_study_view",
         "api/v0/studies/<str:study_object_id>/summary-statistics/daily",
         tableau_api.get_tableau_daily,
         name="tableau_api.get_tableau_daily"),
