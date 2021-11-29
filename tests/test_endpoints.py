@@ -2,7 +2,6 @@ import json
 from copy import copy
 from io import BytesIO
 from typing import List
-from unittest.case import skip
 from unittest.mock import MagicMock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -10,7 +9,6 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
-from urls import urlpatterns
 
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
@@ -34,58 +32,9 @@ from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
 from libs.encryption import get_RSA_cipher
 from libs.security import generate_easy_alphanumeric_string
-from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, ParticipantSessionTest,
+from tests.common import (BasicSessionTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest)
 from tests.helpers import DummyThreadPool
-
-
-class TestAllEndpoints(CommonTestCase):
-    
-    EXCEPTIONS_ENDPOINTS = [
-        # special case, these are manually tested
-        "login_pages.validate_login",
-        "login_pages.login_page",
-        "admin_pages.logout_admin",
-    ]
-    
-    EXCEPTIONS_TESTS = []
-    
-    @skip("meta")
-    def test(self):
-        SEPARATOR = '\n\t'  # no special chars in the {} section of an f-string? okaysurewhatever.
-        
-        # a counter that can indicate "was not present".
-        names_of_paths_counter = {path.name: 0 for path in urlpatterns}
-        
-        # map of test class enpoinds to test classes
-        test_classes_by_endpoint_name = {
-            obj.ENDPOINT_NAME: obj
-            for obj in globals().values()
-            if hasattr(obj, "ENDPOINT_NAME") and obj.ENDPOINT_NAME is not None
-        }
-        
-        for obj_endpoint_name in test_classes_by_endpoint_name.keys():
-            if obj_endpoint_name in names_of_paths_counter:
-                names_of_paths_counter[obj_endpoint_name] += 1
-            else:
-                names_of_paths_counter[obj_endpoint_name] = None
-        
-        has_no_tests = [
-            endpoint_name for endpoint_name, count in names_of_paths_counter.items()
-            if count == 0 and endpoint_name not in self.EXCEPTIONS_ENDPOINTS
-        ]
-        has_no_endpoint = [
-            test_classes_by_endpoint_name[endpoint_name].__name__
-            for endpoint_name, count in names_of_paths_counter.items()
-            if count is None and endpoint_name not in self.EXCEPTIONS_TESTS
-        ]
-        
-        msg = ""
-        if has_no_endpoint:
-            msg = msg + f"\nThese tests have no matching endpoint:\n\t{SEPARATOR.join(has_no_endpoint)}"
-        if has_no_tests:
-            msg = msg + f"\nThese endpoints have no tests:\n\t{SEPARATOR.join(has_no_tests)}"
-        self.assertTrue(not has_no_tests and not has_no_endpoint, msg)
 
 
 class TestLoginPages(BasicSessionTestCase):
