@@ -1,8 +1,10 @@
 import json
 import traceback
 from os import urandom
-from typing import List
+from sys import version_info
+from typing import List, Tuple
 
+from Crypto.PublicKey import RSA as old_RSA
 from Cryptodome.Cipher import AES
 from Cryptodome.PublicKey import RSA
 
@@ -12,8 +14,19 @@ from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetada
     LineEncryptionError)
 from database.study_models import Study
 from database.user_models import Participant
-from libs.internal_types import ResearcherRequest
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
+
+
+# Pycrypto (not pycryptodome) uses an old function inside the std lib time library that was
+# deprecated because the name is misleading.  The exact replacement is the process_time function,
+# so we patch it to keep it working.
+# FIXME: We only use the old pycrypto because we are using a not-best-practice of the direct RSA
+#   encryption instead of a something like PKCS1_OAEP (OAEP is a padding mechanism).  I have been
+#   unable to replicate the old code (and have zero incentive to do so) using of either the
+#   pycryptodome library (which explicitly disallows it) or the `rsa` library.
+if version_info.minor > 7:
+    import time
+    time.clock = time.process_time
 
 
 class DecryptionKeyInvalidError(Exception): pass
@@ -23,15 +36,13 @@ class InvalidIV(Exception): pass
 class InvalidData(Exception): pass
 class DefinitelyInvalidFile(Exception): pass
 
-
-# The private keys are stored server-side (S3), and the public key is sent to the device.
-
 ################################################################################
 ################################# RSA ##########################################
 ################################################################################
 
+# The private keys are stored server-side (S3), and the public key is sent to the device.
 
-def generate_key_pairing() -> (bytes, bytes):
+def generate_key_pairing() -> Tuple[bytes, bytes]:
     """Generates a public-private key pairing, returns tuple (public, private)"""
     private_key = RSA.generate(ASYMMETRIC_KEY_LENGTH)
     public_key = private_key.publickey()
@@ -46,13 +57,8 @@ def prepare_X509_key_for_java(exported_key) -> bytes:
     return b"".join(exported_key.split(b'\n')[1:-1])
 
 
-def get_RSA_cipher(key: bytes) -> RSA.RsaKey:
-    return RSA.importKey(key)
-    
-    # pycryptodome: the following appears to be correct, but pycryptodome raises a decryption error.
-    # RSA_key = RSA.importKey(key)
-    # cipher = PKCS1_OAEP.new(RSA_key)
-    # return cipher
+def get_RSA_cipher(key: bytes) -> old_RSA._RSAobj:
+    return old_RSA.importKey(key)
 
 
 # This function is only for use in debugging.

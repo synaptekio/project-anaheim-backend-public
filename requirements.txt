@@ -138,6 +138,8 @@ pyasn1==0.4.8
     #   rsa
 pycparser==2.20
     # via cffi
+pycrypto==2.6.1
+    # via -r requirements.in
 pycryptodomex==3.11.0
     # via -r requirements.in
 pygments==2.9.0

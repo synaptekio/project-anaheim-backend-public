@@ -7,9 +7,7 @@ from binascii import Error as base64_error
 from hashlib import pbkdf2_hmac as pbkdf2
 from os import urandom
 
-from django.contrib import messages
 from constants.message_strings import NEW_PASSWORD_8_LONG, NEW_PASSWORD_RULES_FAIL
-
 from constants.security_constants import (EASY_ALPHANUMERIC_CHARS, ITERATIONS,
     PASSWORD_REQUIREMENT_REGEX_LIST)
 

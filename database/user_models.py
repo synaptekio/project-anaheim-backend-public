@@ -143,11 +143,9 @@ class Participant(AbstractPasswordUser):
         return generate_user_hash_and_salt(password)
     
     def debug_validate_password(self, compare_me: str):
-        """
-        Checks if the input matches the instance's password hash, but does the hashing for you
+        """ Checks if the input matches the instance's password hash, but does the hashing for you
         for use on the command line. This is necessary for manually checking that setting and
-        validating passwords work.
-        """
+        validating passwords work. """
         compare_me = device_hash(compare_me.encode())
         return compare_password(compare_me, self.salt.encode(), self.password.encode())
     
