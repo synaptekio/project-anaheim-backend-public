@@ -8,6 +8,8 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
+from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
+from database.security_models import ApiKey
 from libs.security import device_hash
 from urls import urlpatterns
 
@@ -346,3 +348,33 @@ class DataApiTest(SmartRequestsTestCase):
     def less_smart_post(self, *reverse_args, reverse_kwargs=None, **post_params) -> HttpResponse:
         """ we need the passthrough and calling super() in an implementation class is dumb.... """
         return super().smart_post(*reverse_args, reverse_kwargs=reverse_kwargs, **post_params)
+
+
+class TableauAPITest(ResearcherSessionTest):
+    
+    @property
+    def default_header(self):
+        # this object is in place of a request object, all we need is a populated .headers attribute
+        class NotRequest:
+            headers = {
+                X_ACCESS_KEY_ID: self.api_key_public,
+                X_ACCESS_KEY_SECRET: self.api_key_private,
+            }
+        return NotRequest
+    
+    @property
+    def raw_headers(self):
+        # in http-land a header is distinguished from other kinds of parameters by the prefixing
+        # of an all-caps HTTP_.  Go figure.
+        return {
+            f"HTTP_{X_ACCESS_KEY_ID}": self.api_key_public,
+            f"HTTP_{X_ACCESS_KEY_SECRET}": self.api_key_private,
+        }
+    
+    def setUp(self) -> None:
+        ret = super().setUp()
+        self.api_key = ApiKey.generate(self.session_researcher, has_tableau_api_permissions=True)
+        self.api_key_public = self.api_key.access_key_id
+        self.api_key_private = self.api_key.access_key_secret_plaintext
+        self.set_session_study_relation(ResearcherRole.researcher)
+        return ret

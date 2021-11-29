@@ -1,6 +1,7 @@
 import json
 
 from django.db.models import QuerySet
+from django.http.response import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from rest_framework.renderers import JSONRenderer
@@ -20,15 +21,15 @@ FINAL_SERIALIZABLE_FIELD_NAMES = (
 
 @require_GET
 @authenticate_tableau
-def get_tableau_daily(request: TableauRequest):
+def get_tableau_daily(request: TableauRequest, study_object_id: str = None):
     form = ApiQueryForm(data=request.POST)
     if not form.is_valid():
         return format_errors(form.errors.get_json_data())
-    query = tableau_query_database(study_object_id=form.get_study_id(), **form.cleaned_data)
+    query = tableau_query_database(study_object_id=study_object_id, **form.cleaned_data)
     serializer = SummaryStatisticDailySerializer(
         query, fields=form.cleaned_data["fields"], many=True,
     )
-    return JSONRenderer().render(serializer.data)
+    return HttpResponse(JSONRenderer().render(serializer.data))
 
 
 @require_GET
