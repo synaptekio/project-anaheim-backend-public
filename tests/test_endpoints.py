@@ -10,6 +10,9 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+from constants.data_processing_constants import BEIWE_PROJECT_ROOT
+from database.profiling_models import DecryptionKeyError
+from libs.encryption import get_RSA_cipher
 from urls import urlpatterns
 
 from config.jinja2 import easy_url
@@ -22,7 +25,7 @@ from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATC
 from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
     IOS_CERT, ResearcherRole)
-from database.data_access_models import ChunkRegistry
+from database.data_access_models import ChunkRegistry, FileToProcess
 from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
@@ -30,7 +33,7 @@ from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
-from libs.security import device_hash, generate_easy_alphanumeric_string
+from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest)
 from tests.helpers import DummyThreadPool
@@ -2319,10 +2322,116 @@ class TestRegisterParticipant(ParticipantSessionTest):
     ):
         s3_upload.return_value = None
         get_client_public_key_string.return_value = "a_private_key"
-      
+        
         # unregistered participants have no device id
         self.session_participant.update(device_id="")
         resp = self.smart_post_status_code(200, **self.BASIC_PARAMS)
         
         response_dict = json.loads(resp.content)
         self.assertEqual("a_private_key", response_dict["client_public_key"])
+
+
+class TestMobileUpload(ParticipantSessionTest):
+    ENDPOINT_NAME = "mobile_api.upload"
+    
+    @classmethod
+    def setUpClass(cls) -> None:
+        # pycrypto (and probably pycryptodome) requires that we re-seed the random number generation
+        # if we run using the --parallel directive.
+        from Crypto import Random as old_Random  # note name conflict with std lib random.Random...
+        old_Random.atfork()
+        return super().setUpClass()
+    
+    # these are some generated keys that are part of the codebase, because generating them is slow
+    # and potentially a source of error.
+    with open(f"{BEIWE_PROJECT_ROOT}/tests/files/private_key", 'rb') as f:
+        PRIVATE_KEY = get_RSA_cipher(f.read())
+    with open(f"{BEIWE_PROJECT_ROOT}/tests/files/public_key", 'rb') as f:
+        PUBLIC_KEY = get_RSA_cipher(f.read())
+    
+    @property
+    def assert_no_files_to_process(self):
+        self.assertEqual(FileToProcess.objects.count(), 0)
+    
+    @property
+    def assert_one_file_to_process(self):
+        self.assertEqual(FileToProcess.objects.count(), 1)
+    
+    def check_decryption_key_error(self, error_shibboleth):
+        self.assertEqual(DecryptionKeyError.objects.count(), 1)
+        traceback = DecryptionKeyError.objects.first().traceback
+        # print(traceback)
+        self.assertIn(error_shibboleth, traceback)
+        self.assertIn(error_shibboleth, traceback.splitlines()[-1])
+    
+    def test_bad_file_names(self):
+        self.assert_no_files_to_process
+        # responds with 200 code because device deletes file based on return
+        self.smart_post_status_code(200)
+        self.assert_no_files_to_process
+        self.smart_post_status_code(200, file_name="rList")
+        self.assert_no_files_to_process
+        self.smart_post_status_code(200, file_name="PersistedInstallation")
+        self.assert_no_files_to_process
+        # valid file extensions: csv, json, mp4, wav, txt, jpg
+        self.smart_post_status_code(200, file_name="whatever")
+        self.assert_no_files_to_process
+        # no file parameter
+        self.smart_post_status_code(400, file_name="whatever.csv")
+        self.assert_no_files_to_process
+        # correct file key, should fail
+        self.smart_post_status_code(200, file="some_content")
+        self.assert_no_files_to_process
+    
+    def test_unregistered_participant(self):
+        # fails with 400 if the participant is registered.  This behavior has a side effect of
+        # deleting data on the device, which seems wrong.
+        self.smart_post_status_code(400, file_name="whatever.csv")
+        self.session_participant.update(unregistered=True)
+        self.smart_post_status_code(200, file_name="whatever.csv")
+        self.assert_no_files_to_process
+    
+    def test_file_already_present(self):
+        # there is a ~complex file name test, this value will match and cause that test to succeed,
+        # which makes the endpoint return early.  This test will crash with the S3 invalid bucket
+        # failure mode if there is no match.
+        normalized_file_name = f"{self.session_study.object_id}/whatever.csv"
+        self.smart_post_status_code(400, file_name=normalized_file_name)
+        ftp = self.generate_file_to_process(normalized_file_name)
+        self.smart_post_status_code(200, file_name=normalized_file_name, file=object())
+        self.assert_one_file_to_process
+        should_be_identical = FileToProcess.objects.first()
+        self.assertEqual(ftp.id, should_be_identical.id)
+        self.assertEqual(ftp.last_updated, should_be_identical.last_updated)
+        self.assert_one_file_to_process
+    
+    @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")  # Variable's boolean value becomes True
+    def test_no_file_content(self, STORE_DECRYPTION_KEY_ERRORS: MagicMock):
+        # this test will fail with the s3 invalid bucket
+        self.smart_post_status_code(200, file_name="whatever.csv", file="")
+        self.assertEqual(DecryptionKeyError.objects.count(), 0)
+        self.assert_no_files_to_process
+    
+    @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")
+    @patch("database.user_models.Participant.get_private_key")
+    def test_simple_decryption_key_error(
+        self, get_private_key: MagicMock, STORE_DECRYPTION_KEY_ERRORS: MagicMock
+    ):
+        get_private_key.return_value = self.PRIVATE_KEY
+        self.smart_post_status_code(200, file_name="whatever.csv", file="some_content")
+        self.assertEqual(DecryptionKeyError.objects.count(), 1)
+        # This construction gets us our special padding error
+        self.check_decryption_key_error("libs.security.PaddingException: Incorrect padding -- ")
+        self.assert_no_files_to_process
+
+    @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")
+    @patch("database.user_models.Participant.get_private_key")
+    def test_simple_decryption_key_error2(
+        self, get_private_key: MagicMock, STORE_DECRYPTION_KEY_ERRORS: MagicMock
+    ):
+        get_private_key.return_value = self.PRIVATE_KEY
+        self.smart_post_status_code(200, file_name="whatever.csv", file=b"some_content")
+        self.assertEqual(DecryptionKeyError.objects.count(), 1)
+        # This construction gets us our special padding error
+        self.check_decryption_key_error("libs.security.Base64LengthException:")
+        self.assert_no_files_to_process

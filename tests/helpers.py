@@ -6,7 +6,7 @@ from constants.celery_constants import ScheduleTypes
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
-from database.data_access_models import ChunkRegistry
+from database.data_access_models import ChunkRegistry, FileToProcess
 from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
@@ -211,6 +211,18 @@ class ReferenceObjectMixin:
         )
         intervention_date.save()
         return intervention_date
+    
+    def generate_file_to_process(
+        self, path: str, study: Study = None, participant: Participant = None, deleted: bool = False
+    ):
+        ftp = FileToProcess(
+            s3_file_path=path,
+            study=study or self._default_study,
+            participant=participant or self.default_participant,
+            deleted=deleted,
+        )
+        ftp.save()
+        return ftp
     
     # def generate_scheduled_event(self, survey: Survey, participant: Participant, schedule_type: str) -> ScheduledEvent:
     #     ScheduledEvent(
