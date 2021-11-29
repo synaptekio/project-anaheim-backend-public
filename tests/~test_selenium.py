@@ -1,3 +1,7 @@
+# this is an old test built to use selenium on a hybrid flask test including selenium.
+# This test is probably abandoned and will never be revised to confirm whether it continues to work,
+# but it does contain some useful architecture for debugging selenium tests.
+
 import threading
 import traceback
 from time import sleep
@@ -158,4 +162,3 @@ class TestRoutes(FlaskTest):
 
 def run_flask():
     flask_app.run(host='0.0.0.0', port=54321, debug=False)
-
