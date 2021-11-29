@@ -10,14 +10,12 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
-from constants.data_processing_constants import BEIWE_PROJECT_ROOT
-from database.profiling_models import DecryptionKeyError
-from libs.encryption import get_RSA_cipher
 from urls import urlpatterns
 
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     IOS_FIREBASE_CREDENTIALS)
+from constants.data_processing_constants import BEIWE_PROJECT_ROOT
 from constants.data_stream_constants import ALL_DATA_STREAMS, SURVEY_TIMINGS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
@@ -26,6 +24,7 @@ from constants.researcher_constants import ALL_RESEARCHER_TYPES, ResearcherRole
 from constants.testing_constants import (ADMIN_ROLES, ALL_TESTING_ROLES, ANDROID_CERT, BACKEND_CERT,
     IOS_CERT, ResearcherRole)
 from database.data_access_models import ChunkRegistry, FileToProcess
+from database.profiling_models import DecryptionKeyError
 from database.schedule_models import Intervention
 from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
@@ -33,6 +32,7 @@ from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Participant, Researcher
 from libs.copy_study import format_study
+from libs.encryption import get_RSA_cipher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, CommonTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest)
@@ -2423,7 +2423,7 @@ class TestMobileUpload(ParticipantSessionTest):
         # This construction gets us our special padding error
         self.check_decryption_key_error("libs.security.PaddingException: Incorrect padding -- ")
         self.assert_no_files_to_process
-
+    
     @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")
     @patch("database.user_models.Participant.get_private_key")
     def test_simple_decryption_key_error2(
@@ -2434,4 +2434,32 @@ class TestMobileUpload(ParticipantSessionTest):
         self.assertEqual(DecryptionKeyError.objects.count(), 1)
         # This construction gets us our special padding error
         self.check_decryption_key_error("libs.security.Base64LengthException:")
+        self.assert_no_files_to_process
+    
+    @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")
+    @patch("database.user_models.Participant.get_private_key")
+    def test_bad_base64_length(
+        self, get_private_key: MagicMock, STORE_DECRYPTION_KEY_ERRORS: MagicMock
+    ):
+        get_private_key.return_value = self.PRIVATE_KEY
+        self.smart_post_status_code(200, file_name="whatever.csv", file=b"some_content1")
+        self.assertEqual(DecryptionKeyError.objects.count(), 1)
+        # This construction gets us our special padding error
+        self.check_decryption_key_error(
+            "libs.security.Base64LengthException: Data provided had invalid length 2 after padding was removed."
+        )
+        self.assert_no_files_to_process
+    
+    @patch("libs.encryption.STORE_DECRYPTION_KEY_ERRORS")
+    @patch("database.user_models.Participant.get_private_key")
+    def test_bad_base64_key(
+        self, get_private_key: MagicMock, STORE_DECRYPTION_KEY_ERRORS: MagicMock
+    ):
+        get_private_key.return_value = self.PRIVATE_KEY
+        self.smart_post_status_code(200, file_name="whatever.csv", file="some_conten/")
+        self.assertEqual(DecryptionKeyError.objects.count(), 1)
+        # This construction gets us our special padding error
+        self.check_decryption_key_error(
+            "libs.encryption.DecryptionKeyInvalidError: Decryption key not base64 encoded:"
+        )
         self.assert_no_files_to_process
