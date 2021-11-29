@@ -2412,3 +2412,12 @@ class TestMobileUpload(ParticipantSessionTest):
             "libs.encryption.DecryptionKeyInvalidError: Decryption key not base64 encoded:"
         )
         self.assert_no_files_to_process
+
+
+class TestGraph(ParticipantSessionTest):
+    ENDPOINT_NAME = "mobile_pages.fetch_graph"
+
+    def test(self):
+        # testing this requires setting up fake survey answers to see what renders in the javascript?
+        resp = self.smart_post_status_code(200)
+        self.assert_present("Rendered graph for user", resp.content)
