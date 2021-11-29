@@ -1,48 +1,13 @@
 from django.core.exceptions import ValidationError
+
 from database.study_models import DeviceSettings, Study
-
-
 from tests.common import CommonTestCase
 
-# Fixme: everything in this file
-#   needs to be rewritten, written, and reviewed.  No work has occurred on this code since django
-#   transition, everything is out of date.
 
-class ResearcherModelTests(CommonTestCase):
-    pass
-    # def test_researcher_create_with_password(self): raise NotImplementedError
-
-    # def test_researcher_check_password(self): raise NotImplementedError
-
-    # def test_researcher_validate_password(self): raise NotImplementedError
-
-    # def test_researcher_set_password(self): raise NotImplementedError
-
-    # def test_researcher_elevate_to_admin(self): raise NotImplementedError
-
-    # def test_researcher_validate_access_credentials(self): raise NotImplementedError
-
-    # def test_researcher_reset_access_credentials(self): raise NotImplementedError
-
-
-class ParticipantModelTests(CommonTestCase):
-    pass
-    # def test_participant_create(self): raise NotImplementedError
-
-    # def test_participant_debug_validate_password(self): raise NotImplementedError
-
-    # def test_participant_validate_password(self): raise NotImplementedError
-
-    # def test_participant_reset_password(self): raise NotImplementedError
-
-    # def test_participant_set_device(self): raise NotImplementedError
-
-    # def test_participant_set_os_type(self): raise NotImplementedError
-
-    # def test_participant_clear_device(self): raise NotImplementedError
-
-    # def test_participant_set_password(self): raise NotImplementedError
-
+# This file contains some minimal tests of some models.  They are old, they were written before 
+# components of helpers.py or common.py were substantially developed for the endpoint tests.
+# If these tests fail please review the tests in their entirety.  At time of writing this comment
+# there is no plan to extend these tests substantially, but the tests do pass.
 
 class StudyModelTests(CommonTestCase):
 
@@ -97,50 +62,3 @@ class StudyModelTests(CommonTestCase):
 
         bad_study = Study.create_with_object_id(name='name', encryption_key=encryption_key, deleted=True)
         self.assertNotIn(bad_study, Study.get_all_studies_by_name())
-
-    # def test_add_researcher(self): raise NotImplementedError
-
-    # def test_remove_researcher(self): raise NotImplementedError
-
-    # def test_add_survey(self): raise NotImplementedError
-
-    # def reference_participant(self): pass
-
-    # def translated_reference_participant(self): pass
-
-    # def create_django_reference_participant(self): pass
-
-    # def compare_participant(self, researcher): pass
-
-
-# class SurveyModelTests(CommonTestCase):
-    # pass
-
-
-# class DeviceSettingsTests(CommonTestCase):
-    # pass
-#
-
-# class DataAccessModelTests(CommonTestCase):
-
-#     # ChunkRegistry model tests:
-#     def test_add_new_chunk(self): raise NotImplementedError
-
-#     def test_get_chunks_time_range(self): raise NotImplementedError
-
-#     def test_update_chunk_hash(self): raise NotImplementedError
-
-#     def test_low_memory_update_chunk_hash(self): raise NotImplementedError
-
-
-# class ProfilingModelTests(CommonTestCase):
-#
-#     # Upload model tests
-#     def test_get_trailing(self): raise NotImplementedError
-#
-#     def test_get_trailing_count(self): raise NotImplementedError
-#
-#     def test_weekly_stats(self): raise NotImplementedError
-#
-#     # DecryptionKeyError tests
-#     def decode(self): pass
