@@ -18,17 +18,23 @@ from libs.internal_types import ParticipantRequest
 ########################### NOTIFICATION FUNCTIONS #############################
 ################################################################################
 
+
+# FIXME:this function incorrectly resets the push_notification_unreachable_count on an unsuccessful
+#   empty push notification.  There is also a race condition at play, and while the current
+#   mechanism works there is inappropriate content within the try statement that obscures the source
+#   of the validation error, which actually occurs at the get-or-create line resulting in the bug.
+#  Probably use a transaction?
 @require_POST
 @authenticate_participant
 def set_fcm_token(request: ParticipantRequest):
-    """ Sets a participants Firebase CLoud Messaging (FCM) instance token, called whenever a new
+    """ Sets a participants Firebase Cloud Messaging (FCM) instance token, called whenever a new
     token is generated. Expects a patient_id and and fcm_token in the request body. """
     participant = request.session_participant
     token = request.POST.get('fcm_token', "")
     now = timezone.now()
-
+    
     # force to unregistered on success, force every not-unregistered as unregistered.
-
+    
     # need to get_or_create rather than catching DoesNotExist to handle if two set_fcm_token
     # requests are made with the same token one after another and one request.
     try:
@@ -43,10 +49,10 @@ def set_fcm_token(request: ParticipantRequest):
         ParticipantFCMHistory.objects.filter(
             participant=participant, unregistered=None
         ).update(unregistered=now, last_updated=now)
-
+    
     participant.push_notification_unreachable_count = 0
     participant.save()
-    return HttpResponse(status_code=204)
+    return HttpResponse(status=204)
 
 
 @require_POST

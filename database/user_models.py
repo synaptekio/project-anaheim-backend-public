@@ -111,7 +111,7 @@ class Participant(AbstractPasswordUser):
         max_length=256, default="America/New_York", null=False, blank=False
     )
     
-    push_notification_unreachable_count = models.SmallIntegerField(default=True, null=False, blank=False)
+    push_notification_unreachable_count = models.SmallIntegerField(default=0, null=False, blank=False)
     
     deleted = models.BooleanField(default=False)
     

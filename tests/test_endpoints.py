@@ -9,8 +9,9 @@ from django.db import models
 from django.forms.fields import NullBooleanField
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
-from api.tableau_api import FINAL_SERIALIZABLE_FIELD_NAMES
+from django.utils import timezone
 
+from api.tableau_api import FINAL_SERIALIZABLE_FIELD_NAMES
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     IOS_FIREBASE_CREDENTIALS)
@@ -29,13 +30,13 @@ from database.security_models import ApiKey
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.system_models import FileAsText
-from database.user_models import Participant, Researcher
+from database.user_models import Participant, ParticipantFCMHistory, Researcher
 from libs.copy_study import format_study
 from libs.encryption import get_RSA_cipher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest, SmartRequestsTestCase)
-from tests.helpers import DummyThreadPool
+from tests.helpers import compare_dictionaries, DummyThreadPool
 
 
 class TestLoginPages(BasicSessionTestCase):
@@ -2432,3 +2433,61 @@ class TestWebDataConnector(SmartRequestsTestCase):
         content = resp.content.decode()
         for field_name in FINAL_SERIALIZABLE_FIELD_NAMES:
             self.assert_present(field_name, content)
+
+
+class TestPushNotificationSetFCMToken(ParticipantSessionTest):
+    ENDPOINT_NAME = "push_notifications_api.set_fcm_token"
+    
+    def test_no_params_bug(self):
+        # this was a 1 at start of writing tests due to a bad default value in the declaration.
+        self.assertEqual(ParticipantFCMHistory.objects.count(), 0)
+        
+        self.session_participant.update(push_notification_unreachable_count=1)
+        # FIXME: no parameters results in a 204, it should fail with a 400.
+        self.smart_post_status_code(204)
+        # FIXME: THIS ASSERT IS A BUG! it should be 1!
+        self.assertEqual(ParticipantFCMHistory.objects.count(), 0)
+    
+    def test_unregister_existing(self):
+        # create a new "valid" registration token (not unregistred)
+        token_1 = ParticipantFCMHistory(
+            participant=self.session_participant, token="some_value", unregistered=None
+        )
+        token_1.save()
+        self.smart_post(fcm_token="some_new_value")
+        token_1.refresh_from_db()
+        self.assertIsNotNone(token_1.unregistered)
+        token_2 = ParticipantFCMHistory.objects.last()
+        self.assertNotEqual(token_1.id, token_2.id)
+        self.assertIsNone(token_2.unregistered)
+    
+    def test_reregister_existing_valid(self):
+        # create a new "valid" registration token (not unregistred)
+        token = ParticipantFCMHistory(
+            participant=self.session_participant, token="some_value", unregistered=None
+        )
+        token.save()
+        # test only the one token exists
+        first_time = token.last_updated
+        self.smart_post(fcm_token="some_value")
+        # test remains unregistered, but token still updated
+        token.refresh_from_db()
+        second_time = token.last_updated
+        self.assertIsNone(token.unregistered)
+        self.assertNotEqual(first_time, second_time)
+        
+    def test_reregister_existing_unregister(self):
+        # create a new "valid" registration token (not unregistred)
+        token = ParticipantFCMHistory(
+            participant=self.session_participant, token="some_value", unregistered=timezone.now()
+        )
+        token.save()
+        # test only the one token exists
+        first_time = token.last_updated
+        self.smart_post(fcm_token="some_value")
+        # test is to longer unregistred, and was updated
+        token.refresh_from_db()
+        second_time = token.last_updated
+        self.assertIsNone(token.unregistered)
+        self.assertNotEqual(first_time, second_time)
+        

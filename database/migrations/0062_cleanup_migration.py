@@ -26,4 +26,9 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=[('audio_survey', 'audio_survey'), ('tracking_survey', 'tracking_survey'), ('image_survey', 'image_survey')], help_text='What type of survey this is.', max_length=16),
         ),
         migrations.RunPython(remove_batch_users),
+        migrations.AlterField(
+            model_name='participant',
+            name='push_notification_unreachable_count',
+            field=models.SmallIntegerField(default=0),
+        ),
     ]
