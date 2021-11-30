@@ -8,6 +8,7 @@ from django.utils.timezone import make_aware
 from django.views.decorators.http import require_http_methods
 
 from authentication.data_access_authentication import api_study_credential_check
+from constants.data_access_api_constants import CHUNK_FIELDS
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.datetime_constants import API_TIME_FORMAT
 from database.data_access_models import ChunkRegistry
@@ -16,9 +17,6 @@ from libs.internal_types import ApiStudyResearcherRequest
 from libs.streaming_zip import zip_generator
 from middleware.abort_middleware import abort
 
-
-chunk_fields = ("pk", "participant_id", "data_type", "chunk_path", "time_bin", "chunk_hash",
-                "participant__patient_id", "study_id", "survey_id", "survey__object_id")
 
 ENABLE_DATA_API_DEBUG = False
 
@@ -53,7 +51,7 @@ def get_data(request: ApiStudyResearcherRequest):
         request.api_study.pk, query_args, registry_dict=parse_registry(request)
     )
     return FileResponse(
-        zip_generator(get_these_files, construct_registry=False),
+        zip_generator(get_these_files, construct_registry='web_form' not in request.POST),
         content_type="zip",
         as_attachment='web_form' in request.POST,
         filename="data.zip",
@@ -169,7 +167,7 @@ def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict =
     chunks = ChunkRegistry.get_chunks_time_range(study_id, **query_dict)
     
     if not registry_dict:
-        return chunks.values(*chunk_fields)
+        return chunks.values(*CHUNK_FIELDS)
     
     # If there is a registry, we need to filter on the chunks
     else:
@@ -186,4 +184,4 @@ def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict =
         ]
         
         # add the exclude and return the queryset
-        return chunks.exclude(pk__in=registered_chunk_pks).values(*chunk_fields)
+        return chunks.exclude(pk__in=registered_chunk_pks).values(*CHUNK_FIELDS)

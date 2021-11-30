@@ -12,9 +12,9 @@ from forest.jasmine.traj2stats import gps_stats_main
 from forest.willow.log_stats import log_stats_main
 from pkg_resources import get_distribution
 
-from api.data_access_api import chunk_fields
 from constants.celery_constants import FOREST_QUEUE
-from constants.forest_constants import ForestTree
+from constants.data_access_api_constants import CHUNK_FIELDS
+from constants.forest_constants import ForestTaskStatus, ForestTree
 from database.data_access_models import ChunkRegistry
 from database.tableau_api_models import ForestTask
 from libs.celery_control import forest_celery_app, safe_apply_async
@@ -30,7 +30,7 @@ TREE_TO_FOREST_FUNCTION = {
 
 
 def create_forest_celery_tasks():
-    pending_tasks = ForestTask.objects.filter(status=ForestTask.Status.queued)
+    pending_tasks = ForestTask.objects.filter(status=ForestTaskStatus.queued)
 
     # with make_error_sentry(sentry_type=SentryTypes.data_processing):  # add a new type?
     with NullErrorHandler():  # for debugging, does not suppress errors
@@ -56,14 +56,14 @@ def celery_run_forest(forest_task_id):
                 .select_for_update()
                 .filter(participant=participant, forest_tree=forest_tree)
         )
-        if tasks.filter(status=ForestTask.Status.running).exists():
+        if tasks.filter(status=ForestTaskStatus.running).exists():
             enqueue_forest_task(args=[task.id])
             return
 
         # Get the chronologically earliest task that's queued
         task = (
             tasks
-                .filter(status=ForestTask.Status.queued)
+                .filter(status=ForestTaskStatus.queued)
                 .order_by("-data_date_start")
                 .first()
         )
@@ -71,7 +71,7 @@ def celery_run_forest(forest_task_id):
             return
 
         # Set metadata on the task
-        task.status = ForestTask.Status.running
+        task.status = ForestTaskStatus.running
         task.forest_version = get_distribution("forest").version
         task.process_start_time = timezone.now()
         task.save(update_fields=["status", "forest_version", "process_start_time"])
@@ -122,7 +122,7 @@ def celery_run_forest(forest_task_id):
 
 
 def create_local_data_files(task, chunks):
-    for chunk in chunks.values("study__object_id", *chunk_fields):
+    for chunk in chunks.values("study__object_id", *CHUNK_FIELDS):
         contents = s3_retrieve(chunk["chunk_path"], chunk["study__object_id"], raw_path=True)
         file_name = os.path.join(
             task.data_input_path,

@@ -57,8 +57,8 @@ def set_fcm_token(request: ParticipantRequest):
 
 @require_POST
 @authenticate_participant
-def send_test_notification(request: ParticipantRequest):
-    """ Sends a push notification to the participant, used for testing.
+def developer_send_test_notification(request: ParticipantRequest):
+    """ Sends a push notification to the participant, used ONLY for testing.
     Expects a patient_id in the request body. """
     print(check_firebase_instance())
     message = messaging.Message(
@@ -70,13 +70,13 @@ def send_test_notification(request: ParticipantRequest):
     )
     response = messaging.send(message)
     print('Successfully sent notification message:', response)
-    return HttpResponse(status_code=204)
+    return HttpResponse(status=204)
 
 
 @require_POST
 @authenticate_participant
-def send_survey_notification(request: ParticipantRequest):
-    """ Sends a push notification to the participant with survey data, used for testing
+def developer_send_survey_notification(request: ParticipantRequest):
+    """ Sends a push notification to the participant with survey data, used ONLY for testing
     Expects a patient_id in the request body """
     participant = request.session_participant
     survey_ids = list(
@@ -93,4 +93,4 @@ def send_survey_notification(request: ParticipantRequest):
     )
     response = messaging.send(message)
     print('Successfully sent survey message:', response)
-    return HttpResponse(status_code=204)
+    return HttpResponse(status=204)

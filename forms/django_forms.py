@@ -1,7 +1,7 @@
 from django import forms
 from django.utils.datastructures import MultiValueDict
 
-from constants.forest_constants import ForestTree
+from constants.forest_constants import ForestTaskStatus, ForestTree
 from constants.tableau_api_constants import (HEADER_IS_REQUIRED, SERIALIZABLE_FIELD_NAMES,
     SERIALIZABLE_FIELD_NAMES_DROPDOWN, VALID_QUERY_PARAMETERS, X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET)
 from database.tableau_api_models import ForestTask
@@ -91,7 +91,7 @@ class CreateTasksForm(forms.Form):
                         forest_tree=tree,
                         data_date_start=self.cleaned_data["date_start"],
                         data_date_end=self.cleaned_data["date_end"],
-                        status=ForestTask.Status.queued,
+                        status=ForestTaskStatus.queued,
                         forest_param=self.study.forest_param,
                     )
                 )

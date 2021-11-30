@@ -1,7 +1,5 @@
 class ForestTree:
-    """
-    Todo: Once we upgrade to Django 3, use TextChoices
-    """
+    """ Todo: Once we upgrade to Django 3, use TextChoices """
     jasmine = "jasmine"
     willow = "willow"
     
@@ -12,6 +10,22 @@ class ForestTree:
     @classmethod
     def values(cls):
         return [cls.jasmine, cls.willow]
+
+
+class ForestTaskStatus:
+    queued = 'queued'
+    running = 'running'
+    success = 'success'
+    error = 'error'
+    cancelled = 'cancelled'
+    
+    @classmethod
+    def choices(cls):
+        return [(choice, choice.title()) for choice in cls.values()]
+    
+    @classmethod
+    def values(cls):
+        return [cls.queued, cls.running, cls.success, cls.error, cls.cancelled]
 
 
 # the following dictionary maps pairs of tree names and CSV fields to summary statistic names

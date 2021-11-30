@@ -307,12 +307,12 @@ urlpatterns = [
         name="push_notifications_api.set_fcm_token"),
     path(
         'test_notification',
-        push_notifications_api.send_test_notification,
-        name="push_notifications_api.test_notification"),
+        push_notifications_api.developer_send_test_notification,
+        name="push_notifications_api.developer_send_test_notification"),
     path(
         'send_survey_notification',
-        push_notifications_api.send_survey_notification,
-        name="push_notifications_api.send_survey_notification"),
+        push_notifications_api.developer_send_survey_notification,
+        name="push_notifications_api.developer_send_survey_notification"),
     
     # other researcher apis
     path(

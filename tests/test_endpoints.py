@@ -1932,7 +1932,7 @@ class TestGetData(DataApiTest):
     
     def _test_basics(self):
         self.set_session_study_relation(ResearcherRole.researcher)
-        resp: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        resp: FileResponse = self.smart_post(study_pk=self.session_study.id, web_form="anything")
         self.assertEqual(resp.status_code, 200)
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
             pass
@@ -1940,6 +1940,15 @@ class TestGetData(DataApiTest):
         # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
         # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
         self.assertEqual(file_bytes, self.EMPTY_ZIP)
+
+        # test without web_form, which will create the registry file (which is empty)
+        resp2: FileResponse = self.smart_post(study_pk=self.session_study.id)
+        self.assertEqual(resp2.status_code, 200)
+        file_content = b""
+        for i2, file_bytes2 in enumerate(resp2.streaming_content, start=1):
+            file_content = file_content + file_bytes2
+        self.assertEqual(i2, 2)
+        self.assert_present(b"registry{}", file_content)
     
     @patch("libs.streaming_zip.s3_retrieve")
     def _test_downloads_and_file_naming(self, s3_retrieve: MagicMock):
@@ -2002,8 +2011,10 @@ class TestGetData(DataApiTest):
         self.assertNotEqual(file_contents, self.EMPTY_ZIP)
         
         # test that file is not downloaded when a valid json registry is present
+        # (the test for the empty zip is much, easiest, even if this combination of parameters
+        # is technically not kosher.)
         file_contents = self.generate_chunkregistry_and_download(
-            *basic_args, registry=json.dumps({file_path: self.REGISTRY_HASH})
+            *basic_args, registry=json.dumps({file_path: self.REGISTRY_HASH}), force_web_form=True
         )
         self.assertEqual(file_contents, self.EMPTY_ZIP)
         
@@ -2159,6 +2170,7 @@ class TestGetData(DataApiTest):
         query_time_bin_end: str = None,
         query_patient_ids: str = None,
         query_data_streams: str = None,
+        force_web_form: bool = False,
     ):
         post_kwargs = {"study_pk": self.session_study.id}
         generate_kwargs = {"time_bin": time_bin, "path": file_path}
@@ -2169,7 +2181,12 @@ class TestGetData(DataApiTest):
         if registry is not None:
             post_kwargs["registry"] = registry
             generate_kwargs["hash_value"] = self.REGISTRY_HASH  # strings must match
+        else:
+            post_kwargs["web_form"] = ""
         
+        if force_web_form:
+            post_kwargs["web_form"] = ""
+
         if query_data_streams is not None:
             post_kwargs["data_streams"] = query_data_streams
         
@@ -2475,7 +2492,7 @@ class TestPushNotificationSetFCMToken(ParticipantSessionTest):
         second_time = token.last_updated
         self.assertIsNone(token.unregistered)
         self.assertNotEqual(first_time, second_time)
-        
+    
     def test_reregister_existing_unregister(self):
         # create a new "valid" registration token (not unregistred)
         token = ParticipantFCMHistory(
