@@ -8,15 +8,16 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
-from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
-from database.security_models import ApiKey
-from libs.security import device_hash
 from urls import urlpatterns
 
+from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
+from database.security_models import ApiKey
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
 from libs import s3
+from libs.internal_types import StrOrBytes
+from libs.security import device_hash
 from tests.helpers import ReferenceObjectMixin
 
 
@@ -34,8 +35,7 @@ if VERBOSE_2_OR_3:
     
     def monkeypatch_messages(function: callable):
         """ This function wraps the messages library and directs it to the terminal for easy
-        behavior identification. """
-        
+        behavior identification, the original function is then called. """
         def intercepted(request, message, extra_tags='', fail_silently=False):
             print(f"from messages.{function.__name__}(): '{message}'")
             return function(request, message, extra_tags=extra_tags, fail_silently=fail_silently)
@@ -63,7 +63,7 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
             print("==")
         return super().tearDown()
     
-    def assert_resolve_equal(self, a, b):
+    def assert_resolve_equal(self, a: str, b: str):
         # when a url comes in from a response object (e.g. response.url) the / characters are
         # encoded in html escape format.  This causes an error in the call to resolve
         a = a.replace(r"%2F", "/")
@@ -72,17 +72,17 @@ class CommonTestCase(TestCase, ReferenceObjectMixin):
         msg = f"urls do not point to the same function:\n a - {a}, {resolve_a}\nb - {b}, {resolve_b}"
         return self.assertIs(resolve(a).func, resolve(b).func, msg)
     
-    def assert_not_present(self, test_str, corpus):
+    def assert_not_present(self, test_str: StrOrBytes, corpus: StrOrBytes):
         """ Tests "in" and also handles the type coersion for bytes and strings, and suppresses 
         excessively long output that can occur when testing for presence of substrings in html."""
         return self._assert_present(False, test_str, corpus)
     
-    def assert_present(self, test_str, corpus):
+    def assert_present(self, test_str: StrOrBytes, corpus: StrOrBytes):
         """ Tests "not in" and also handles the type coersion for bytes and strings, and suppresses 
         excessively long output that can occur when testing for presence of substrings in html."""
         return self._assert_present(True, test_str, corpus)
     
-    def _assert_present(self, the_test: bool, test_str, corpus):
+    def _assert_present(self, the_test: bool, test_str: StrOrBytes, corpus: StrOrBytes):
         t_test = type(test_str)
         t_corpus = type(corpus)
         test_str = test_str.encode() if t_test == str and t_corpus == bytes else test_str
@@ -324,7 +324,7 @@ class ParticipantSessionTest(SmartRequestsTestCase):
     IOS_ENDPOINT_NAME = None
     
     def setUp(self) -> None:
-        """ Log in the session researcher. """
+        """ Populate the session participant variable. """
         self.session_participant = self.default_participant
         return super().setUp()
     

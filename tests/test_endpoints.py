@@ -2507,4 +2507,51 @@ class TestPushNotificationSetFCMToken(ParticipantSessionTest):
         second_time = token.last_updated
         self.assertIsNone(token.unregistered)
         self.assertNotEqual(first_time, second_time)
-        
+
+
+# FIXME: make a real test...
+class TestForestAnalysisProgress(ResearcherSessionTest):
+    ENDPOINT_NAME = "forest_pages.analysis_progress"
+    
+    def test(self):
+        # hey it loads...
+        self.set_session_study_relation(ResearcherRole.researcher)
+        for _ in range(10):
+            self.generate_participant(self.session_study)
+        print(Participant.objects.count())
+        print(self.smart_get(self.session_study.id))
+
+
+# class TestForestCreateTasks(ResearcherSessionTest):
+#     ENDPOINT_NAME = "forest_pages.create_tasks"
+
+#     def test(self):
+#         self.smart_get()
+
+
+# class TestForestTaskLog(ResearcherSessionTest):
+#     ENDPOINT_NAME = "forest_pages.task_log"
+
+#     def test(self):
+#         self.smart_get()
+
+
+# class TestForestDownloadTaskLog(ResearcherSessionTest):
+#     ENDPOINT_NAME = "forest_pages.download_task_log"
+
+#     def test(self):
+#         self.smart_get()
+
+
+# class TestForestCancelTask(ResearcherSessionTest):
+#     ENDPOINT_NAME = "forest_pages.cancel_task"
+
+#     def test(self):
+#         self.smart_get()
+
+
+# class TestForestDownloadTaskData(ResearcherSessionTest):
+#     ENDPOINT_NAME = "forest_pages.download_task_data"
+
+#     def test(self):
+#         self.smart_get()
