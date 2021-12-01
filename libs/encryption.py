@@ -16,6 +16,8 @@ from database.study_models import Study
 from database.user_models import Participant
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
 
+# FIXME: there is a circular import due to the database imports in this file and this file being
+# imported in s3, forcing local s3 imports in various files.  Refactor and fix
 
 # Pycrypto (not pycryptodome) uses an old function inside the std lib time library that was
 # deprecated because the name is misleading.  The exact replacement is the process_time function,
