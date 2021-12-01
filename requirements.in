@@ -9,7 +9,6 @@ djangorestframework==3.12.4
 django-extensions==3.1.3
 
 python-dateutil==2.8.2
-factory-boy  # version set by listed django compatibiliy
 
 # We used to use pycrypto, now we use pycryptodome, but we can't get pycryptodome to decrypt RSA
 # stuff backwards-compatibly.  Pycrypto RSA decryption is not compatible with Python versions
