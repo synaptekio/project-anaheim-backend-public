@@ -1,14 +1,16 @@
+from typing import Union
 from django.http.request import HttpRequest
 
 from database.study_models import Study
 from database.user_models import Participant, Researcher
 
 
-"""
-This file includes types and typing information that may be missing from your development
-environment or your IDE.
-"""
+""" This file includes types and typing information that may be missing from your
+developmentenvironment or your IDE, as well as some useful type hints. """
 
+#
+## Request objects
+#
 
 class ResearcherRequest(HttpRequest):
     # these attributes are present on the normal researcher endpoints
@@ -30,3 +32,9 @@ class ParticipantRequest(HttpRequest):
 
 class TableauRequest(HttpRequest):
     pass
+
+#
+## Other classes
+#
+
+StrOrBytes = Union[str, bytes]
