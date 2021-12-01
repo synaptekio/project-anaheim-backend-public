@@ -3,6 +3,7 @@ from datetime import date, datetime
 from django.utils import timezone
 
 from constants.celery_constants import ScheduleTypes
+from constants.forest_constants import ForestTree
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
@@ -10,7 +11,7 @@ from database.data_access_models import ChunkRegistry, FileToProcess
 from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
-from database.tableau_api_models import ForestParam
+from database.tableau_api_models import ForestParam, ForestTask
 from database.user_models import Participant, Researcher, StudyRelation
 from libs.security import generate_easy_alphanumeric_string
 
@@ -263,7 +264,28 @@ class ReferenceObjectMixin:
         # there is an actual default ForestParams defined in a migration.
         self._default_forest_params = ForestParam.objects.get(default=True)
         return self._default_forest_params
-    
+
+    def generate_forest_task(
+        self,
+        participant: Participant = None,
+        forest_param: ForestParam = None,
+        data_date_start: datetime = timezone.now(),    # generated once at import time. will differ,
+        data_date_end: datetime = timezone.now(),      # slightly, but end is always after start.
+        forest_tree: str = ForestTree.jasmine,
+        **kwargs
+    ):
+        task = ForestTask(
+            participant=participant or self.default_participant,
+            forest_param=forest_param or self.default_forest_params,
+            data_date_start=data_date_start,
+            data_date_end=data_date_end,
+            forest_tree=forest_tree,
+            **kwargs
+        )
+        task.save()
+        return task
+
+
     #
     ## ChunkRegistry
     #
