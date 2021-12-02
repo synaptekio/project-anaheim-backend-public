@@ -16,6 +16,7 @@ from database.study_models import Study
 from database.user_models import Participant
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
 
+
 # TODO: there is a circular import due to the database imports in this file and this file being
 # imported in s3, forcing local s3 imports in various files.  Refactor and fix
 
@@ -62,6 +63,11 @@ def prepare_X509_key_for_java(exported_key) -> bytes:
 def get_RSA_cipher(key: bytes) -> old_RSA._RSAobj:
     return old_RSA.importKey(key)
 
+
+# pycryptodome: the following is correct for PKCS1_OAEP.
+    # RSA_key = RSA.importKey(key)
+    # cipher = PKCS1_OAEP.new(RSA_key)
+    # return cipher
 
 # This function is only for use in debugging.
 # def encrypt_rsa(blob, private_key):
@@ -272,11 +278,11 @@ def extract_aes_key(
         # helper function with local variable access.
         # do not refactor to include raising the error in this function, that obfuscates the source.
         if STORE_DECRYPTION_KEY_ERRORS:
-            DecryptionKeyError.objects.create(
-                    file_path=file_name,
-                    contents=original_data.decode(),
-                    traceback=an_traceback,
-                    participant=participant,
+            DecryptionKeyError.do_create(
+                file_path=file_name,
+                contents=original_data,
+                traceback=an_traceback,
+                participant=participant,
             )
     
     try:

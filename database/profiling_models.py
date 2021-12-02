@@ -6,7 +6,7 @@ from django.utils import timezone
 from constants.data_stream_constants import (DATA_STREAM_TO_S3_FILE_NAME_STRING,
     UPLOAD_FILE_TYPE_MAPPING)
 from database.models import JSONTextField, Participant, TimestampedModel
-from libs.security import decode_base64
+from libs.security import decode_base64, encode_base64
 
 
 class EncryptionErrorMetadata(TimestampedModel):
@@ -59,6 +59,25 @@ class DecryptionKeyError(TimestampedModel):
 
     def decode(self):
         return decode_base64(self.contents)
+    
+    @classmethod
+    def do_create(cls, file_path: str, contents: bytes, traceback: str, participant: Participant):
+        try:
+            DecryptionKeyError.objects.create(
+                file_path=file_path,
+                contents=contents.decode(),
+                traceback=traceback,
+                participant=participant,
+            )
+        except ValueError:
+            # to avoid storing 50% more data we try to store as the orig bytes, which SHOULD be
+            # encoded as base64, but sometimes we get junk null characters.  sure fine whatever...
+            DecryptionKeyError.objects.create(
+                file_path=file_path,
+                contents=encode_base64(contents),
+                traceback=traceback,
+                participant=participant,
+            )
 
 
 class UploadTracking(TimestampedModel):
@@ -66,7 +85,7 @@ class UploadTracking(TimestampedModel):
     file_size = models.PositiveIntegerField()
     timestamp = models.DateTimeField()
     participant = models.ForeignKey('Participant', on_delete=models.PROTECT, related_name='upload_trackers')
-
+    
     @classmethod
     def re_add_files_to_process(cls, number=100):
         """ Re-adds the most recent [number] files that have been uploaded recently to FiletToProcess.
@@ -83,14 +102,14 @@ class UploadTracking(TimestampedModel):
             else:
                 participant = Participant.objects.get(id=participant_id)
                 participant_cache[participant_id] = participant
-
+            
             if i % 10 == 0:
                 print(i, sep="... ")
-
+            
             if FileToProcess.objects.filter(s3_file_path__icontains=file_path).exists():
                 print(f"skipping {file_path}, appears to already be present")
                 continue
-
+            
             new_ftps.append(FileToProcess(
                 s3_file_path=file_path,
                 study_id=study_id,
@@ -99,19 +118,19 @@ class UploadTracking(TimestampedModel):
         FileToProcess.objects.bulk_create(
             new_ftps
         )
-            # FileToProcess.append_file_for_processing(
-            #     # file_path, study_object_id, **kwargs
-            #     file_path,
-            #     # participant__study__object_id,
-            #     participant=participant,
-            # )
-
+        # FileToProcess.append_file_for_processing(
+        #     # file_path, study_object_id, **kwargs
+        #     file_path,
+        #     # participant__study__object_id,
+        #     participant=participant,
+        # )
+    
     @classmethod
     def add_files_to_process2(cls, limit=25):
         """ Re-adds the most recent [limit] files that have been uploaded recently to FiletToProcess.
             (this is fairly optimized because it is part of debugging file processing) """
         from database.data_access_models import FileToProcess
-
+        
         upload_queries = []
         for ds in DATA_STREAM_TO_S3_FILE_NAME_STRING.values():
             if ds == "identifiers":
@@ -125,35 +144,35 @@ class UploadTracking(TimestampedModel):
                                  "participant_id")[:limit]
             )
             upload_queries.append((ds, query))
-
+        
         new_ftps = []
         # participant_cache = {}  # uhg need to cache participants...
         file_paths_wandered = set(FileToProcess.objects.values_list("s3_file_path", flat=True))
         for file_type, uploads_query in upload_queries:
             print(file_type)
             for i, (file_path, study_id, object_id, participant_id) in enumerate(uploads_query):
-
+                
                 if i % 10 == 0 or i == limit-1:
                     print(i+1 if i == limit-1 else i, sep="... ",)
-
+                
                 if file_path in file_paths_wandered:
                     continue
                 else:
                     file_paths_wandered.add(file_path)
-
+                
                 new_ftps.append(FileToProcess(
                     s3_file_path=object_id + "/" + file_path,
                     study_id=study_id,
                     participant_id=participant_id
                 ))
         FileToProcess.objects.bulk_create(new_ftps)
-
-
+    
+    
     @classmethod
     def get_trailing_count(cls, time_delta):
         return cls.objects.filter(timestamp__gte=timezone.now() - time_delta).count()
-
-
+    
+    
     @classmethod
     def weekly_stats(cls, days=7, get_usernames=False):
         ALL_FILETYPES = UPLOAD_FILE_TYPE_MAPPING.values()
