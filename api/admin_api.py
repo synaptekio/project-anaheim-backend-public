@@ -56,7 +56,7 @@ def add_researcher_to_study(request: ResearcherRequest, ):
     
     # This gets called by both edit_researcher and edit_study, so the POST request
     # must contain which URL it came from.
-    # FIXME: don't source the url from the page, give it a required post parameter for the redirect and check against that
+    # TODO: don't source the url from the page, give it a required post parameter for the redirect and check against that
     return redirect(request.POST['redirect_url'])
 
 
@@ -72,7 +72,7 @@ def remove_researcher_from_study(request: ResearcherRequest, ):
     assert_admin(request, study_id)
     assert_researcher_under_admin(request, researcher, study_id)
     StudyRelation.objects.filter(study_id=study_id, researcher_id=researcher_id).delete()
-    # FIXME: don't source the url from the page, give it a required post parameter for the redirect and check against that
+    # TODO: don't source the url from the page, give it a required post parameter for the redirect and check against that
     return redirect(request.POST['redirect_url'])
 
 

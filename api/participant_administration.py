@@ -20,9 +20,8 @@ from libs.streaming_bytes_io import StreamingStringsIO
 @authenticate_researcher_study_access
 def reset_participant_password(request: ResearcherRequest):
     """ Takes a patient ID and resets its password. Returns the new random password."""
-    # FIXME: validate researcher on study
     patient_id = request.POST.get('patient_id', None)
-    study_id = request.POST.get('study_id', None)
+    study_id = request.POST.get('study_id', None)  # this is validated in the decorator
     
     try:
         participant = Participant.objects.get(patient_id=patient_id)
