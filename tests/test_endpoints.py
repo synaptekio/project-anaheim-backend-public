@@ -1130,7 +1130,7 @@ class TestPrivacyPolicy(ResearcherSessionTest):
         self.assertIsInstance(redirect, HttpResponseRedirect)
 
 
-# FIXME: implpment this test beyond "it doesn't crash", and there is a known bug to follow up on too.
+# FIXME: implement this test beyond "it doesn't crash", and there is a known bug to follow up on too.
 class TestStudyParticipantApi(ResearcherSessionTest):
     ENDPOINT_NAME = "study_api.study_participants_api"
     
@@ -1399,7 +1399,7 @@ class TestUpdateSurvey(ResearcherSessionTest):
         self.assertEqual(resp.status_code, 201)
 
 
-# fixme: add interventions and survey schedules
+# FIXME: add interventions and survey schedules
 class TestRenderEditSurvey(ResearcherSessionTest):
     ENDPOINT_NAME = "survey_designer.render_edit_survey"
     

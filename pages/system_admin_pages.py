@@ -2,6 +2,7 @@ import json
 import plistlib
 from collections import defaultdict
 from typing import List
+import bleach
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -185,6 +186,12 @@ def edit_researcher_page(request: ResearcherRequest, researcher_pk):
 @authenticate_admin
 def elevate_researcher(request: ResearcherRequest):
     researcher_pk = request.POST.get("researcher_id", None)
+    # some extra validation on the researcher id
+    try:
+        int(researcher_pk)
+    except ValueError:
+        return abort(400)
+
     study_pk = request.POST.get("study_id", None)
     assert_admin(request, study_pk)
     edit_researcher = Researcher.get_or_404(pk=researcher_pk)
@@ -194,7 +201,7 @@ def elevate_researcher(request: ResearcherRequest):
         return abort(403)
     StudyRelation.objects.filter(researcher=edit_researcher, study=study) \
         .update(relationship=ResearcherRole.study_admin)
-    # FIXME:sanitize this redirect url
+
     return redirect(
         request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
@@ -226,13 +233,11 @@ def create_new_researcher(request: ResearcherRequest):
     if request.method == 'GET':
         return render(request, 'create_new_researcher.html')
     
-    # Drop any whitespace or special characters from the username
-    # FIXME: add bleach library here
-    username = ''.join(e for e in request.POST.get('admin_id', '') if e.isalnum())
+    # Drop any whitespace or special characters from the username (restrictive, alphanumerics-only)
+    username = ''.join(c for c in request.POST.get('admin_id', '') if c.isalnum())
     password = request.POST.get('password', '')
     
     if Researcher.objects.filter(username=username).exists():
-        # FIXME: again, bleach
         messages.error(request, f"There is already a researcher with username {username}")
         return redirect('/create_new_researcher')
     else:
@@ -366,7 +371,7 @@ def do_duplicate_step(request: ResearcherRequest, new_study: Study):
         messages.success(request, f"Did not alter {new_study.name}'s App Settings.")
 
 
-# FIXME: this should probably take a post parameter, not a url endpoint.
+# FIXME: this should take a post parameter, not a url endpoint.
 @require_POST
 @authenticate_admin
 def toggle_study_forest_enabled(request: ResearcherRequest, study_id=None):
@@ -407,7 +412,6 @@ def device_settings(request: ResearcherRequest, study_id=None):
     readonly = not researcher.check_study_admin(study_id) and not researcher.site_admin
     
     # FIXME: get rid of dual endpoint pattern, it is a bad idea.
-    # if read only....
     if request.method == 'GET':
         return render(
             request,
