@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from constants.datetime_constants import DEV_TIME_FORMAT
 from database.tableau_api_models import ForestTask
+from libs.http_utils import easy_url
 
 
 class ForestTaskBaseSerializer(serializers.ModelSerializer):
@@ -85,16 +86,14 @@ class ForestTaskSerializer(ForestTaskBaseSerializer):
         ]
 
     def get_cancel_url(self, instance):
-        # FIXME: this is probably wrong - django conversion from flask.url_for
-        return reverse(
+        return easy_url(
             "forest_pages.cancel_task",
             study_id=instance.participant.study_id,
             forest_task_external_id=instance.external_id,
         )
 
     def get_download_url(self, instance):
-        # FIXME: this is probably wrong - django conversion from flask.url_for
-        return reverse(
+        return easy_url(
             "forest_pages.download_task_data",
             study_id=instance.participant.study_id,
             forest_task_external_id=instance.external_id,
