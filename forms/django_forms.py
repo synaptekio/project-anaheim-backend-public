@@ -1,3 +1,4 @@
+import bleach
 from django import forms
 from django.utils.datastructures import MultiValueDict
 
@@ -16,7 +17,9 @@ class NewApiKeyForm(forms.Form):
     
     def clean(self):
         super().clean()
-        self.cleaned_data['tableau_api_permission'] = True
+    
+    def clean_readable_name(self):
+        return bleach.clean(self.cleaned_data["readable_name"])
 
 
 class DisableApiKeyForm(forms.Form):

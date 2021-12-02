@@ -254,14 +254,15 @@ class TestNewTableauApiKey(RedirectSessionApiTest):
     ENDPOINT_NAME = "admin_pages.new_tableau_api_key"
     REDIRECT_ENDPOINT_NAME = "admin_pages.manage_credentials"
     
-    # FIXME: when NewApiKeyForm does anything develop a test for naming the key, probably more.
-    #  (need to review the tableau tests)
+    # FIXME: add tests for sanitization of the input name
     def test_reset(self):
         self.assertIsNone(self.session_researcher.api_keys.first())
-        self.smart_post()
+        self.smart_post(readable_name="new_name")
         self.assertIsNotNone(self.session_researcher.api_keys.first())
         self.assert_present("New Tableau API credentials have been generated for you",
                              self.get_redirect_content())
+        self.assertEqual(ApiKey.objects.filter(
+            researcher=self.session_researcher, readable_name="new_name").count(), 1)
 
 
 # admin_pages.disable_tableau_api_key
@@ -2518,8 +2519,8 @@ class TestForestAnalysisProgress(ResearcherSessionTest):
         self.set_session_study_relation(ResearcherRole.researcher)
         for _ in range(10):
             self.generate_participant(self.session_study)
-        print(Participant.objects.count())
-        print(self.smart_get(self.session_study.id))
+        # print(Participant.objects.count())
+        # print(self.smart_get(self.session_study.id))
 
 
 # class TestForestCreateTasks(ResearcherSessionTest):

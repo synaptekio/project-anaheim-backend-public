@@ -131,9 +131,8 @@ def do_process_user_file_chunks(
     print(page_size)
     print(position)
     
-    # ordering by path results in files grouped by type and chronological order, which is perfect
-    # for efficiency.
-    # Fixme: does this order_by break the skipping of items that failed to process? solution: exclude ids?
+    # TODO: investigate, comment.  ordering by path results in files grouped by type and
+    # chronological order, which is perfect for download efficiency... right? would it break anthing?
     files_to_process = participant.files_to_process \
         .exclude(deleted=True)  #.order_by("s3_file_path", "created_on")
     

@@ -41,7 +41,7 @@ def study_participants_api(request: ResearcherRequest, study_id: int):
 @authenticate_researcher_study_access
 def interventions_page(request: ResearcherRequest, study_id=None):
     study: Study = Study.objects.get(pk=study_id)
-    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
+    # TODO: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         return render(
             request,
@@ -108,8 +108,7 @@ def edit_intervention(request: ResearcherRequest, study_id=None):
 @authenticate_researcher_study_access
 def study_fields(request: ResearcherRequest, study_id=None):
     study = Study.objects.get(pk=study_id)
-    
-    # FIXME: get rid of dual endpoint pattern, it is a bad idea.
+    # TODO: get rid of dual endpoint pattern, it is a bad idea.
     if request.method == 'GET':
         return render(
             request,

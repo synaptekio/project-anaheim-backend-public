@@ -7,7 +7,6 @@ from django.urls import reverse
 from jinja2 import Environment
 from libs.http_utils import easy_url
 
-# FIXME: is the "url" function used Anywhere that takes parameters? if not, just rename easy_url to url.
 def environment(**options):
     """ This enables us to use Django template tags like
     {% url “index” %} or {% static “path/to/static/file.js” %}

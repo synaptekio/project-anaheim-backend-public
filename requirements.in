@@ -20,6 +20,9 @@ pycryptodomex==3.11.0  # locked version
 raven==6.10  # raven has been sunset at 6.10
 cronutils>=0.3.0
 
+# data sanitization
+bleach>=4.1.0
+
 # server requirement
 # You have to upgrade django to greater than 2.2 (apparently) in order to upgrade psycopg2 to 2.9.x
 psycopg2==2.8.6

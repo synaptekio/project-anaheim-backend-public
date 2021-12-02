@@ -1,3 +1,5 @@
+import bleach 
+
 from csv import writer
 from re import sub
 
@@ -26,8 +28,7 @@ def reset_participant_password(request: ResearcherRequest):
     try:
         participant = Participant.objects.get(patient_id=patient_id)
     except Participant.DoesNotExist:
-        # Fixme: bleach this
-        messages.error(request, f'The participant "{patient_id}" does not exist')
+        messages.error(request, f'The participant "{bleach.clean(patient_id)}" does not exist')
         return redirect(f'/view_study/{study_id}/')
     
     if participant.study.id != int(study_id):

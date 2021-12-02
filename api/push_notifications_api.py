@@ -19,7 +19,7 @@ from libs.internal_types import ParticipantRequest
 ################################################################################
 
 
-# FIXME:this function incorrectly resets the push_notification_unreachable_count on an unsuccessful
+# TODO: this function incorrectly resets the push_notification_unreachable_count on an unsuccessful
 #   empty push notification.  There is also a race condition at play, and while the current
 #   mechanism works there is inappropriate content within the try statement that obscures the source
 #   of the validation error, which actually occurs at the get-or-create line resulting in the bug.

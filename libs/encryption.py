@@ -16,13 +16,13 @@ from database.study_models import Study
 from database.user_models import Participant
 from libs.security import Base64LengthException, decode_base64, encode_base64, PaddingException
 
-# FIXME: there is a circular import due to the database imports in this file and this file being
+# TODO: there is a circular import due to the database imports in this file and this file being
 # imported in s3, forcing local s3 imports in various files.  Refactor and fix
 
 # Pycrypto (not pycryptodome) uses an old function inside the std lib time library that was
 # deprecated because the name is misleading.  The exact replacement is the process_time function,
 # so we patch it to keep it working.
-# FIXME: We only use the old pycrypto because we are using a not-best-practice of the direct RSA
+# TODO: We only use the old pycrypto because we are using a not-best-practice of the direct RSA
 #   encryption instead of a something like PKCS1_OAEP (OAEP is a padding mechanism).  I have been
 #   unable to replicate the old code (and have zero incentive to do so) using of either the
 #   pycryptodome library (which explicitly disallows it) or the `rsa` library.
@@ -350,7 +350,6 @@ def decrypt_device_line(patient_id, key, data: bytes) -> bytes:
         raise InvalidIV()
     
     # CBC data encryption requires alignment to a 16 bytes, we lose any data that overflows that length.
-    # FIXME: how does this even happen on the device.  Two sources discovered were Android.
     overflow_bytes = len(data) % 16
     
     if overflow_bytes:

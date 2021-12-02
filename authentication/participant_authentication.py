@@ -27,7 +27,7 @@ def validate_post(request: HttpRequest, require_password: bool, validate_device_
         log("device_id:", "device_id" in rp)
         return False
     
-    # FIXME: need to check the app expectations on response codes
+    # FIXME: Device Testing. need to check the app expectations on response codes
     #  this used to throw a 400 if the there was no patient_id field in the post request,
     #  and 404 when there was no such user, when it was get_session_participant.
     # This isn't True? the old code included the test for presence of keys, and returned False,
@@ -155,7 +155,7 @@ def correct_for_basic_auth(request: ParticipantRequest):
         return
     
     auth = request.authorization
-    # FIXME: this is broken - django port
+    # FIXME: Device Testing. this is broken - django port
     if not auth:
         return
     

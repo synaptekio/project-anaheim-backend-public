@@ -42,7 +42,7 @@ def choose_study(request: ResearcherRequest):
     # Otherwise, show the "Choose Study" page
     if allowed_studies.count() == 1:
         return redirect('/view_study/{:d}'.format(allowed_studies.values_list('pk', flat=True).get()))
-
+    
     return render(
         request,
         'choose_study.html',
@@ -57,7 +57,7 @@ def choose_study(request: ResearcherRequest):
 @authenticate_researcher_study_access
 def view_study(request: ResearcherRequest, study_id=None):
     study: Study = Study.objects.get(pk=study_id)
-
+    
     return render(
         request,
         template_name='view_study.html',
@@ -81,7 +81,7 @@ def view_study(request: ResearcherRequest, study_id=None):
 
 @authenticate_researcher_login
 def manage_credentials(request: ResearcherRequest):
-    # FIXME: this is an inappropriate use of a serializer.  It is a single use entity, the contents
+    # TODO: this is an inappropriate use of a serializer.  It is a single use entity, the contents
     #  of this database entity do not require special serialization or deserialization, and the use
     #  of the serializer is complex enough to obscure functionality.  This use of the serializer
     #  requires that you be an expert in the DRF.
@@ -102,11 +102,11 @@ def reset_admin_password(request: ResearcherRequest):
     current_password = request.POST['current_password']
     new_password = request.POST['new_password']
     confirm_new_password = request.POST['confirm_new_password']
-
+    
     if not Researcher.check_password(username, current_password):
         messages.warning(request, WRONG_CURRENT_PASSWORD)
         return redirect('admin_pages.manage_credentials')
-
+    
     success, msg = check_password_requirements(new_password)
     if msg:
         messages.warning(request, msg)
@@ -115,7 +115,7 @@ def reset_admin_password(request: ResearcherRequest):
     if new_password != confirm_new_password:
         messages.warning(request, NEW_PASSWORD_MISMATCH)
         return redirect('admin_pages.manage_credentials')
-
+    
     # FIXME: sanitize password?
     Researcher.objects.get(username=username).set_password(new_password)
     messages.warning(request, PASSWORD_RESET_SUCCESS)
@@ -133,14 +133,13 @@ def reset_download_api_credentials(request: ResearcherRequest):
 @require_POST
 @authenticate_researcher_login
 def new_tableau_api_key(request: ResearcherRequest):
-    # FIXME: This form is naive
     form = NewApiKeyForm(request.POST)
     if not form.is_valid():
         return redirect("admin_pages.manage_credentials")
-
+    
     api_key = ApiKey.generate(
         researcher=request.session_researcher,
-        has_tableau_api_permissions=form.cleaned_data['tableau_api_permission'],
+        has_tableau_api_permissions=True,
         readable_name=form.cleaned_data['readable_name'],
     )
     msg = NEW_API_KEY_MESSAGE % (api_key.access_key_id, api_key.access_key_secret_plaintext)
@@ -157,16 +156,16 @@ def disable_tableau_api_key(request: ResearcherRequest):
     api_key_id = request.POST["api_key_id"]
     api_key_query = ApiKey.objects.filter(access_key_id=api_key_id) \
         .filter(researcher=request.session_researcher)
-
+    
     if not api_key_query.exists():
         messages.warning(request, Markup(TABLEAU_NO_MATCHING_API_KEY))
         return redirect("admin_pages.manage_credentials")
-
+    
     api_key = api_key_query[0]
     if not api_key.is_active:
         messages.warning(request, TABLEAU_API_KEY_IS_DISABLED + f" {api_key_id}")
         return redirect("admin_pages.manage_credentials")
-
+    
     api_key.is_active = False
     api_key.save()
     messages.success(request, TABLEAU_API_KEY_NOW_DISABLED.format(key=api_key.access_key_id))
