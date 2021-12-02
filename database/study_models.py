@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 from datetime import datetime
 from typing import Optional
@@ -6,6 +8,7 @@ from dateutil.tz import gettz
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import F, Func, Q
+from django.db.models.query import QuerySet
 from django.utils import timezone
 from django.utils.timezone import localtime
 
@@ -71,7 +74,7 @@ class Study(TimestampedModel):
         return study
     
     @classmethod
-    def get_all_studies_by_name(cls):
+    def get_all_studies_by_name(cls) -> Study:
         """ Sort the un-deleted Studies a-z by name, ignoring case. """
         return (cls.objects
                 .filter(deleted=False)
@@ -79,7 +82,7 @@ class Study(TimestampedModel):
                 .order_by('name_lower'))
     
     @classmethod
-    def _get_administered_studies_by_name(cls, researcher):
+    def _get_administered_studies_by_name(cls, researcher) -> QuerySet[Study]:
         return cls.get_all_studies_by_name().filter(
                 study_relations__researcher=researcher,
                 study_relations__relationship=ResearcherRole.study_admin,

@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+from typing import Tuple
 from django.core.validators import MinLengthValidator
 from django.db import models
 from django.db.models import F, Func
+from django.db.models.query import QuerySet
 
 from constants.researcher_constants import ResearcherRole
 from database.common_models import UtilityModel
@@ -119,7 +123,7 @@ class Participant(AbstractPasswordUser):
     unregistered = models.BooleanField(default=False)
     
     @classmethod
-    def create_with_password(cls, **kwargs):
+    def create_with_password(cls, **kwargs) -> Tuple[str, str]:
         """ Creates a new participant with randomly generated patient_id and password. """
         
         # Ensure that a unique patient_id is generated. If it is not after
@@ -215,7 +219,7 @@ class Researcher(AbstractPasswordUser):
     is_batch_user = models.BooleanField(default=False)
     
     @classmethod
-    def create_with_password(cls, username, password, **kwargs):
+    def create_with_password(cls, username, password, **kwargs) -> Researcher:
         """
         Creates a new Researcher with provided username and password. They will initially
         not be associated with any Study.
@@ -227,7 +231,7 @@ class Researcher(AbstractPasswordUser):
         return researcher
     
     @classmethod
-    def create_without_password(cls, username):
+    def create_without_password(cls, username) -> Researcher:
         """
         Create a new Researcher with provided username and no password
         """
@@ -246,7 +250,7 @@ class Researcher(AbstractPasswordUser):
         return researcher.validate_password(compare_me)
     
     @classmethod
-    def filter_alphabetical(self, *args, **kwargs):
+    def filter_alphabetical(self, *args, **kwargs) -> QuerySet[Researcher]:
         """ Sort the Researchers a-z by username ignoring case, exclude special user types. """
         return (
             Researcher.objects
@@ -254,15 +258,16 @@ class Researcher(AbstractPasswordUser):
                 .order_by('username_lower')
                 .filter(is_batch_user=False, *args, **kwargs)
         )
-    
-    def get_administered_researchers(self):
+
+    def get_administered_researchers(self) -> QuerySet[Researcher]:
         studies = self.study_relations.filter(
             relationship=ResearcherRole.study_admin).values_list("study_id", flat=True)
         researchers = StudyRelation.objects.filter(
             study_id__in=studies).values_list("researcher_id", flat=True).distinct()
         return Researcher.objects.filter(id__in=researchers, is_batch_user=False)
-    
-    def get_administered_researchers_by_username(self):
+
+    def get_administered_researchers_by_username(self) -> Researcher:
+
         return (
             self.get_administered_researchers()
                 .annotate(username_lower=Func(F('username'), function='LOWER'))
@@ -292,8 +297,8 @@ class Researcher(AbstractPasswordUser):
             self.access_key_secret_salt.encode(),
             self.access_key_secret.encode(),
         )
-    
-    def reset_access_credentials(self) -> (str, str):
+
+    def reset_access_credentials(self) -> Tuple[str, str]:
         access_key = generate_random_string()[:64]
         secret_key = generate_random_string()[:64]
         secret_hash, secret_salt = generate_hash_and_salt(secret_key)
