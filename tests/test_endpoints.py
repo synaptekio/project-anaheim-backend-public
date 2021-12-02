@@ -15,7 +15,7 @@ from api.tableau_api import FINAL_SERIALIZABLE_FIELD_NAMES
 from config.jinja2 import easy_url
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     IOS_FIREBASE_CREDENTIALS)
-from constants.data_processing_constants import BEIWE_PROJECT_ROOT
+from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.data_stream_constants import ALL_DATA_STREAMS, SURVEY_TIMINGS
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
@@ -36,7 +36,7 @@ from libs.encryption import get_RSA_cipher
 from libs.security import generate_easy_alphanumeric_string
 from tests.common import (BasicSessionTestCase, DataApiTest, ParticipantSessionTest,
     RedirectSessionApiTest, ResearcherSessionTest, SmartRequestsTestCase)
-from tests.helpers import compare_dictionaries, DummyThreadPool
+from tests.helpers import DummyThreadPool
 
 
 class TestLoginPages(BasicSessionTestCase):
@@ -1940,7 +1940,7 @@ class TestGetData(DataApiTest):
         # this is an empty zip file as output by the api.  PK\x05\x06 is zip-speak for an empty
         # container.  Behavior can vary on how zip decompressors handle an empty zip, some fail.
         self.assertEqual(file_bytes, self.EMPTY_ZIP)
-
+        
         # test without web_form, which will create the registry file (which is empty)
         resp2: FileResponse = self.smart_post(study_pk=self.session_study.id)
         self.assertEqual(resp2.status_code, 200)
@@ -2186,7 +2186,7 @@ class TestGetData(DataApiTest):
         
         if force_web_form:
             post_kwargs["web_form"] = ""
-
+        
         if query_data_streams is not None:
             post_kwargs["data_streams"] = query_data_streams
         

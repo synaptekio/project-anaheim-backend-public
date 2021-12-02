@@ -5,8 +5,8 @@ from datetime import date, datetime, timedelta
 from django.shortcuts import render
 
 from authentication.admin_authentication import authenticate_researcher_study_access
-from constants.data_stream_constants import (ALL_DATA_STREAMS, COMPLETE_DATA_STREAM_DICT,
-    PROCESSED_DATA_STREAM_DICT)
+from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT, PROCESSED_DATA_STREAM_DICT
+from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.datetime_constants import API_DATE_FORMAT
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
 from database.data_access_models import ChunkRegistry, PipelineRegistry

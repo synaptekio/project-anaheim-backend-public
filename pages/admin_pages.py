@@ -116,7 +116,7 @@ def reset_admin_password(request: ResearcherRequest):
         messages.warning(request, NEW_PASSWORD_MISMATCH)
         return redirect('admin_pages.manage_credentials')
 
-    # todo: sanitize password?
+    # FIXME: sanitize password?
     Researcher.objects.get(username=username).set_password(new_password)
     messages.warning(request, PASSWORD_RESET_SUCCESS)
     return redirect('admin_pages.manage_credentials')

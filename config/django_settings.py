@@ -5,7 +5,7 @@ from os.path import join
 
 from config import DB_MODE, DB_MODE_POSTGRES, DB_MODE_SQLITE
 from config.settings import FLASK_SECRET_KEY
-from constants.data_processing_constants import BEIWE_PROJECT_ROOT
+from constants.common_constants import BEIWE_PROJECT_ROOT
 
 
 # SECRET KEY is required by the django management commands, using the flask key is fine because

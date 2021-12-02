@@ -118,7 +118,8 @@ def authenticate_participant_registration(some_function) -> callable:
 
 
 # TODO: basic auth is not a good thing, it is only used because it was easy and we enforce
-#  https on all connections.  Review.
+#  https on all connections.  Fundamentally we need a rewrite of the participant auth structure to
+#  disconnect it from the user password.  This is a major undertaking.
 def correct_for_basic_auth(request: ParticipantRequest):
     """
     Basic auth is used in IOS.

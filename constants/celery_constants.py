@@ -1,6 +1,6 @@
 from os.path import join as path_join
 
-from constants.data_processing_constants import BEIWE_PROJECT_ROOT
+from constants.common_constants import BEIWE_PROJECT_ROOT
 
 
 # Celery Constants
@@ -16,7 +16,7 @@ class ScheduleTypes(object):
     absolute = "absolute"
     relative = "relative"
     weekly = "weekly"
-
+    
     @classmethod
     def choices(cls):
         return (
@@ -35,4 +35,3 @@ BACKEND_FIREBASE_CREDENTIALS = "backend_firebase_credentials"
 # firebase gets the default app name unless otherwise specified, so it is necessary to have
 # another name for testing that will never be used to send notifications
 FIREBASE_APP_TEST_NAME = 'FIREBASE_APP_TEST_NAME'
-

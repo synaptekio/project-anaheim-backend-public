@@ -56,21 +56,21 @@ def process_file_chunks():
     if FileProcessLock.islocked():
         raise ProcessingOverlapError("Data processing overlapped with a previous data indexing run.")
     FileProcessLock.lock()
-
+    
     try:
         number_bad_files = 0
-
+        
         # Get the list of participants with open files to process
         participants = Participant.objects.filter(files_to_process__isnull=False).distinct()
         print("processing files for the following users: %s" % ",".join(participants.values_list('patient_id', flat=True)))
-
+        
         for participant in participants:
             while True:
                 previous_number_bad_files = number_bad_files
                 starting_length = participant.files_to_process.exclude(deleted=True).count()
-
+                
                 print("%s processing %s, %s files remaining" % (datetime.now(), participant.patient_id, starting_length))
-
+                
                 # Process the desired number of files and calculate the number of unprocessed files
                 number_bad_files += do_process_user_file_chunks(
                         page_size=FILE_PROCESS_PAGE_SIZE,
@@ -78,7 +78,7 @@ def process_file_chunks():
                         position=number_bad_files,
                         participant=participant,
                 )
-
+                
                 # If no files were processed, quit processing
                 if (participant.files_to_process.exclude(deleted=True).count() == starting_length
                         and previous_number_bad_files == number_bad_files):
@@ -88,7 +88,7 @@ def process_file_chunks():
                     break
     finally:
         FileProcessLock.unlock()
-
+    
     error_handler.raise_errors()
 
 
@@ -120,28 +120,29 @@ def do_process_user_file_chunks(
     ftps_to_remove = set()
     # The ThreadPool enables downloading multiple files simultaneously from the network, and continuing
     # to download files as other files are being processed, making the code as a whole run faster.
-    pool = ThreadPool(CONCURRENT_NETWORK_OPS)  # Todo: make pool more global to prevent OS memory hogging
+    # In principle we could make a global pool that is free-memory aware.
+    pool = ThreadPool(CONCURRENT_NETWORK_OPS)
     survey_id_dict = {}
-
+    
     # A Django query with a slice (e.g. .all()[x:y]) makes a LIMIT query, so it
     # only gets from the database those FTPs that are in the slice.
     # print(participant.as_unpacked_native_python())
     print(len(participant.files_to_process.exclude(deleted=True).all()))
     print(page_size)
     print(position)
-
+    
     # ordering by path results in files grouped by type and chronological order, which is perfect
     # for efficiency.
     # Fixme: does this order_by break the skipping of items that failed to process? solution: exclude ids?
     files_to_process = participant.files_to_process \
         .exclude(deleted=True)  #.order_by("s3_file_path", "created_on")
-
+    
     # This pool pulls in data for each FileForProcessing on a background thread and instantiates it.
     # Instantiating a FileForProcessing object queries S3 for the File's data. (network request))
     files_for_processing = pool.map(
         FileForProcessing, files_to_process[position: position + page_size], chunksize=1
     )
-
+    
     for file_for_processing in files_for_processing:
         with error_handler:
             process_one_file(
@@ -149,20 +150,20 @@ def do_process_user_file_chunks(
             )
     pool.close()
     pool.terminate()
-
+    
     # there are several failure modes and success modes, information for what to do with different
     # files percolates back to here.  Delete various database objects accordingly.
     more_ftps_to_remove, number_bad_files, earliest_time_bin, latest_time_bin = upload_binified_data(
         all_binified_data, error_handler, survey_id_dict
     )
     ftps_to_remove.update(more_ftps_to_remove)
-
+    
     # Update the data quantity stats, if it actually processed any files
     if len(files_to_process) > 0:
         calculate_data_quantity_stats(participant,
                                       earliest_time_bin_number=earliest_time_bin,
                                       latest_time_bin_number=latest_time_bin)
-
+    
     # Actually delete the processed FTPs from the database
     FileToProcess.objects.filter(pk__in=ftps_to_remove).delete()
     return number_bad_files
@@ -173,20 +174,20 @@ def process_one_file(
         ftps_to_remove: set
 ):
     """ This function is the inner loop of the chunking process. """
-
+    
     if file_for_processing.exception:
         file_for_processing.raise_data_processing_error()
-
+    
     # there are two cases: chunkable data that can be stuck into "time bins" for each hour, and
     # files that do not need to be "binified" and pretty much just go into the ChunkRegistry unmodified.
     if file_for_processing.chunkable:
         newly_binified_data, survey_id_hash = process_csv_data(file_for_processing)
-
+        
         # survey answers store the survey id in the file name (truly ancient design decision).
         if file_for_processing.data_type in SURVEY_DATA_FILES:
             survey_id_dict[survey_id_hash] = resolve_survey_id_from_file_name(
                 file_for_processing.file_to_process.s3_file_path)
-
+        
         if newly_binified_data:
             append_binified_csvs(
                 all_binified_data, newly_binified_data, file_for_processing.file_to_process
@@ -194,7 +195,7 @@ def process_one_file(
         else:  # delete empty files from FilesToProcess
             ftps_to_remove.add(file_for_processing.file_to_process.id)
         return
-
+    
     else:
         # case: unchunkable data file
         timestamp = clean_java_timecode(
@@ -216,7 +217,7 @@ def process_one_file(
             if len(ve.messages) != 1:
                 # case: the error case (below) is very specific, we only want that singular error.
                 raise
-
+            
             # case: an unchunkable file was re-uploaded, causing a duplicate file path collision
             # we detect this specific case and update the registry with the new file size
             # (hopefully it doesn't actually change)
@@ -242,11 +243,11 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
     failed_ftps = set([])
     ftps_to_retire = set([])
     upload_these = []
-
+    
     # Track the earliest and latest time bins, to return them at the end of the function
     earliest_time_bin = None
     latest_time_bin = None
-
+    
     for data_bin, (data_rows_list, ftp_list) in binified_data.items():
         with error_handler:
             try:
@@ -260,7 +261,7 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                 rows = data_rows_list
                 updated_header = convert_unix_to_human_readable_timestamps(original_header, rows)
                 chunk_path = construct_s3_chunk_path(study_object_id, user_id, data_type, time_bin)
-
+                
                 if ChunkRegistry.objects.filter(chunk_path=chunk_path).exists():
                     chunk = ChunkRegistry.objects.get(chunk_path=chunk_path)
                     try:
@@ -276,9 +277,9 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                             chunk.remove()  # this line of code is ancient and almost definitely wrong.
                             raise ChunkFailedToExist("chunk %s does not actually point to a file, deleting DB entry, should run correctly on next index." % chunk_path)
                         raise  # Raise original error if not 404 s3 error
-
+                    
                     old_header, old_rows = csv_to_list(s3_file_data)
-
+                    
                     if old_header != updated_header:
                         # To handle the case where a file was on an hour boundary and placed in
                         # two separate chunks we need to raise an error in order to retire this file. If this
@@ -293,7 +294,7 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                     ensure_sorted_by_timestamp(old_rows)
                     new_contents = construct_csv_string(updated_header, old_rows)
                     del old_rows
-
+                    
                     upload_these.append((chunk, chunk_path, compress(new_contents), study_object_id))
                     del new_contents
                 else:
@@ -306,7 +307,7 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                             object_id=survey_id_dict[survey_id_hash]).values_list("pk", flat=True).get()
                     else:
                         survey_id = None
-
+                    
                     # this object will eventually get **kwarg'd into ChunkRegistry.register_chunked_data
                     chunk_params = {
                         "study_id": Study.objects.filter(object_id=study_object_id).values_list("pk", flat=True).get(),
@@ -316,7 +317,7 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                         "time_bin": time_bin,
                         "survey_id": survey_id
                     }
-
+                    
                     upload_these.append((chunk_params, chunk_path, compress(new_contents), study_object_id))
             except Exception as e:
                 # Here we catch any exceptions that may have arisen, as well as the ones that we raised
@@ -327,19 +328,19 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
                 print("FAILED TO UPDATE: study_id:%s, user_id:%s, data_type:%s, time_bin:%s, header:%s "
                       % (study_object_id, user_id, data_type, time_bin, updated_header))
                 raise
-
+            
             else:
                 # If no exception was raised, the FTP has completed processing. Add it to the set of
                 # retireable (i.e. completed) FTPs.
                 ftps_to_retire.update(ftp_list)
-
+    
     pool = ThreadPool(CONCURRENT_NETWORK_OPS)
     errors = pool.map(batch_upload, upload_these, chunksize=1)
     for err_ret in errors:
         if err_ret['exception']:
             print(err_ret['traceback'])
             raise err_ret['exception']
-
+    
     pool.close()
     pool.terminate()
     # The things in ftps to retire that are not in failed ftps.
@@ -353,11 +354,11 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
 def construct_s3_chunk_path(study_id: bytes, user_id: bytes, data_type: bytes, time_bin: int) -> str:
     """ S3 file paths for chunks are of this form:
         CHUNKED_DATA/study_id/user_id/data_type/time_bin.csv """
-
+    
     study_id = study_id.decode() if isinstance(study_id, bytes) else study_id
     user_id = user_id.decode() if isinstance(user_id, bytes) else user_id
     data_type = data_type.decode() if isinstance(data_type, bytes) else data_type
-
+    
     return "%s/%s/%s/%s/%s.csv" % (
         CHUNKS_FOLDER,
         study_id,
@@ -402,21 +403,21 @@ def process_csv_data(file_for_processing: FileForProcessing):
     """ Constructs a binified dict of a given list of a csv rows,
         catches csv files with known problems and runs the correct logic.
         Returns None If the csv has no data in it. """
-
+    
     if file_for_processing.file_to_process.participant.os_type == Participant.ANDROID_API:
         # Do fixes for Android
         if file_for_processing.data_type == ANDROID_LOG_FILE:
             file_for_processing.file_contents = fix_app_log_file(
                 file_for_processing.file_contents, file_for_processing.file_to_process.s3_file_path
             )
-
+        
         header, csv_rows_list = csv_to_list(file_for_processing.file_contents)
         if file_for_processing.data_type != ACCELEROMETER:
             # If the data is not accelerometer data, convert the generator to a list.
             # For accelerometer data, the data is massive and so we don't want it all
             # in memory at once.
             csv_rows_list = list(csv_rows_list)
-
+        
         if file_for_processing.data_type == CALL_LOG:
             header = fix_call_log_csv(header, csv_rows_list)
         if file_for_processing.data_type == WIFI:
@@ -424,19 +425,19 @@ def process_csv_data(file_for_processing: FileForProcessing):
     else:
         # Do fixes for iOS
         header, csv_rows_list = csv_to_list(file_for_processing.file_contents)
-
+        
         if file_for_processing.data_type != ACCELEROMETER:
             csv_rows_list = list(csv_rows_list)
-
+    
     # Memory saving measure: this data is now stored in its entirety in csv_rows_list
     file_for_processing.clear_file_content()
-
+    
     # Do these fixes for data whether from Android or iOS
     if file_for_processing.data_type == IDENTIFIERS:
         header = fix_identifier_csv(header, csv_rows_list, file_for_processing.file_to_process.s3_file_path)
     if file_for_processing.data_type == SURVEY_TIMINGS:
         header = fix_survey_timings(header, csv_rows_list, file_for_processing.file_to_process.s3_file_path)
-
+    
     header = b",".join([column_name.strip() for column_name in header.split(b",")])
     if csv_rows_list:
         return (
