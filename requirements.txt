@@ -204,7 +204,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-zstd==1.5.0.2
+zstd==1.5.0.4
     # via -r requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
