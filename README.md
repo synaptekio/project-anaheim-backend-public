@@ -15,6 +15,8 @@ Some of the data collected by Beiwe contain identifiers, such as phone numbers. 
 
 A recent study found that 65% of medical studies were inconsistent when retested, and only 6% were completely reproducible. Reproducibility of studies using mobile devices may be even lower given the variability of devices, heterogeneity in their use, and lack of standardized methods for data analysis. All Beiwe study data collection settings, from sensors to surveys, are captured in a human readable JSON file. These files can be imported into Beiwe and exported out of Beiwe. To replicate a study, the investigator can simply upload an existing configuration file.
 
+Cite the code: [![DOI](https://zenodo.org/badge/53344506.svg)](https://zenodo.org/badge/latestdoi/53344506)
+
 # Setup instructions
 
 ## Configuring SSL
