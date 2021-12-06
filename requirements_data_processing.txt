@@ -2,4 +2,4 @@
 celery==4.4.7
 
 # This is temporary until forest is open-sourced
-git+https://git@github.com/onnela-lab/forest@f9848f74a7ae227009a565a8978c357c79112c2d
+git+https://git@github.com/onnela-lab/forest@f0780df7ff285b8b0b124c062d64eb27f6142120
