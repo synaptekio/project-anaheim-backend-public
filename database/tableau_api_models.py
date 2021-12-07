@@ -100,7 +100,10 @@ class ForestTask(TimestampedModel):
         Construct summary statistics from forest output, returning whether or not any
         SummaryStatisticDaily has potentially been created or updated.
         """
+        from services.celery_forest import log
+        
         if not os.path.exists(self.forest_results_path):
+            log("path does not exist:", self.forest_results_path)
             return False
         
         if self.forest_tree == ForestTree.jasmine:
@@ -109,11 +112,12 @@ class ForestTask(TimestampedModel):
             task_attribute = "willow_task"
         else:
             raise Exception("Unknown tree")
+        log("tree:", task_attribute)
         
         with open(self.forest_results_path, "r") as f:
             reader = csv.DictReader(f)
             has_data = False
-            
+            log("opened file...")
             for line in reader:
                 has_data = True
                 summary_date = datetime.date(
@@ -141,6 +145,7 @@ class ForestTask(TimestampedModel):
                     "defaults": updates,
                     "participant": self.participant,
                 }
+                log("creating SummaryStatisticDaily:", data)
                 SummaryStatisticDaily.objects.update_or_create(**data)
         return has_data
     

@@ -8,8 +8,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
-from forest.jasmine.traj2stats import gps_stats_main
-from forest.willow.log_stats import log_stats_main
 from pkg_resources import get_distribution
 
 from api.data_access_api import chunk_fields
@@ -18,11 +16,18 @@ from database.data_access_models import ChunkRegistry
 from database.tableau_api_models import ForestTask
 from libs.celery_control import forest_celery_app, safe_apply_async
 from libs.forest_integration.constants import ForestTree
-
-
-# run via cron every five minutes
 from libs.s3 import s3_retrieve
 from libs.streaming_zip import determine_file_name
+
+from forest.jasmine.traj2stats import gps_stats_main
+from forest.willow.log_stats import log_stats_main
+
+DEBUG_CELERY_FOREST = True
+
+def log(*args, **kwargs):
+    if DEBUG_CELERY_FOREST:
+        print("celery_forest debug: ", end="")
+        print(*args, **kwargs)
 
 
 TREE_TO_FOREST_FUNCTION = {
@@ -33,7 +38,7 @@ TREE_TO_FOREST_FUNCTION = {
 
 def create_forest_celery_tasks():
     pending_tasks = ForestTask.objects.filter(status=ForestTask.Status.queued)
-
+    
     # with make_error_sentry(sentry_type=SentryTypes.data_processing):  # add a new type?
     with NullErrorHandler():  # for debugging, does not suppress errors
         for task in pending_tasks:
@@ -46,7 +51,7 @@ def create_forest_celery_tasks():
 def celery_run_forest(forest_task_id):
     with transaction.atomic():
         task = ForestTask.objects.filter(id=forest_task_id).first()
-
+        
         participant = task.participant
         forest_tree = task.forest_tree
         
@@ -77,12 +82,14 @@ def celery_run_forest(forest_task_id):
         task.forest_version = get_distribution("forest").version
         task.process_start_time = timezone.now()
         task.save(update_fields=["status", "forest_version", "process_start_time"])
-
+    
     try:
         # Save file size data
         # The largest UTC offsets are -12 and +14
         min_datetime = datetime.combine(task.data_date_start, datetime.min.time()) - timedelta(hours=12)
         max_datetime = datetime.combine(task.data_date_end, datetime.max.time()) + timedelta(hours=14)
+        log("min_datetime: ", min_datetime.isoformat())
+        log("max_datetime: ", max_datetime.isoformat())
         chunks = (
             ChunkRegistry
                 .objects
@@ -100,11 +107,15 @@ def celery_run_forest(forest_task_id):
         create_local_data_files(task, chunks)
         task.process_download_end_time = timezone.now()
         task.save(update_fields=["process_download_end_time"])
-
+        log("task.process_download_end_time:", task.process_download_end_time.isoformat())
+        
         # Run Forest
         params_dict = task.params_dict()
+        log("params_dict:", params_dict)
         task.params_dict_cache = json.dumps(params_dict, cls=DjangoJSONEncoder)
         task.save(update_fields=["params_dict_cache"])
+        
+        log("running:", task.forest_tree)
         TREE_TO_FOREST_FUNCTION[task.forest_tree](**params_dict)
         
         # Save data
@@ -116,11 +127,18 @@ def celery_run_forest(forest_task_id):
         task.stacktrace = traceback.format_exc()
     else:
         task.status = task.Status.success
+    
+    log("task.status:", task.status)
+    if task.stacktrace:
+        log("stacktrace:", task.stacktrace)
+
     task.save(update_fields=["status", "stacktrace"])
+    
+    log("deleting files")
     task.clean_up_files()
     task.process_end_time = timezone.now()
     task.save(update_fields=["process_end_time"])
-    
+
 
 
 def create_local_data_files(task, chunks):
@@ -151,7 +169,7 @@ def save_cached_files(task: ForestTask):
     if os.path.exists(task.all_bv_set_path):
         with open(task.all_bv_set_path, "rb") as f:
             task.save_all_bv_set_bytes(f.read())
-            
+    
     if os.path.exists(task.all_memory_dict_path):
         with open(task.all_memory_dict_path, "rb") as f:
             task.save_all_memory_dict_bytes(f.read())
