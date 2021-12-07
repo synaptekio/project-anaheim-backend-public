@@ -2,6 +2,7 @@ import json
 import os
 import traceback
 from datetime import datetime, timedelta
+from multiprocessing.pool import ThreadPool
 
 from cronutils.error_handler import NullErrorHandler
 from django.core.serializers.json import DjangoJSONEncoder
@@ -22,7 +23,8 @@ from libs.streaming_zip import determine_file_name
 from forest.jasmine.traj2stats import gps_stats_main
 from forest.willow.log_stats import log_stats_main
 
-DEBUG_CELERY_FOREST = True
+
+DEBUG_CELERY_FOREST = False
 
 def log(*args, **kwargs):
     if DEBUG_CELERY_FOREST:
@@ -131,7 +133,7 @@ def celery_run_forest(forest_task_id):
     log("task.status:", task.status)
     if task.stacktrace:
         log("stacktrace:", task.stacktrace)
-
+    
     task.save(update_fields=["status", "stacktrace"])
     
     log("deleting files")
@@ -139,18 +141,28 @@ def celery_run_forest(forest_task_id):
     task.process_end_time = timezone.now()
     task.save(update_fields=["process_end_time"])
 
-
-
 def create_local_data_files(task, chunks):
-    for chunk in chunks.values("study__object_id", *chunk_fields):
-        contents = s3_retrieve(chunk["chunk_path"], chunk["study__object_id"], raw_path=True)
-        file_name = os.path.join(
-            task.data_input_path,
-            determine_file_name(chunk),
-        )
-        os.makedirs(os.path.dirname(file_name), exist_ok=True)
-        with open(file_name, "xb") as f:
-            f.write(contents)
+    # downloading data is highly threadable and can be the majority of the run time. 4 works for
+    # most files, a very high small file count can make use of 10+ before we are cpu limited.
+    with ThreadPool(4) as pool:
+        for _ in pool.imap_unordered(
+            func=batch_create_file,
+            iterable=[(task, chunk) for chunk in chunks
+            .values("study__object_id", *chunk_fields)],
+        ):
+            pass
+
+def batch_create_file(singular_task_chunk):
+    task: ForestTask  # chunk is a values dict
+    task, chunk = singular_task_chunk
+    contents = s3_retrieve(chunk["chunk_path"], chunk["study__object_id"], raw_path=True)
+    file_name = os.path.join(
+        task.data_input_path,
+        determine_file_name(chunk),
+    )
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    with open(file_name, "xb") as f:
+        f.write(contents)
 
 
 def enqueue_forest_task(**kwargs):

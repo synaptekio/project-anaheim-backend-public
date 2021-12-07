@@ -13,7 +13,7 @@ from libs.forest_integration.constants import ForestTree, TREE_COLUMN_NAMES_TO_S
 from libs.utils.date_utils import datetime_to_list
 
 class BadForestField(Exception): pass
-
+YEAR_MONTH_DAY = ('year', 'month', 'day')
 
 class ForestParam(TimestampedModel):
     """
@@ -100,7 +100,7 @@ class ForestTask(TimestampedModel):
         Construct summary statistics from forest output, returning whether or not any
         SummaryStatisticDaily has potentially been created or updated.
         """
-        from services.celery_forest import log
+        from services.celery_forest import log  # retain as local import
         
         if not os.path.exists(self.forest_results_path):
             log("path does not exist:", self.forest_results_path)
@@ -129,17 +129,17 @@ class ForestTask(TimestampedModel):
                 if not (self.data_date_start < summary_date < self.data_date_end):
                     continue
                 
-                updates = {}
+                updates = {task_attribute: self}
                 for column_name, value in line.items():
                     if column_name in TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS:
                         # look up column translation, coerce empty strings to Nones
                         summary_stat_field = TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS[column_name]
                         updates[summary_stat_field] = value if value != '' else None
+                    elif column_name in YEAR_MONTH_DAY:
+                        continue
                     else:
                         raise BadForestField(column_name)
-                
-                updates[task_attribute] = self
-                
+                                
                 data = {
                     "date": summary_date,
                     "defaults": updates,
