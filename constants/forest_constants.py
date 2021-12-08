@@ -40,14 +40,48 @@ class ForestTaskStatus:
 # an example using multiple fields:       --- lambda _, line: line['a'] * line['b']
 #   where a and b are other csv fields
 
+
 TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS = {
-    (ForestTree.jasmine, 'missing_time'): ('gps_data_missing_duration', None),
-    (ForestTree.jasmine, 'home_time'): ('home_duration', None),
-    (ForestTree.jasmine, 'max_dist_home'): ('distance_from_home', None),
-    (ForestTree.jasmine, 'dist_traveled'): ('distance_traveled', None),
-    (ForestTree.jasmine, 'av_flight_length'): ('flight_distance_average', None),
-    (ForestTree.jasmine, 'sd_flight_length'): ('flight_distance_standard_deviation', None),
-    (ForestTree.jasmine, 'av_flight_duration'): ('flight_duration_average', None),
-    (ForestTree.jasmine, 'sd_flight_duration'): ('flight_duration_standard_deviation', None),
-    (ForestTree.jasmine, 'diameter'): ('distance_diameter', None),
+    # Jasmine
+    "diameter": "jasmine_distance_diameter",
+    "max_dist_home": "jasmine_distance_from_home",
+    "dist_traveled": "jasmine_distance_traveled",
+    "av_flight_length": "jasmine_flight_distance_average",
+    "sd_flight_length": "jasmine_flight_distance_stddev",
+    "av_flight_duration": "jasmine_flight_duration_average",
+    "sd_flight_duration": "jasmine_flight_duration_stddev",
+    "missing_time": "jasmine_gps_data_missing_duration",
+    "home_time": "jasmine_home_duration",
+    "radius": "jasmine_gyration_radius",
+    "num_sig_places": "jasmine_significant_location_count",
+    "entropy": "jasmine_significant_location_entropy",
+    "total_pause_time": "jasmine_pause_time",
+    "obs_duration": "jasmine_obs_duration",
+    "obs_day": "jasmine_obs_day",
+    "obs_night": "jasmine_obs_night",
+    "total_flight_time": "jasmine_total_flight_time",
+    "av_pause_duration": "jasmine_av_pause_duration",
+    "sd_pause_duration": "jasmine_sd_pause_duration",
+    
+    # Willow, Texts
+    "num_r": "willow_incoming_text_count",
+    "num_r_tel": "willow_incoming_text_degree",
+    "total_char_r": "willow_incoming_text_length",
+    "num_s": "willow_outgoing_text_count",
+    "num_s_tel": "willow_outgoing_text_degree",
+    "total_char_s": "willow_outgoing_text_length",
+    "text_reciprocity_incoming": "willow_incoming_text_reciprocity",
+    "text_reciprocity_outgoing": "willow_outgoing_text_reciprocity",
+    "num_mms_s": "willow_outgoing_MMS_count",
+    "num_mms_r": "willow_incoming_MMS_count",
+
+    # willow, calls
+    "num_in_call": "willow_incoming_call_count",
+    "num_in_caller": "willow_incoming_call_degree",
+    "total_mins_in_call": "willow_incoming_call_duration",
+    "num_out_call": "willow_outgoing_call_count",
+    "num_out_caller": "willow_outgoing_call_degree",
+    "total_mins_out_call": "willow_outgoing_call_duration",
+    "num_mis_call": "willow_missed_call_count",
+    "num_mis_caller": "willow_missed_callers",
 }

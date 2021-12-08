@@ -14,7 +14,7 @@ def remove_batch_users_in_reverse(apps, schema_editor):
 class Migration(migrations.Migration):
     
     dependencies = [
-        ('database', '0061_historical_data_qty_stats'),
+        ('database', '0063_auto_20211207_1841'),
     ]
     
     operations = [
@@ -32,6 +32,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='participant',
             name='push_notification_unreachable_count',
-            field=models.SmallIntegerField(default=0),
+            field=models.SmallIntegerField(default=0),  # default was accidentally "True", which was coerced to 1
         ),
     ]
