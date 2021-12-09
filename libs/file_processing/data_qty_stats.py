@@ -23,8 +23,8 @@ def populate_data_quantity(chunkregistry_query: QuerySet,
     
     for time_bin, chunk_data_type, file_size in chunkregistry_query.values_list(*fields):
         day = time_bin.astimezone(study_timezone).date()
-        filesize = 0 if filesize is None else file_size
-        daily_data_quantities[day][chunk_data_type] += filesize
+        file_size = 0 if file_size is None else file_size
+        daily_data_quantities[day][chunk_data_type] += file_size
     
     return daily_data_quantities
 
