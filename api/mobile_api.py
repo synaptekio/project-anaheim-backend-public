@@ -5,6 +5,7 @@ import time
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.http.response import HttpResponse
 from django.utils import timezone
 
@@ -162,19 +163,14 @@ def get_uploaded_file(request: ParticipantRequest):
         # android
         uploaded_file = request.POST['file']
     else:
-        # FIXME: determine behavior in app, this case to treat the body as the file contents, which
-        # was never a thing.
-        return abort(400)
+        raise Exception("no uploaded file")
     
     # force the file to the correct object type.
-    if isinstance(uploaded_file, ContentFile):
+    if isinstance(uploaded_file, (ContentFile, InMemoryUploadedFile)):
         uploaded_file = uploaded_file.read()
     if isinstance(uploaded_file, str):
         # android
         uploaded_file = uploaded_file.encode()
-    elif isinstance(uploaded_file, bytes):
-        # not current behavior on any app
-        pass
     else:
         raise TypeError(f"uploaded_file was a {type(uploaded_file)}")
     
@@ -218,7 +214,7 @@ def register_user(request: ParticipantRequest, OS_API=""):
         or 'new_password' not in request.POST
     ):
         return abort(400)
-
+    
     # CASE: If the id and password combination do not match, the decorator returns a 403 error.
     # the following parameter values are required.
     patient_id = request.POST['patient_id']
