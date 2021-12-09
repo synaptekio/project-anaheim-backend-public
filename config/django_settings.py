@@ -1,10 +1,10 @@
-# names in this file's scope are passed in to the django settings.configure command in load_django.
-
 import os
 from os.path import join
 
+from django.core.exceptions import ImproperlyConfigured
+
 from config import DB_MODE, DB_MODE_POSTGRES, DB_MODE_SQLITE
-from config.settings import FLASK_SECRET_KEY
+from config.settings import DOMAIN_NAME, FLASK_SECRET_KEY
 from constants.common_constants import BEIWE_PROJECT_ROOT
 
 
@@ -32,10 +32,9 @@ elif DB_MODE == DB_MODE_POSTGRES:
         },
     }
 else:
-    from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured("server not running as expected, could not find environment variable DJANGO_DB_ENV")
 
-DEBUG = True
+DEBUG = 'localhost' in DOMAIN_NAME or '127.0.0.1' in DOMAIN_NAME or '::1' in DOMAIN_NAME
 
 
 MIDDLEWARE = [
@@ -90,7 +89,12 @@ SHELL_PLUS_PRE_IMPORTS = []
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
 # server settings....
-ALLOWED_HOSTS = "*"
+if DEBUG:
+    ALLOWED_HOSTS = "*"
+else:
+    # we only allow the domain name to be the referrer
+    ALLOWED_HOSTS = [DOMAIN_NAME]
+
 PROJECT_ROOT = "."
 ROOT_URLCONF = "urls"
 STATIC_ROOT = "frontend/static/"
