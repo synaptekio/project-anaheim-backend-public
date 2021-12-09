@@ -3,7 +3,7 @@ import datetime
 from collections import defaultdict
 
 from django.contrib import messages
-from django.http.response import StreamingHttpResponse
+from django.http.response import FileResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -99,7 +99,7 @@ def create_tasks(request: ResearcherRequest, study_id=None):
     
     # FIXME: remove this double endpoint pattern, it is bad.
     if request.method == "GET":
-        return render_create_tasks(study)
+        return render_create_tasks(request, study)
     
     form = CreateTasksForm(data=request.POST, study=study)
     
@@ -111,7 +111,7 @@ def create_tasks(request: ResearcherRequest, study_id=None):
         ]
         error_messages_string = "\n".join(error_messages)
         messages.warning(f"Errors:\n\n{error_messages_string}")
-        return render_create_tasks(study)
+        return render_create_tasks(request, study)
     
     form.save()
     messages.success("Forest tasks successfully queued!")
@@ -140,7 +140,7 @@ def task_log(request: ResearcherRequest, study_id=None):
 @authenticate_admin
 def download_task_log(request: ResearcherRequest):
     forest_tasks = ForestTask.objects.order_by("created_on")
-    return StreamingHttpResponse(
+    return FileResponse(
         stream_forest_task_log_csv(forest_tasks),
         content_type="text/csv",
         filename=f"forest_task_log_{timezone.now().isoformat()}.csv",
@@ -180,11 +180,11 @@ def download_task_data(request: ResearcherRequest, study_id, forest_task_externa
         return abort(404)
     
     chunks = ChunkRegistry.objects.filter(participant=tracker.participant).values(*CHUNK_FIELDS)
-    return StreamingHttpResponse(
+    return FileResponse(
         zip_generator(chunks),
-        filename=f"{tracker.get_slug()}.zip",
         content_type="zip",
         as_attachment=True,
+        filename=f"{tracker.get_slug()}.zip",
     )
 
 
