@@ -142,7 +142,7 @@ SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 APPEND_SLASH = False
 
 # We need this to be fairly large, if users ever encounter a problem with this please report it
-DATA_UPLOAD_MAX_MEMORY_SIZE = "100M"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
 # enable Sentry error reporting
