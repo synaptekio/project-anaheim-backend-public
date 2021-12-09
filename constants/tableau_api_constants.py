@@ -1,13 +1,15 @@
 from django.db.models.fields import (BooleanField, CharField, DateField, DateTimeField, FloatField,
     IntegerField, TextField)
 
+from constants.forest_constants import TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS
+
 
 SERIALIZABLE_FIELD_NAMES = [
     # Metadata
     "date",
     "participant_id",
     "study_id",
-
+    
     # Data quantities
     "beiwe_accelerometer_bytes",
     "beiwe_ambient_audio_bytes",
@@ -29,50 +31,9 @@ SERIALIZABLE_FIELD_NAMES = [
     "beiwe_texts_bytes",
     "beiwe_audio_recordings_bytes",
     "beiwe_wifi_bytes",
-
-    # GPS
-    "jasmine_distance_diameter",
-    "jasmine_distance_from_home",
-    "jasmine_distance_traveled",
-    "jasmine_flight_distance_average",
-    "jasmine_flight_distance_stddev",
-    "jasmine_flight_duration_average",
-    "jasmine_flight_duration_stddev",
-    "jasmine_gps_data_missing_duration",
-    "jasmine_home_duration",
-    "jasmine_gyration_radius",
-    "jasmine_significant_location_count",
-    "jasmine_significant_location_entropy",
-    "jasmine_pause_time",
-    "jasmine_obs_duration",
-    "jasmine_obs_day",
-    "jasmine_obs_night",
-    "jasmine_total_flight_time",
-    "jasmine_av_pause_duration",
-    "jasmine_sd_pause_duration",
-
-    # Texts
-    "willow_incoming_text_count",
-    "willow_incoming_text_degree",
-    "willow_incoming_text_length",
-    "willow_outgoing_text_count",
-    "willow_outgoing_text_degree",
-    "willow_outgoing_text_length",
-    "willow_incoming_text_reciprocity",
-    "willow_outgoing_text_reciprocity",
-    "willow_outgoing_MMS_count",
-    "willow_incoming_MMS_count",
-
-    # Calls
-    "willow_incoming_call_count",
-    "willow_incoming_call_degree",
-    "willow_incoming_call_duration",
-    "willow_outgoing_call_count",
-    "willow_outgoing_call_degree",
-    "willow_outgoing_call_duration",
-    "willow_missed_call_count",
-    "willow_missed_callers",
 ]
+
+SERIALIZABLE_FIELD_NAMES.extend(TREE_COLUMN_NAMES_TO_SUMMARY_STATISTICS.values())
 
 SERIALIZABLE_FIELD_NAMES_DROPDOWN = [(f, f) for f in SERIALIZABLE_FIELD_NAMES]
 
