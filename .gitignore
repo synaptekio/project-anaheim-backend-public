@@ -5,6 +5,7 @@
 .idea/
 .python-version
 .coverage
+.vscode
 htmlcov/
 
 # A place to stick your files
