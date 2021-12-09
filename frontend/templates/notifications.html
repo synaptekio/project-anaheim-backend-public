@@ -1,24 +1,10 @@
-{#{% with messages = get_flashed_messages(with_categories=true) %}#}
-{#  {% for category, message in messages %}#}
-{##}
-{#    {% if category %}#}
-{#      <div class="alert alert-{{ category }} alert-dismissible" role="alert">#}
-{#    {% else %}#}
-{#      <div class="alert alert-info alert-dismissible" role="alert">#}
-{#    {% endif %}#}
-{#      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>#}
-{#      {{ message }}#}
-{#    </div>#}
-{##}
-{#  {% endfor %}#}
-{#{% endwith %}#}
-
-TODO: format flash messages
-
-{% if messages %}
-<ul class="messages">
-    {% for message in messages %}
-    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-    {% endfor %}
-</ul>
-{% endif %}
+{% for message in messages %}
+  {% if message.tags != "error" %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+  {% else %}
+    <div class="alert alert-danger alert-dismissible" role="alert">
+  {% endif %}
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    {{ message }}
+  </div>
+{% endfor %}
