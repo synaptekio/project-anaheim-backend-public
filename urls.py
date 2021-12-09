@@ -429,8 +429,14 @@ for urlpattern in urlpatterns:
             "we autogenerate all such endpoints."
         )
     
+    # for some reason the login page does not like the / redirect, it ends up with a %2F that 
+    # works locally but not on a real server.  unclear why
+    if urlpattern.name == "login_pages.login_page":
+        continue
+    
     extra_paths.append(
         path(urlpattern.pattern._route + "/", urlpattern.callback, name=urlpattern.name)
     )
-    
+
+# TODO: investigate if we can get rid of this whole allowing the slash or not...
 urlpatterns.extend(extra_paths)
