@@ -165,12 +165,14 @@ def get_uploaded_file(request: ParticipantRequest):
     else:
         raise Exception("no uploaded file")
     
-    # force the file to the correct object type.
+    # file should always be an InMemoryUploadedFile
     if isinstance(uploaded_file, (ContentFile, InMemoryUploadedFile)):
         uploaded_file = uploaded_file.read()
+    
     if isinstance(uploaded_file, str):
-        # android
-        uploaded_file = uploaded_file.encode()
+        uploaded_file = uploaded_file.encode()  # android
+    elif isinstance(uploaded_file, bytes):
+        pass  # nothing needs to happen (ios)
     else:
         raise TypeError(f"uploaded_file was a {type(uploaded_file)}")
     

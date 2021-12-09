@@ -142,30 +142,16 @@ def correct_for_basic_auth(request: ParticipantRequest):
     Check if user exists, check if the provided passwords match.
     """
     
-    # from pprint import pprint
-    # pprint(vars(request))
-    # print()
-    # pprint(request.headers)
-    
-    if "Authorization" in request.headers:
-        raise Exception("NOT IMPLEMENTED 1")
-    elif "authorization" in request.headers:
-        raise Exception("NOT IMPLEMENTED 2")
-    else:
-        return
-    
-    auth = request.authorization
-    # FIXME: Device Testing. this is broken - django port
-    if not auth:
-        return
-    
-    username_parts = auth.username.split('@')
-    if len(username_parts) == 2:
-        replace_dict = MultiValueDict(request.POST.to_dict())
-        if "patient_id" not in replace_dict:
-            replace_dict['patient_id'] = username_parts[0]
-        if "device_id" not in replace_dict:
-            replace_dict['device_id'] = username_parts[1]
-        if "password" not in replace_dict:
-            replace_dict['password'] = auth.password
-        request.POST = replace_dict
+    if 'HTTP_AUTHORIZATION' in request.META:
+        auth = request.META['HTTP_AUTHORIZATION'].split()
+        if len(auth) != 2:
+            raise Exception(f"incorrect basic auth length: {str(auth)}")
+        
+        if not auth[0].lower() == "basic":
+            raise Exception(f"wrong basic auth format: {str(auth)}")
+            
+        username_parts, password = auth[1].split(':')
+        patient_id, device_id = username_parts.split('@')
+        request.POST['patient_id'] = patient_id
+        request.POST['device_id'] = device_id
+        request.POST['password'] = password
