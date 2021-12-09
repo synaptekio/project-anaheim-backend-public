@@ -1071,12 +1071,12 @@ class TestDeleteResearcher(ResearcherSessionTest):
     def test_nonexistent(self):
         self.set_session_study_relation(ResearcherRole.site_admin)
         # 0 is not a valid database key.
-        self.smart_post_status_code(404, 0)
+        self.smart_get_status_code(404, 0)
     
     def _test(self, status_code: int, relation: str, success: bool):
         self.set_session_study_relation(relation)
         r2 = self.generate_researcher()
-        resp = self.smart_post_status_code(status_code, r2.id)
+        resp = self.smart_get_status_code(status_code, r2.id)
         self.assertEqual(Researcher.objects.filter(id=r2.id).count(), 0 if success else 1)
 
 

@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login)
@@ -42,7 +42,7 @@ def set_study_timezone(request: ResearcherRequest, study_id=None):
 
 @require_POST
 @authenticate_admin
-def add_researcher_to_study(request: ResearcherRequest, ):
+def add_researcher_to_study(request: ResearcherRequest):
     researcher_id = request.POST['researcher_id']
     study_id = request.POST['study_id']
     assert_admin(request, study_id)
@@ -62,7 +62,7 @@ def add_researcher_to_study(request: ResearcherRequest, ):
 
 @require_POST
 @authenticate_admin
-def remove_researcher_from_study(request: ResearcherRequest, ):
+def remove_researcher_from_study(request: ResearcherRequest):
     researcher_id = request.POST['researcher_id']
     study_id = request.POST['study_id']
     try:
@@ -76,7 +76,7 @@ def remove_researcher_from_study(request: ResearcherRequest, ):
     return redirect(request.POST['redirect_url'])
 
 
-@require_POST
+@require_GET
 @authenticate_admin
 def delete_researcher(request: ResearcherRequest, researcher_id):
     # only site admins can delete researchers from the system.
@@ -91,7 +91,7 @@ def delete_researcher(request: ResearcherRequest, researcher_id):
 
 @require_POST
 @authenticate_admin
-def set_researcher_password(request: ResearcherRequest, ):
+def set_researcher_password(request: ResearcherRequest):
     researcher = Researcher.objects.get(pk=request.POST.get('researcher_id', None))
     assert_researcher_under_admin(request, researcher)
     new_password = request.POST.get('password', '')

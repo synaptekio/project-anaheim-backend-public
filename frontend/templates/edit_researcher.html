@@ -118,7 +118,9 @@
     <a href="/manage_researchers" class="btn btn-success"><span class="glyphicon glyphicon-arrow-left"></span>&nbsp;Back to all researchers</a>
 
     {% if session_researcher.site_admin and not edit_researcher.site_admin and not is_self %}
-      <a href="/delete_researcher/{{ edit_researcher.id }}" class="btn btn-danger pull-right" onclick="return confirm('Are you certain you want to delete {{ edit_researcher._id }}?  This cannot be undone.')"><span class="glyphicon glyphicon-trash"></span>&nbsp;Delete Researcher {{ edit_researcher._id }}</a>
+      <a href="/delete_researcher/{{ edit_researcher.id }}" class="btn btn-danger pull-right" 
+       onclick="return confirm('Are you certain you want to delete {{ edit_researcher.username }}?  This cannot be undone.')">
+         <span class="glyphicon glyphicon-trash"></span>&nbsp;Delete Researcher</a>
     {% endif %}
   </div>
   </div>
