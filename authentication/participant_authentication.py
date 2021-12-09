@@ -8,7 +8,7 @@ from libs.internal_types import ParticipantRequest
 from middleware.abort_middleware import abort
 
 
-DEBUG_PARTICIPANT_AUTHENTICATION = True
+DEBUG_PARTICIPANT_AUTHENTICATION = False
 
 
 def log(*args, **kwargs):
