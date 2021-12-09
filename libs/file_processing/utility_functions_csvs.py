@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Generator, List
 
-from constants.other_constants import API_TIME_FORMAT
+from constants.datetime_constants import API_TIME_FORMAT
 from libs.file_processing.exceptions import BadTimecodeError
 
 
@@ -105,4 +105,3 @@ def clean_java_timecode(java_time_code_string: bytes or str) -> int:
 
 def unix_time_to_string(unix_time: int) -> bytes:
     return datetime.utcfromtimestamp(unix_time).strftime(API_TIME_FORMAT).encode()
-
