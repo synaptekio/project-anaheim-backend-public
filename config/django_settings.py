@@ -154,7 +154,7 @@ if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
     # custom tags have been disabled
     LOGGING = {
         'version': 1,
-        'disable_existing_loggers': True,
+        'disable_existing_loggers': False,
         'formatters':
             {
                 'verbose':
@@ -192,17 +192,17 @@ if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
                     {
                         'level': 'ERROR',
                         'handlers': ['console'],
-                        'propagate': False,
+                        'propagate': True,
                     },
                 'raven': {
                     'level': 'DEBUG',
                     'handlers': ['console'],
-                    'propagate': False,
+                    'propagate': True,
                 },
                 'sentry.errors': {
                     'level': 'DEBUG',
                     'handlers': ['console'],
-                    'propagate': False,
+                    'propagate': True,
                 },
             },
     }
