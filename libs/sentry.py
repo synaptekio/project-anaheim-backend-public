@@ -1,3 +1,5 @@
+# NOTE: THIS FILE IS IMPORTED IN THE DJANGO CONF FILE.
+
 from sys import argv
 
 from cronutils.error_handler import ErrorSentry, null_error_handler
