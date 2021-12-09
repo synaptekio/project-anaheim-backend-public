@@ -22,6 +22,5 @@ try:
     settings.configure(**django_config)
 
     django.setup()
-    django_loaded = True
 except RuntimeError as e:
     pass

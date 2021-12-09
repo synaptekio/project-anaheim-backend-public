@@ -147,7 +147,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = "100M"
 
 # enable Sentry error reporting
 if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
-    INSTALLED_APPS.append('raven.contrib.django.raven_compat',)
+    INSTALLED_APPS.append('raven.contrib.django.raven_compat')
     RAVEN_CONFIG = {'dsn': normalize_sentry_dsn(SENTRY_ELASTIC_BEANSTALK_DSN)}
 
     # sourced directly from https://raven.readthedocs.io/en/stable/integrations/django.html,
