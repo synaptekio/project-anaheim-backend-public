@@ -29,7 +29,7 @@ psycopg2==2.8.6
 
 # ipython can exhibit weird issues that make it look like the codebase is broken.  Most issues
 # are resolved by forcing this relatively new version of ipython.
-ipython==7.30.0
+ipython>=7.16.2
 
 # Keep these dependencies up to date
 boto3
