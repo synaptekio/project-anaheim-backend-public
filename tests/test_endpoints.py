@@ -1,5 +1,6 @@
 import json
 from copy import copy
+from datetime import datetime
 from io import BytesIO
 from typing import List
 from unittest.mock import MagicMock, patch
@@ -17,6 +18,7 @@ from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FI
     IOS_FIREBASE_CREDENTIALS)
 from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.data_stream_constants import ALL_DATA_STREAMS, SURVEY_TIMINGS
+from constants.datetime_constants import API_DATE_FORMAT
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
@@ -1137,7 +1139,8 @@ class TestStudyParticipantApi(ResearcherSessionTest):
     COLUMN_ORDER_KEY = "order[0][column]"
     ORDER_DIRECTION_KEY = "order[0][dir]"
     SEARCH_PARAMETER = "search[value]"
-    
+    SOME_TIMESTAMP = timezone.make_aware(datetime(2020, 10, 1))
+
     @property
     def DEFAULT_PARAMETERS(self):
         return {
@@ -1147,11 +1150,26 @@ class TestStudyParticipantApi(ResearcherSessionTest):
             # sort, sort order, search term
             self.COLUMN_ORDER_KEY: 1,
             self.ORDER_DIRECTION_KEY: "desc",
-            self.SEARCH_PARAMETER: None,
+            self.SEARCH_PARAMETER: "",
         }
     
     def test(self):
-        self.smart_get(self.session_study.id, get_kwargs=self.DEFAULT_PARAMETERS)
+        # manually set the created on timestamp... its a pain to set and a pain to test.
+        self.default_participant.update(created_on=self.SOME_TIMESTAMP)
+        self.set_session_study_relation(ResearcherRole.researcher)
+        # this endpoint uses get args, for which we have to pass in the dict as the "data" kwarg
+        resp = self.smart_get_status_code(200, self.session_study.id, data=self.DEFAULT_PARAMETERS)
+        content = json.loads(resp.content.decode())
+        correct_content = {
+            "draw": 1,
+            "recordsTotal": 1,
+            "recordsFiltered": 1,
+            "data": [[self.SOME_TIMESTAMP.strftime(API_DATE_FORMAT),
+                      self.default_participant.patient_id,
+                      True,
+                      "ANDROID"]]
+        }
+        self.assertEqual(content, correct_content)
 
 
 class TestInterventionsPage(ResearcherSessionTest):

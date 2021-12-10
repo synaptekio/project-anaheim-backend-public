@@ -11,6 +11,7 @@ from django.shortcuts import HttpResponse, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from authentication.admin_authentication import authenticate_researcher_study_access
+from constants.datetime_constants import API_DATE_FORMAT
 from database.schedule_models import Intervention, InterventionDate
 from database.study_models import Study, StudyField
 from database.user_models import Participant, ParticipantFieldValue
@@ -220,12 +221,12 @@ def get_values_for_participants_table(
     participants_data = []
     for participant in query:
         participant_values = [getattr(participant, field) for field in basic_columns]
-        participant_values[0] = participant_values[0].strftime('%Y-%m-%d')
+        participant_values[0] = participant_values[0].strftime(API_DATE_FORMAT)
         
         # a participant has all intervention dates, even if they are not populated yet.
         for intervention_date in participant.intervention_dates.all():
             if intervention_date.date is not None:
-                intervention_date.date = intervention_date.date.strftime('%Y-%m-%d')
+                intervention_date.date = intervention_date.date.strftime(API_DATE_FORMAT)
             participant_values.append(intervention_date.date)
         
         # a participant may not have all custom field values populated, so we need a reference
