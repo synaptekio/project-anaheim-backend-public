@@ -163,7 +163,8 @@ def get_uploaded_file(request: ParticipantRequest):
         # android
         uploaded_file = request.POST['file']
     else:
-        raise Exception("no uploaded file")
+        # no uploaded file, is a bad request.
+        return abort(400)
     
     # file should always be an InMemoryUploadedFile
     if isinstance(uploaded_file, (ContentFile, InMemoryUploadedFile)):
