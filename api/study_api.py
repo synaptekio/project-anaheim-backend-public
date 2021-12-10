@@ -2,6 +2,11 @@ import json
 
 from django.contrib import messages
 from django.db.models import ProtectedError
+from django.db.models.expressions import ExpressionWrapper
+from django.db.models.fields import BooleanField
+from django.db.models.functions.text import Lower
+from django.db.models.query import Prefetch
+from django.db.models.query_utils import Q
 from django.shortcuts import HttpResponse, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -25,9 +30,10 @@ def study_participants_api(request: ResearcherRequest, study_id: int):
     sort_in_descending_order = request.GET.get('order[0][dir]') == 'desc'
     contains_string = request.GET.get('search[value]')
     total_participants_count = Participant.objects.filter(study_id=study_id).count()
-    filtered_participants_count = (study.filtered_participants(contains_string).count())
-    data = study.get_values_for_participants_table(start, length, sort_by_column_index,
-                                                   sort_in_descending_order, contains_string)
+    filtered_participants_count = study.filtered_participants(contains_string).count()
+    data = get_values_for_participants_table(
+        study, start, length, sort_by_column_index, sort_in_descending_order, contains_string
+    )
     table_data = {
         "draw": draw,
         "recordsTotal": total_participants_count,
@@ -85,10 +91,8 @@ def delete_intervention(request: ResearcherRequest, study_id=None):
 @require_POST
 @authenticate_researcher_study_access
 def edit_intervention(request: ResearcherRequest, study_id=None):
-    """
-    Edits the name of the intervention. Expects intervention_id and edit_intervention in the
-    request body
-    """
+    """ Edits the name of the intervention. Expects intervention_id and edit_intervention in the
+    request body """
     study = Study.objects.get(pk=study_id)
     intervention_id = request.POST.get('intervention_id', None)
     new_name = request.POST.get('edit_intervention', None)
@@ -166,3 +170,71 @@ def edit_custom_field(request: ResearcherRequest, study_id=None):
     
     # this apparent insanity is a hopefully unnecessary confirmation of the study id
     return redirect(f'/study_fields/{Study.objects.get(pk=study_id).id}')
+
+
+def get_values_for_participants_table(
+            study: Study,
+            start: int,
+            length: int,
+            sort_by_column_index: int,
+            sort_in_descending_order: bool,
+            contains_string: str
+    ):
+    """ Logic to get paginated information of the participant list on a study. """
+    # If we need to optimize this function that probably requires the set up of a lookup
+    # dictionary instead of querying the database for every participant's field values.
+    # This isn't currently implemented because there are only ~15 participants per page rendered
+    # x = ParticipantFieldValue.objects.filter(participant__study=self).values_list(
+    #     "participant_id", "field__field_name", "value"
+    # )
+    # participant_field_values = defaultdict(dict)
+    # for participant_id, field_name, value in x:
+    #     participant_field_values[participant_id][field_name] = value
+    
+    basic_columns = ['created_on', 'patient_id', 'registered', 'os_type']
+    sort_by_column = basic_columns[sort_by_column_index]
+    sort_by_column = f"-{sort_by_column}" if sort_in_descending_order else sort_by_column
+    
+    # ~ is the not operator
+    participant_unregistered_expression = \
+        ExpressionWrapper(~Q(device_id=''), output_field=BooleanField())
+    
+    # since field names may not be populated, we need a reference list of all field names
+    # ordered to match the ordering on the rendering page.
+    field_names_ordered = list(
+        study.fields.values_list("field_name", flat=True).order_by(Lower('field_name'))
+    )
+    
+    # Prefetch intervention dates, sorted case-insensitively by name
+    query = (
+        study.filtered_participants(contains_string).order_by(sort_by_column)
+        .annotate(registered=participant_unregistered_expression)
+        .prefetch_related(
+            Prefetch('intervention_dates',
+                     queryset=InterventionDate.objects.order_by(Lower('intervention__name')))
+        )
+    )[start:start + length]
+    
+    # Get the list of the basic columns that are present in every study, convert the created_on
+    # into a string in YYYY-MM-DD format, then add intervention dates (sorted in prefetch).
+    participants_data = []
+    for participant in query:
+        participant_values = [getattr(participant, field) for field in basic_columns]
+        participant_values[0] = participant_values[0].strftime('%Y-%m-%d')
+        
+        # a participant has all intervention dates, even if they are not populated yet.
+        for intervention_date in participant.intervention_dates.all():
+            if intervention_date.date is not None:
+                intervention_date.date = intervention_date.date.strftime('%Y-%m-%d')
+            participant_values.append(intervention_date.date)
+        
+        # a participant may not have all custom field values populated, so we need a reference
+        # in order to fill None values where they [don't] exist.
+        field_values = dict(participant.field_values.values_list("field__field_name", "value"))
+        for field_name in field_names_ordered:
+            participant_values.append(
+                field_values[field_name] if field_name in field_values else None
+            )
+        
+        participants_data.append(participant_values)
+    return participants_data

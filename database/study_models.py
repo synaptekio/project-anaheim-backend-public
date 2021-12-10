@@ -5,8 +5,7 @@ from typing import Optional
 from dateutil.tz import gettz
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import BooleanField, ExpressionWrapper, F, Func, Prefetch, Q
-from django.db.models.functions import Lower
+from django.db.models import F, Func, Q
 from django.utils import timezone
 from django.utils.timezone import localtime
 
@@ -14,9 +13,8 @@ from constants.researcher_constants import ResearcherRole
 from constants.study_constants import (ABOUT_PAGE_TEXT, CONSENT_FORM_TEXT,
     DEFAULT_CONSENT_SECTIONS_JSON, SURVEY_SUBMIT_SUCCESS_TOAST_TEXT)
 from database.models import JSONTextField, TimestampedModel
-from database.schedule_models import InterventionDate
 from database.tableau_api_models import ForestParam
-from database.user_models import Participant, ParticipantFieldValue, Researcher
+from database.user_models import Participant, Researcher
 from database.validators import LengthValidator
 
 
@@ -25,7 +23,7 @@ class Study(TimestampedModel):
     # created alongside it. If the Study is created via the researcher interface (as it
     # usually is) the researcher is immediately shown the DeviceSettings to edit. The code
     # to create the DeviceSettings object is in database.signals.populate_study_device_settings.
-
+    
     name = models.TextField(unique=True, help_text='Name of the study; can be of any length')
     encryption_key = models.CharField(
         max_length=32, validators=[LengthValidator(32)],
@@ -40,12 +38,12 @@ class Study(TimestampedModel):
         max_length=256, default="America/New_York", null=False, blank=False
     )
     deleted = models.BooleanField(default=False)
-
+    
     forest_enabled = models.BooleanField(default=False)
     # Note: this is not nullable to prevent bugs where this is null, though if forest_enabled is
     #       False, the forest_param field isn't used
     forest_param = models.ForeignKey(ForestParam, on_delete=models.PROTECT)
-
+    
     def save(self, *args, **kwargs):
         """ Ensure there is a study device settings attached to this study. """
         # First we just save. This code has vacillated between throwing a validation error and not
@@ -64,14 +62,14 @@ class Study(TimestampedModel):
             settings.save()
             # update the study object to have a device settings object (possibly unnecessary?).
             super().save(*args, **kwargs)
-
+    
     @classmethod
     def create_with_object_id(cls, **kwargs):
         """ Creates a new study with a populated object_id field. """
         study = cls(object_id=cls.generate_objectid_string("object_id"), **kwargs)
         study.save()
         return study
-
+    
     @classmethod
     def get_all_studies_by_name(cls):
         """ Sort the un-deleted Studies a-z by name, ignoring case. """
@@ -79,30 +77,30 @@ class Study(TimestampedModel):
                 .filter(deleted=False)
                 .annotate(name_lower=Func(F('name'), function='LOWER'))
                 .order_by('name_lower'))
-
+    
     @classmethod
     def _get_administered_studies_by_name(cls, researcher):
         return cls.get_all_studies_by_name().filter(
                 study_relations__researcher=researcher,
                 study_relations__relationship=ResearcherRole.study_admin,
             )
-
+    
     @classmethod
     def get_researcher_studies_by_name(cls, researcher):
         return cls.get_all_studies_by_name().filter(study_relations__researcher=researcher)
-
+    
     def get_survey_ids_and_object_ids(self, survey_type='tracking_survey'):
         return self.surveys.filter(survey_type=survey_type, deleted=False).values_list('id', 'object_id')
-
+    
     def get_researchers(self):
         return Researcher.objects.filter(study_relations__study=self)
-
+    
     # We override the as_unpacked_native_python function to not include the encryption key.
     def as_unpacked_native_python(self, remove_timestamps=True):
         ret = super().as_unpacked_native_python(remove_timestamps=remove_timestamps)
         ret.pop("encryption_key")
         return ret
-
+    
     def get_earliest_data_time_bin(self, only_after_epoch: bool = True,
                                    only_before_now: bool = True) -> Optional[datetime]:
         return self._get_data_time_bin(
@@ -110,7 +108,7 @@ class Study(TimestampedModel):
             only_after_epoch=only_after_epoch,
             only_before_now=only_before_now,
         )
-
+    
     def get_latest_data_time_bin(self, only_after_epoch: bool = True,
                                  only_before_now: bool = True) -> Optional[datetime]:
         return self._get_data_time_bin(
@@ -118,7 +116,7 @@ class Study(TimestampedModel):
             only_after_epoch=only_after_epoch,
             only_before_now=only_before_now,
         )
-
+    
     def _get_data_time_bin(self, earliest=True, only_after_epoch: bool = True,
                            only_before_now: bool = True) -> Optional[datetime]:
         """
@@ -148,23 +146,23 @@ class Study(TimestampedModel):
                 continue
             desired_time_bin = time_bin
         return desired_time_bin
-
+    
     def notification_events(self, **archived_event_filter_kwargs):
         from database.schedule_models import ArchivedEvent
         return ArchivedEvent.objects.filter(
             survey_archive_id__in=self.surveys.all().values_list("archives__id", flat=True)
         ).filter(**archived_event_filter_kwargs).order_by("-scheduled_time")
-
+    
     def now(self) -> datetime:
         """ Returns a timezone.now() equivalence in the study's timezone. """
         return localtime(localtime(), timezone=self.timezone)  # localtime(localtime(... saves an import... :D
-
+    
     @property
     def timezone(self):
         """ So pytz.timezone("America/New_York") provides a tzinfo-like object that is wrong by 4
         minutes.  That's insane.  The dateutil gettz function doesn't have that fun insanity. """
         return gettz(self.timezone_name)
-
+    
     def filtered_participants(self, contains_string: str):
         return (
             Participant.objects.filter(study_id=self.id)
@@ -172,52 +170,11 @@ class Study(TimestampedModel):
                                Q(os_type__icontains=contains_string))
         )
 
-    def get_values_for_participants_table(
-            self,
-            start: int,
-            length: int,
-            sort_by_column_index: int,
-            sort_in_descending_order: bool,
-            contains_string: str
-    ):
-        basic_columns = ['created_on', 'patient_id', 'registered', 'os_type']
-        sort_by_column = basic_columns[sort_by_column_index]
-        if sort_in_descending_order:
-            sort_by_column = f"-{sort_by_column}"
-        query = (
-            self.filtered_participants(contains_string)
-            .order_by(sort_by_column)
-            .annotate(registered=ExpressionWrapper(~Q(device_id=''), output_field=BooleanField()))
-            # Prefetch intervention dates, and sort them alphabetically (case-insensitive) by intervention date name
-            .prefetch_related(Prefetch('intervention_dates',
-                                       queryset=InterventionDate.objects.order_by(Lower('intervention__name'))))
-            # Prefetch custom fields, and sort them alphabetically (case-insensitive) by the field name
-            .prefetch_related(Prefetch('field_values',
-                                       queryset=ParticipantFieldValue.objects.order_by(Lower('field__field_name'))))
-            [start: start + length])
-        participants_data = []
-        for participant in query:
-            # Get the list of the basic columns, which are present in every study
-            participant_values = [getattr(participant, field) for field in basic_columns]
-            # Convert the datetime object into a string in YYYY-MM-DD format
-            participant_values[0] = participant_values[0].strftime('%Y-%m-%d')
-            # Add all values for intervention dates (sorted in prefetch_related)
-            for intervention_date in participant.intervention_dates.all():
-                if intervention_date.date is not None:
-                    participant_values.append(intervention_date.date.strftime('%Y-%m-%d'))
-                else:
-                    participant_values.append(None)
-            # Add all values for custom fields (sorted in prefetch_related)
-            for custom_field_val in participant.field_values.all():
-                participant_values.append(custom_field_val.value)
-            participants_data.append(participant_values)
-        return participants_data
-
 
 class StudyField(models.Model):
     study = models.ForeignKey(Study, on_delete=models.PROTECT, related_name='fields')
     field_name = models.TextField()
-
+    
     class Meta:
         unique_together = (("study", "field_name"),)
 
@@ -227,7 +184,7 @@ class DeviceSettings(TimestampedModel):
     The DeviceSettings database contains the structure that defines
     settings pushed to devices of users in of a study.
     """
-
+    
     # Whether various device options are turned on
     accelerometer = models.BooleanField(default=True)
     gps = models.BooleanField(default=True)
@@ -241,17 +198,17 @@ class DeviceSettings(TimestampedModel):
     call_clinician_button_enabled = models.BooleanField(default=True)
     call_research_assistant_button_enabled = models.BooleanField(default=True)
     ambient_audio = models.BooleanField(default=False)
-
+    
     # Whether iOS-specific data streams are turned on
     proximity = models.BooleanField(default=False)
     gyro = models.BooleanField(default=False)
     magnetometer = models.BooleanField(default=False)
     devicemotion = models.BooleanField(default=False)
     reachability = models.BooleanField(default=True)
-
+    
     # Upload over cellular data or only over WiFi (WiFi-only is default)
     allow_upload_over_cellular_data = models.BooleanField(default=False)
-
+    
     # Timer variables
     accelerometer_off_duration_seconds = models.PositiveIntegerField(default=10)
     accelerometer_on_duration_seconds = models.PositiveIntegerField(default=10)
@@ -266,7 +223,7 @@ class DeviceSettings(TimestampedModel):
     upload_data_files_frequency_seconds = models.PositiveIntegerField(default=3600)
     voice_recording_max_time_length_seconds = models.PositiveIntegerField(default=240)
     wifi_log_frequency_seconds = models.PositiveIntegerField(default=300)
-
+    
     # iOS-specific timer variables
     gyro_off_duration_seconds = models.PositiveIntegerField(default=600)
     gyro_on_duration_seconds = models.PositiveIntegerField(default=60)
@@ -274,14 +231,14 @@ class DeviceSettings(TimestampedModel):
     magnetometer_on_duration_seconds = models.PositiveIntegerField(default=60)
     devicemotion_off_duration_seconds = models.PositiveIntegerField(default=600)
     devicemotion_on_duration_seconds = models.PositiveIntegerField(default=60)
-
+    
     # Text strings
     about_page_text = models.TextField(default=ABOUT_PAGE_TEXT)
     call_clinician_button_text = models.TextField(default='Call My Clinician')
     consent_form_text = models.TextField(default=CONSENT_FORM_TEXT)
     survey_submit_success_toast_text = models.TextField(default=SURVEY_SUBMIT_SUCCESS_TOAST_TEXT)
-
+    
     # Consent sections
     consent_sections = JSONTextField(default=DEFAULT_CONSENT_SECTIONS_JSON)
-
+    
     study = models.OneToOneField('Study', on_delete=models.PROTECT, related_name='device_settings')
