@@ -207,19 +207,16 @@ def get_values_for_participants_table(
     )
     
     # Prefetch intervention dates, sorted case-insensitively by name
-    query = (
-        study.filtered_participants(contains_string).order_by(sort_by_column)
-        .annotate(registered=participant_unregistered_expression)
-        .prefetch_related(
-            Prefetch('intervention_dates',
-                     queryset=InterventionDate.objects.order_by(Lower('intervention__name')))
-        )
-    )[start:start + length]
+    query = study.filtered_participants(contains_string).order_by(sort_by_column) \
+            .annotate(registered=participant_unregistered_expression) \
+            .prefetch_related(
+               Prefetch('intervention_dates',
+                        queryset=InterventionDate.objects.order_by(Lower('intervention__name'))))
     
     # Get the list of the basic columns that are present in every study, convert the created_on
     # into a string in YYYY-MM-DD format, then add intervention dates (sorted in prefetch).
     participants_data = []
-    for participant in query:
+    for participant in query[start:start + length]:
         participant_values = [getattr(participant, field) for field in basic_columns]
         participant_values[0] = participant_values[0].strftime(API_DATE_FORMAT)
         
