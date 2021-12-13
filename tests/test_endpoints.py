@@ -1800,8 +1800,13 @@ class TestGetUsersInStudy(DataApiTest):
         self.default_participant
         p2 = self.generate_participant(self.session_study)
         resp = self.smart_post_status_code(200, study_id=self.session_study.object_id)
+        # ordering here is random because generate_participant is random, so we will just test both.
         match = f'["{self.default_participant.patient_id}", "{p2.patient_id}"]'
-        self.assertEqual(resp.content, match.encode())
+        match2 = f'["{p2.patient_id}", "{self.default_participant.patient_id}"]'
+        try:
+            self.assertEqual(resp.content, match.encode())
+        except AssertionError:
+            self.assertEqual(resp.content, match2.encode())
 
 
 class TestGetData(DataApiTest):
