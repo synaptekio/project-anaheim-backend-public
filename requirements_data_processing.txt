@@ -2,9 +2,8 @@
 celery==4.4.7
 
 # This is temporary until forest is open-sourced
-git+https://git@github.com/onnela-lab/forest@418a24d7428247f5c27a5d360c4a80d7016cc35a
+git+https://git@github.com/onnela-lab/forest@8dea5ed987d5f7782a59712b0d6d23ca2fd2d488
 
 
 # it is possible you will need to imstall the following system dependencies on ubuntu:
 # sudo apt-get install libopenblas-base libatlas3-base gcc gfortran python3-dev libopenblas-dev liblapack-dev
-
