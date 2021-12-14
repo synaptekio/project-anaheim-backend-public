@@ -3,9 +3,8 @@ import datetime
 from collections import defaultdict
 
 from django.contrib import messages
-from django.http.response import FileResponse, StreamingHttpResponse
+from django.http.response import FileResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -100,7 +99,6 @@ def create_tasks(request: ResearcherRequest, study_id=None):
     # FIXME: remove this double endpoint pattern, it is bad.
     if request.method == "GET":
         return render_create_tasks(request, study)
-    
     form = CreateTasksForm(data=request.POST, study=study)
     
     if not form.is_valid():
@@ -110,12 +108,12 @@ def create_tasks(request: ResearcherRequest, study_id=None):
             for message in messages
         ]
         error_messages_string = "\n".join(error_messages)
-        messages.warning(f"Errors:\n\n{error_messages_string}")
+        messages.warning(request, f"Errors:\n\n{error_messages_string}")
         return render_create_tasks(request, study)
     
     form.save()
-    messages.success("Forest tasks successfully queued!")
-    return redirect(reverse("forest_pages.task_log", study_id=study_id))
+    messages.success(request, "Forest tasks successfully queued!")
+    return redirect(easy_url("forest_pages.task_log", study_id=study_id))
 
 
 @require_GET
@@ -165,7 +163,7 @@ def cancel_task(request: ResearcherRequest, study_id, forest_task_external_id):
     else:
         messages.warning(request, "Sorry, we were unable to find or cancel this Forest task.")
     
-    return redirect(reverse("forest_pages.task_log", study_id=study_id))
+    return redirect(easy_url("forest_pages.task_log", study_id=study_id))
 
 
 @require_GET

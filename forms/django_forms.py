@@ -47,16 +47,6 @@ class CreateTasksForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         self.study = kwargs.pop("study")
-        if "data" in kwargs:
-            # FIXME: MultiValueDict is a django type, need to test.
-            if isinstance(kwargs["data"], MultiValueDict):
-                # Convert Flask/Werkzeug MultiDict format into comma-separated values. This is
-                # to allow Flask's handling of multi inputs to work with Django's form data
-                # structures.
-                kwargs["data"] = {
-                    key: ",".join(value)
-                    for key, value in kwargs["data"].to_dict(flat=False).items()
-                }
         super().__init__(*args, **kwargs)
     
     def clean(self):
