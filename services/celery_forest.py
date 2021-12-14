@@ -54,7 +54,7 @@ def celery_run_forest(forest_task_id):
         
         participant = task.participant
         forest_tree = task.forest_tree
-
+        
         # Check if there already is a running task for this participant and tree, handling
         # concurrency and requeuing of the ask if necessary
         tasks = (
@@ -66,7 +66,7 @@ def celery_run_forest(forest_task_id):
         if tasks.filter(status=ForestTaskStatus.running).exists():
             enqueue_forest_task(args=[task.id])
             return
-
+        
         # Get the chronologically earliest task that's queued
         task: ForestTask = (
             tasks
@@ -76,7 +76,7 @@ def celery_run_forest(forest_task_id):
         )
         if task is None:
             return
-
+        
         # Set metadata on the task
         task.status = ForestTaskStatus.running
         task.forest_version = get_distribution("forest").version
@@ -102,7 +102,7 @@ def celery_run_forest(forest_task_id):
             raise Exception('No chunked data found for participant for the dates specified.')
         task.total_file_size = file_size
         task.save(update_fields=["total_file_size"])
-
+        
         # Download data
         create_local_data_files(task, chunks)
         task.process_download_end_time = timezone.now()
@@ -117,16 +117,16 @@ def celery_run_forest(forest_task_id):
         
         log("running:", task.forest_tree)
         TREE_TO_FOREST_FUNCTION[task.forest_tree](**params_dict)
-
+        
         # Save data
         task.forest_output_exists = task.construct_summary_statistics()
         task.save(update_fields=["forest_output_exists"])
         save_cached_files(task)
     except Exception:
-        task.status = task.Status.error
+        task.status = ForestTaskStatus.error
         task.stacktrace = traceback.format_exc()
     else:
-        task.status = task.Status.success
+        task.status = ForestTaskStatus.success
     
     log("task.status:", task.status)
     if task.stacktrace:
