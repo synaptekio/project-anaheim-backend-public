@@ -10,7 +10,7 @@ from deployment_helpers.aws.elastic_beanstalk_configuration import (DynamicParam
 from deployment_helpers.aws.iam import (EnvironmentDeploymentFailure,
     get_or_create_automation_policy, iam_attach_role_policy, iam_create_role,
     iam_find_instance_profile, iam_find_role, IamEntityMissingError, PythonPlatformDiscoveryError)
-from deployment_helpers.aws.rds import (add_eb_environment_to_rds_database_security_group)
+from deployment_helpers.aws.rds import add_eb_environment_to_rds_database_security_group
 from deployment_helpers.aws.s3 import s3_encrypt_bucket
 from deployment_helpers.aws.security_groups import get_security_group_by_name, open_tcp_port
 from deployment_helpers.constants import (AWS_EB_ENHANCED_HEALTH, AWS_EB_MULTICONTAINER_DOCKER,
@@ -63,8 +63,8 @@ def construct_eb_environment_variables(eb_environment_name):
 ## AWS Accessors
 ##
 
-def get_python36_platform_arn():
-    """ Gets the most recent platform arn for a python 3.6 elastic beanstalk cluster, is region specific.."""
+def get_python38_platform_arn():
+    """ Gets the most recent platform arn for a python 3.8 elastic beanstalk cluster, is region specific.."""
     eb_client = create_eb_client()
     platforms = []
     botoFilters = [{'Operator': 'contains', 'Type': 'PlatformName', 'Values': ['Python']}]
@@ -72,8 +72,8 @@ def get_python36_platform_arn():
     for platform in eb_client.list_platform_versions(MaxRecords=1000, Filters=botoFilters)['PlatformSummaryList']:
         if (platform.get(
                 'PlatformCategory', None) == 'Python' and
-                "Python 3.6" in platform.get('PlatformArn', []) and
-                "64bit Amazon Linux" in platform.get('PlatformArn', [])
+                "Python 3.8" in platform.get('PlatformArn', []) and
+                "64bit Amazon Linux 2" in platform.get('PlatformArn', [])
         ):
             platforms.append(platform['PlatformArn'])
 
@@ -84,10 +84,10 @@ def get_python36_platform_arn():
     platforms.sort()
 
     if len(platforms) == 0:
-        raise PythonPlatformDiscoveryError("could not find python 3.6 platform")
+        raise PythonPlatformDiscoveryError("could not find python 3.8 platform")
     if len(platforms) > 1:
         log.error("\n***********************************************************\n"
-                  "Warning: encountered multiple Python 3.6 Elastic Beanstalk environment platforms.\n"
+                  "Warning: encountered multiple Python 3.8 Elastic Beanstalk environment platforms.\n"
                   "Beiwe did its best to automatically determine which environment to use.\n"
                   "After deployment finishes, determine whether there is a platform upgrade you can\n"
                   "apply for this cluster.\n"
@@ -278,7 +278,7 @@ def create_eb_environment(eb_environment_name, without_db=False):
             ApplicationName=BEIWE_APPLICATION_NAME,
             EnvironmentName=eb_environment_name,
             Description='elastic beanstalk beiwe cluster',
-            PlatformArn=get_python36_platform_arn(),
+            PlatformArn=get_python38_platform_arn(),
             OptionSettings=option_settings,
             # VersionLabel='string',  # TODO: this will probably be required later?
 

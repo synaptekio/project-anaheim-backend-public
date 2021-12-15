@@ -30,7 +30,7 @@ RABBIT_MQ_PORT = 50000
 
 
 PYTHON_COMPILE_REQUIREMENTS = [
-    # Compile python installs - this may be out of date for building python 3.6
+    # Compile python installs - this may be out of date for building python 3.8
     'build-essential',  # Includes a C compiler for compiling python
     'libbz2-dev',
     'libreadline-gplv2-dev',
