@@ -77,7 +77,7 @@ def increment_identifier(base_string, increment_string):
         raise Exception("%s not found or found more than once in %s" % (base_string, increment_string))
 
     prefix, suffix = splits
-    if suffix is "":
+    if suffix == "":
         suffix_increment = 1
     else:
         suffix_increment = int(suffix) + 1
