@@ -233,16 +233,8 @@ def get_base_eb_configuration():
             'Value': '20'
         }, {
             'Namespace': 'aws:elasticbeanstalk:container:python',
-            'OptionName': 'StaticFiles',
-            'Value': '/static/=frontend/static/'
-        }, {
-            'Namespace': 'aws:elasticbeanstalk:container:python',
             'OptionName': 'WSGIPath',
             'Value': 'wsgi.py'
-        }, {
-            'Namespace': 'aws:elasticbeanstalk:container:python:staticfiles',
-            'OptionName': '/static/',
-            'Value': 'frontend/static/'
         },
         
         # Elastic Beanstalk system Notifications
