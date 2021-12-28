@@ -10,10 +10,10 @@ from deployment_helpers.aws.s3 import create_data_bucket
 from deployment_helpers.constants import (AWS_CREDENTIALS_FILE, AWS_CREDENTIALS_FILE_KEYS,
     DB_SERVER_TYPE, ELASTIC_BEANSTALK_INSTANCE_TYPE, get_aws_credentials,
     get_beiwe_environment_variables, get_beiwe_environment_variables_file_path,
-    get_finalized_credentials_file_path, get_finalized_environment_variables, get_global_config,
+    get_finalized_settings_file_path, get_finalized_settings_variables, get_global_config,
     get_pushed_full_processing_server_env_file_path, get_rabbit_mq_manager_ip_file_path,
-    get_server_configuration_file_path, GLOBAL_CONFIGURATION_FILE, GLOBAL_CONFIGURATION_FILE_KEYS,
-    MANAGER_SERVER_INSTANCE_TYPE, VALIDATE_AWS_CREDENTIALS_MESSAGE,
+    get_server_configuration_variables_path, GLOBAL_CONFIGURATION_FILE,
+    GLOBAL_CONFIGURATION_FILE_KEYS, MANAGER_SERVER_INSTANCE_TYPE, VALIDATE_AWS_CREDENTIALS_MESSAGE,
     VALIDATE_GLOBAL_CONFIGURATION_MESSAGE, WORKER_SERVER_INSTANCE_TYPE)
 from deployment_helpers.general_utils import EXIT, log, random_alphanumeric_string
 
@@ -116,17 +116,37 @@ def ensure_nonempty_string(value, value_name, errors_list, subject):
         return True
 
 
+def email_param_validation(src_name: str, key_name: str, source: dict, errors: list):
+    # we have to run this twice, pulled out into ugly function.
+    email_string = source.get(key_name, "")
+    if "," in email_string:
+        errors.append(
+            f'({src_name}) You can only have one email in {key_name}: {email_string}'
+        )
+    
+    if not email_string:
+        errors.append(f'({src_name}) {key_name} cannot be empty.')
+    else:
+        if not re.match('^[\S]+@[\S]+\.[\S]+$', email_string):
+            errors.append(f'({src_name}) Invalid email address: {email_string}')
+
+
 def validate_beiwe_environment_config(eb_environment_name):
     # DOMAIN_NAME
     # SENTRY_DATA_PROCESSING_DSN
     # SENTRY_ELASTIC_BEANSTALK_DSN
     # SENTRY_JAVASCRIPT_DSN
     # SYSADMIN_EMAILS
+    
+    finalized = os.path.exists(get_finalized_settings_file_path(eb_environment_name))
+    print("finalized:", finalized)
     errors = []
     try:
         aws_credentials = get_aws_credentials()
         global_config = get_global_config()
         beiwe_variables = get_beiwe_environment_variables(eb_environment_name)
+        finalized_variables = get_finalized_settings_variables(eb_environment_name) if finalized else {}
+    
     except Exception as e:
         log.error("encountered an error while trying to read configuration files.")
         log.error(e)
@@ -135,17 +155,17 @@ def validate_beiwe_environment_config(eb_environment_name):
     
     beiwe_variables_name = os.path.basename(get_beiwe_environment_variables_file_path(eb_environment_name))
     reference_environment_configuration_keys = reference_environment_configuration_file().keys()
-    # Validate the data
     
-    sysadmin_email = global_config.get('SYSTEM_ADMINISTRATOR_EMAIL', "")
-    if "," in sysadmin_email:
-        errors.append('(Global Configuration) You can only have one item in SYSTEM_ADMINISTRATOR_EMAIL: {}'.format(sysadmin_email))
-
-    if not sysadmin_email:
-        errors.append('(Global Configuration) System administrator email cannot be empty.')
-    else:
-        if not re.match('^[\S]+@[\S]+\.[\S]+$', sysadmin_email):
-            errors.append('(Global Configuration) Invalid email address: {}'.format(sysadmin_email))
+    # Validation Start
+    # Email validation
+    email_param_validation(
+        "Global Configuration", 'SYSTEM_ADMINISTRATOR_EMAIL', global_config, errors
+    )
+    # this configuration is possible on very old deployments
+    if finalized:
+        email_param_validation(
+            "finalized settings and remote_db_env.py", 'SYSADMIN_EMAILS', finalized_variables, errors
+        )
     
     # check sentry urls
     sentry_dsns = {
@@ -158,14 +178,14 @@ def validate_beiwe_environment_config(eb_environment_name):
         if ensure_nonempty_string(dsn, name, errors, beiwe_variables_name):
             if not DSN_REGEX.match(dsn):
                 errors.append('({}) Invalid DSN: {}'.format(beiwe_variables_name, dsn))
-                
+    
     domain_name = beiwe_variables.get('DOMAIN', None)
     ensure_nonempty_string(domain_name, 'Domain name', errors, beiwe_variables_name)
-
+    
     for key in reference_environment_configuration_keys:
         if key not in beiwe_variables:
             errors.append("{} is missing.".format(key))
-
+    
     for key in beiwe_variables:
         if key == "SENTRY_ANDROID_DSN":
             errors.append("'SENTRY_ANDROID_DSN' is no longer needed by the Beiwe Backend. "
@@ -180,13 +200,16 @@ def validate_beiwe_environment_config(eb_environment_name):
             log.error(e)
         sleep(0.1)  # python logging has some issues if you exit too fast... isn't it supposed to be synchronous?
         EXIT(1)  # forcibly exit, do not continue to run any code.
-        
+    
     # Check for presence of the server settings file:
-    if not file_exists(get_server_configuration_file_path(eb_environment_name)):
-        log.error(f"No server settings file exists at {get_server_configuration_file_path(eb_environment_name)}.")
+    if not file_exists(get_server_configuration_variables_path(eb_environment_name)):
+        log.error(f"No server settings file exists at {get_server_configuration_variables_path(eb_environment_name)}.")
         EXIT(1)
-        
+    
     # Put the data into one dict to be returned
+    sysadmin_email = finalized_variables["SYSADMIN_EMAILS"] \
+        if finalized else global_config["SYSTEM_ADMINISTRATOR_EMAIL"]
+
     return {
         'DOMAIN_NAME': domain_name,
         'SYSADMIN_EMAILS': sysadmin_email,
@@ -200,7 +223,7 @@ def create_finalized_configuration(eb_environment_name):
     # requires an rds server has been created for the environment.
     # FLASK_SECRET_KEY
     # S3_BUCKET
-    finalized_cred_path = get_finalized_credentials_file_path(eb_environment_name)
+    finalized_cred_path = get_finalized_settings_file_path(eb_environment_name)
     if os.path.exists(finalized_cred_path):
         log.error("Encountered a finalized configuration file at %s." % finalized_cred_path)
         log.error("This file contains autogenerated parameters which must be identical between "
@@ -222,7 +245,7 @@ def create_finalized_configuration(eb_environment_name):
 def create_processing_server_configuration_file(eb_environment_name):
     list_to_write = ['import os']
     
-    for key, value in get_finalized_environment_variables(eb_environment_name).items():
+    for key, value in get_finalized_settings_variables(eb_environment_name).items():
         next_line = "os.environ['{key}'] = '{value}'".format(key=key.upper(), value=value)
         list_to_write.append(next_line)
     string_to_write = '\n'.join(list_to_write) + '\n'

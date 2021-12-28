@@ -8,10 +8,11 @@ fi
 # User specific aliases and functions
 
 # load the current environment variables for the ssh session
-source /opt/python/current/env
-cd /opt/python/current/app
+source /var/app/current/env
+cd /var/app
+cd /var/app/current
 
-alias db='cd /opt/python/current/app; python /opt/python/current/app/manage.py shell_plus'
+alias db='cd /var/app/current; python /var/app/current/manage.py shell_plus'
 alias restart='sudo killall -s 1 supervisord; htop -u apache'
 
 alias log_commands="tail -f  /var/log/cfn-init-cmd.log"

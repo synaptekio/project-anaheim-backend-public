@@ -16,22 +16,22 @@ from deployment_helpers.aws.security_groups import get_security_group_by_name, o
 from deployment_helpers.constants import (AWS_EB_ENHANCED_HEALTH, AWS_EB_MULTICONTAINER_DOCKER,
     AWS_EB_SERVICE, AWS_EB_WEB_TIER, AWS_EB_WORKER_TIER, BEIWE_APPLICATION_NAME,
     EB_INSTANCE_PROFILE_NAME, EB_INSTANCE_PROFILE_ROLE, EB_SEC_GRP_COUNT_ERROR, EB_SERVICE_ROLE,
-    get_elasticbeanstalk_assume_role_policy_document, get_finalized_environment_variables,
-    get_global_config, get_instance_assume_role_policy_document, get_server_configuration_file)
+    get_elasticbeanstalk_assume_role_policy_document, get_finalized_settings_variables,
+    get_global_config, get_instance_assume_role_policy_document, get_server_configuration_variables)
 from deployment_helpers.general_utils import current_time_string, log, retry
 
 
 def construct_eb_environment_variables(eb_environment_name):
     global_config = get_global_config()
     try:
-        environment_variables = get_finalized_environment_variables(eb_environment_name)
+        environment_variables = get_finalized_settings_variables(eb_environment_name)
     except Exception as e:
         log.error("could not get your environment settings.")
         log.error(e)
         raise
 
     try:
-        server_settings = get_server_configuration_file(eb_environment_name)
+        server_settings = get_server_configuration_variables(eb_environment_name)
     except Exception as e:
         log.error("could not get your server settings.")
         log.error(e)

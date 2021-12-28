@@ -7,8 +7,8 @@ from deployment_helpers.aws.security_groups import (
     create_sec_grp_rule_parameters_allowing_traffic_from_another_security_group,
     create_security_group, get_security_group_by_name)
 from deployment_helpers.constants import (DB_SERVER_TYPE, DBInstanceNotFound,
-    get_db_credentials_file_path, get_finalized_credentials_file_path,
-    get_finalized_environment_variables, get_server_configuration_file,
+    get_db_credentials_file_path, get_finalized_settings_file_path,
+    get_finalized_settings_variables, get_server_configuration_variables,
     RDS_DATABASE_SEC_GROUP_NAME_OVERRIDE, RDS_INSTANCE_SEC_GROUP_NAME_OVERRIDE, RDS_NAME_OVERRIDE)
 from deployment_helpers.general_utils import (current_time_string, EXIT, log,
     random_alphanumeric_starting_with_letter, random_alphanumeric_string)
@@ -85,8 +85,8 @@ def construct_db_name(eb_environment_name):
         return RDS_NAME_OVERRIDE
     
     # extending functionality to source information from the settings file, if it is present.
-    if os.path.exists(get_finalized_credentials_file_path(eb_environment_name)):
-        rds_endpoint_url = get_finalized_environment_variables(eb_environment_name)["RDS_HOSTNAME"]
+    if os.path.exists(get_finalized_settings_file_path(eb_environment_name)):
+        rds_endpoint_url = get_finalized_settings_variables(eb_environment_name)["RDS_HOSTNAME"]
         instances_by_url = {
             instance["Endpoint"]["Address"]: instance["DBInstanceIdentifier"]
             for instance in create_rds_client().describe_db_instances()["DBInstances"]
@@ -200,7 +200,7 @@ def create_new_rds_instance(eb_environment_name):
     except DBInstanceNotFound:
         pass
     
-    database_server_type = get_server_configuration_file(eb_environment_name)[DB_SERVER_TYPE]
+    database_server_type = get_server_configuration_variables(eb_environment_name)[DB_SERVER_TYPE]
     engine = get_most_recent_postgres_engine()
     
     credentials = generate_valid_postgres_credentials()

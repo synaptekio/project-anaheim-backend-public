@@ -27,14 +27,14 @@ from deployment_helpers.constants import (APT_MANAGER_INSTALLS, APT_SINGLE_SERVE
     DO_SETUP_EB_UPDATE_OPEN, ENVIRONMENT_NAME_RESTRICTIONS, EXTANT_ENVIRONMENT_PROMPT,
     FILES_TO_PUSH, FIX_HEALTH_CHECKS_BLOCKING_DEPLOYMENT_HELP,
     get_beiwe_environment_variables_file_path, get_db_credentials_file_path,
-    get_finalized_credentials_file_path, get_finalized_environment_variables, get_global_config,
+    get_finalized_settings_file_path, get_finalized_settings_variables, get_global_config,
     GET_MANAGER_IP_ADDRESS_HELP, get_pushed_full_processing_server_env_file_path,
-    get_server_configuration_file, get_server_configuration_file_path, GET_WORKER_IP_ADDRESS_HELP,
-    HELP_SETUP_NEW_ENVIRONMENT, HELP_SETUP_NEW_ENVIRONMENT_END, HELP_SETUP_NEW_ENVIRONMENT_HELP,
-    LOCAL_AMI_ENV_CONFIG_FILE_PATH, LOCAL_APACHE_CONFIG_FILE_PATH, LOCAL_CRONJOB_MANAGER_FILE_PATH,
-    LOCAL_CRONJOB_SINGLE_SERVER_AMI_FILE_PATH, LOCAL_CRONJOB_WORKER_FILE_PATH,
-    LOCAL_INSTALL_CELERY_WORKER, LOCAL_RABBIT_MQ_CONFIG_FILE_PATH, LOG_FILE,
-    MANAGER_SERVER_INSTANCE_TYPE, PURGE_COMMAND_BLURB, PURGE_INSTANCE_PROFILES_HELP,
+    get_server_configuration_variables, get_server_configuration_variables_path,
+    GET_WORKER_IP_ADDRESS_HELP, HELP_SETUP_NEW_ENVIRONMENT, HELP_SETUP_NEW_ENVIRONMENT_END,
+    HELP_SETUP_NEW_ENVIRONMENT_HELP, LOCAL_AMI_ENV_CONFIG_FILE_PATH, LOCAL_APACHE_CONFIG_FILE_PATH,
+    LOCAL_CRONJOB_MANAGER_FILE_PATH, LOCAL_CRONJOB_SINGLE_SERVER_AMI_FILE_PATH,
+    LOCAL_CRONJOB_WORKER_FILE_PATH, LOCAL_INSTALL_CELERY_WORKER, LOCAL_RABBIT_MQ_CONFIG_FILE_PATH,
+    LOG_FILE, MANAGER_SERVER_INSTANCE_TYPE, PURGE_COMMAND_BLURB, PURGE_INSTANCE_PROFILES_HELP,
     PUSHED_FILES_FOLDER, RABBIT_MQ_PORT, REMOTE_APACHE_CONFIG_FILE_PATH, REMOTE_CRONJOB_FILE_PATH,
     REMOTE_HOME_DIR, REMOTE_INSTALL_CELERY_WORKER, REMOTE_RABBIT_MQ_CONFIG_FILE_PATH,
     REMOTE_RABBIT_MQ_FINAL_CONFIG_FILE_PATH, REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH, REMOTE_USERNAME,
@@ -57,7 +57,7 @@ parser = argparse.ArgumentParser(description="interactive set of commands for de
 
 def configure_fabric(eb_environment_name, ip_address, key_filename=None):
     if eb_environment_name is not None:
-        get_finalized_environment_variables(eb_environment_name)
+        get_finalized_settings_variables(eb_environment_name)
     if key_filename is None:
         key_filename = get_global_config()['DEPLOYMENT_KEY_FILE_PATH']
     fabric_env.host_string = ip_address
@@ -380,10 +380,10 @@ def do_clone_environment():
     # we need to confirm these are all present and copy them.
     file_path_getter_functions = [
         get_pushed_full_processing_server_env_file_path,
-        get_finalized_credentials_file_path,
+        get_finalized_settings_file_path,
         get_db_credentials_file_path,
         get_beiwe_environment_variables_file_path,
-        get_server_configuration_file_path
+        get_server_configuration_variables_path
     ]
     failed = False
     for func in file_path_getter_functions:
@@ -412,7 +412,7 @@ def do_help_setup_new_environment():
     do_fail_if_environment_exists(name)
     
     beiwe_environment_fp = get_beiwe_environment_variables_file_path(name)
-    processing_server_settings_fp = get_server_configuration_file_path(name)
+    processing_server_settings_fp = get_server_configuration_variables_path(name)
     extant_files = os.listdir(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER)
     
     for fp in (beiwe_environment_fp, processing_server_settings_fp):
@@ -441,7 +441,7 @@ def do_create_manager():
     create_processing_server_configuration_file(name)
     
     try:
-        settings = get_server_configuration_file(name)
+        settings = get_server_configuration_variables(name)
     except Exception as e:
         log.error("could not read settings file")
         log.error(e)
@@ -482,7 +482,7 @@ def do_create_worker():
         EXIT(1)
     
     try:
-        settings = get_server_configuration_file(name)
+        settings = get_server_configuration_variables(name)
     except Exception as e:
         log.error("could not read settings file")
         log.error(e)

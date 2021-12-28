@@ -201,12 +201,12 @@ def get_pushed_full_processing_server_env_file_path(eb_environment_name):
     return path_join(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + '_remote_db_env.py')
 
 
-def get_finalized_credentials_file_path(eb_environment_name):
+def get_finalized_settings_file_path(eb_environment_name):
     return path_join(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + '_finalized_settings.json')
 
 
-def get_finalized_environment_variables(eb_environment_name):
-    with open(get_finalized_credentials_file_path(eb_environment_name), 'r') as f:
+def get_finalized_settings_variables(eb_environment_name):
+    with open(get_finalized_settings_file_path(eb_environment_name), 'r') as f:
         return json.load(f)
 
 
@@ -226,27 +226,25 @@ def get_beiwe_environment_variables_file_path(eb_environment_name):
     return path_join(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + "_beiwe_environment_variables.json")
 
 
-def get_rabbit_mq_manager_ip_file_path(eb_environment_name):
-    return path_join(
-        DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + "_" + RABBIT_MQ_PASSWORD_FILE_NAME
-    )
-
-
 def get_beiwe_environment_variables(eb_environment_name):
     with open(get_beiwe_environment_variables_file_path(eb_environment_name), 'r') as f:
         return json.load(f)
 
 
 ## Processing worker and management servers
-def get_server_configuration_file_path(eb_environment_name):
+def get_server_configuration_variables_path(eb_environment_name):
     return path_join(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + '_server_settings.json')
 
 
-def get_server_configuration_file(eb_environment_name):
-    with open(get_server_configuration_file_path(eb_environment_name), 'r') as f:
+def get_server_configuration_variables(eb_environment_name):
+    with open(get_server_configuration_variables_path(eb_environment_name), 'r') as f:
         return json.load(f)
 
 
+def get_rabbit_mq_manager_ip_file_path(eb_environment_name):
+    return path_join(
+        DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, eb_environment_name + "_" + RABBIT_MQ_PASSWORD_FILE_NAME
+    )
 
 ####################################################################################################
 ####################################### AWS Strings ################################################
