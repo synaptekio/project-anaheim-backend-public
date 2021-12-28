@@ -9,13 +9,14 @@ from deployment_helpers.aws.rds import get_full_db_credentials
 from deployment_helpers.aws.s3 import create_data_bucket
 from deployment_helpers.constants import (AWS_CREDENTIALS_FILE, AWS_CREDENTIALS_FILE_KEYS,
     DB_SERVER_TYPE, ELASTIC_BEANSTALK_INSTANCE_TYPE, get_aws_credentials,
-    get_beiwe_environment_variables, get_beiwe_python_environment_variables_file_path,
+    get_beiwe_environment_variables, get_beiwe_environment_variables_file_path,
     get_finalized_credentials_file_path, get_finalized_environment_variables, get_global_config,
     get_pushed_full_processing_server_env_file_path, get_rabbit_mq_manager_ip_file_path,
     get_server_configuration_file_path, GLOBAL_CONFIGURATION_FILE, GLOBAL_CONFIGURATION_FILE_KEYS,
     MANAGER_SERVER_INSTANCE_TYPE, VALIDATE_AWS_CREDENTIALS_MESSAGE,
     VALIDATE_GLOBAL_CONFIGURATION_MESSAGE, WORKER_SERVER_INSTANCE_TYPE)
 from deployment_helpers.general_utils import EXIT, log, random_alphanumeric_string
+
 
 # Sentry DSNs are key_value@some.domain.com/6ish_numbers
 # Sentry has changed their DSN structure again, so I'm making the regex much weaker.
@@ -132,7 +133,7 @@ def validate_beiwe_environment_config(eb_environment_name):
         beiwe_variables, global_config = None, None  # ide warnings
         EXIT(1)
     
-    beiwe_variables_name = os.path.basename(get_beiwe_python_environment_variables_file_path(eb_environment_name))
+    beiwe_variables_name = os.path.basename(get_beiwe_environment_variables_file_path(eb_environment_name))
     reference_environment_configuration_keys = reference_environment_configuration_file().keys()
     # Validate the data
     
@@ -182,7 +183,7 @@ def validate_beiwe_environment_config(eb_environment_name):
         
     # Check for presence of the server settings file:
     if not file_exists(get_server_configuration_file_path(eb_environment_name)):
-        log.error("No server settings file exists at %s." % get_server_configuration_file_path(eb_environment_name))
+        log.error(f"No server settings file exists at {get_server_configuration_file_path(eb_environment_name)}.")
         EXIT(1)
         
     # Put the data into one dict to be returned

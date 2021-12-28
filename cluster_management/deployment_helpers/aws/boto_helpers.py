@@ -1,7 +1,14 @@
-import boto3
+from typing import Union
 
-from deployment_helpers.constants import (get_aws_credentials,
-    get_global_config)
+import boto3
+from botocore.client import BaseClient, ClientMeta
+from botocore.session import Session as IDEResourceType
+from deployment_helpers.constants import get_aws_credentials, get_global_config
+
+
+# IDE does not understand boto3 because the types themselves are generated at runtime.  These typing
+# hints gives the IDE some idea, but tbh not much.
+IDEBotoClientType = Union[BaseClient, ClientMeta]
 
 AWS_CREDENTIALS = get_aws_credentials()
 GLOBAL_CONFIGURATION = get_global_config()
@@ -24,43 +31,42 @@ def _get_resource(client_type):
             region_name=GLOBAL_CONFIGURATION["AWS_REGION"],
     )
 
-def create_s3_resource():
+def create_s3_resource() -> IDEResourceType:
     return _get_resource("s3")
 
 
-def create_ec2_client():
+def create_ec2_client() -> IDEBotoClientType:
     return _get_client('ec2')
 
 
-def create_eb_client():
+def create_eb_client() -> IDEBotoClientType:
     return _get_client('elasticbeanstalk')
 
 
-def create_iam_client():
+def create_iam_client() -> IDEBotoClientType:
     return _get_client('iam')
 
 
-def create_rds_client():
+def create_rds_client() -> IDEBotoClientType:
     return _get_client('rds')
 
 
-def create_batch_client():
+def create_batch_client() -> IDEBotoClientType:
     return _get_client('batch')
 
 
-def create_s3_client():
+def create_s3_client() -> IDEBotoClientType:
     return _get_client('s3')
 
 
-def create_sts_client():
+def create_sts_client() -> IDEBotoClientType:
     return _get_client('sts')
 
 
 # Resources.
-def create_ec2_resource():
+def create_ec2_resource() -> IDEResourceType:
     return _get_resource('ec2')
 
 
-def create_iam_resource():
+def create_iam_resource() -> IDEResourceType:
     return _get_resource('iam')
-

@@ -1,23 +1,12 @@
-# TODO:
-# determine how to integrate with existing aws creds
-# import settings in an intelligent manner from some json config files
-# code that validates and prints all parameters in the json files for review?
-
-# uh-oh - SSL settings - I guess we need to validate route53 DNS settings.
-
-# update data processing?
-# stop data processing?
-# deploy N data processing servers
 import argparse
 import json
 import os
 import re
+import shutil
 import sys
 from os import environ
-from os.path import join as path_join, relpath
+from os.path import abspath, join as path_join, relpath
 from time import sleep
-
-from fabric.api import env as fabric_env, put, run, sudo
 
 from deployment_helpers.aws.elastic_beanstalk import (check_if_eb_environment_exists,
     create_eb_environment, fix_deploy)
@@ -32,15 +21,17 @@ from deployment_helpers.configuration_utils import (are_aws_credentials_present,
     reference_data_processing_server_configuration, reference_environment_configuration_file,
     validate_beiwe_environment_config)
 from deployment_helpers.constants import (APT_MANAGER_INSTALLS, APT_SINGLE_SERVER_AMI_INSTALLS,
-    APT_WORKER_INSTALLS, CREATE_ENVIRONMENT_HELP, CREATE_MANAGER_HELP, CREATE_WORKER_HELP,
-    DEPLOYMENT_ENVIRON_SETTING_REMOTE_FILE_PATH, DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, DEV_HELP,
-    DEV_MODE, DO_CREATE_ENVIRONMENT, DO_SETUP_EB_UPDATE_OPEN, ENVIRONMENT_NAME_RESTRICTIONS,
-    EXTANT_ENVIRONMENT_PROMPT, FILES_TO_PUSH, FIX_HEALTH_CHECKS_BLOCKING_DEPLOYMENT_HELP,
-    get_beiwe_python_environment_variables_file_path, get_finalized_environment_variables,
-    get_global_config, GET_MANAGER_IP_ADDRESS_HELP, get_pushed_full_processing_server_env_file_path,
+    APT_WORKER_INSTALLS, CLONE_ENVIRONMENT_HELP, CREATE_ENVIRONMENT_HELP, CREATE_MANAGER_HELP,
+    CREATE_WORKER_HELP, DEPLOYMENT_ENVIRON_SETTING_REMOTE_FILE_PATH,
+    DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, DEV_HELP, DEV_MODE, DO_CREATE_CLONE, DO_CREATE_ENVIRONMENT,
+    DO_SETUP_EB_UPDATE_OPEN, ENVIRONMENT_NAME_RESTRICTIONS, EXTANT_ENVIRONMENT_PROMPT,
+    FILES_TO_PUSH, FIX_HEALTH_CHECKS_BLOCKING_DEPLOYMENT_HELP,
+    get_beiwe_environment_variables_file_path, get_db_credentials_file_path,
+    get_finalized_credentials_file_path, get_finalized_environment_variables, get_global_config,
+    GET_MANAGER_IP_ADDRESS_HELP, get_pushed_full_processing_server_env_file_path,
     get_server_configuration_file, get_server_configuration_file_path, GET_WORKER_IP_ADDRESS_HELP,
-    HELP_SETUP_NEW_ENVIRONMENT, HELP_SETUP_NEW_ENVIRONMENT_HELP, LOCAL_AMI_ENV_CONFIG_FILE_PATH,
-    LOCAL_APACHE_CONFIG_FILE_PATH, LOCAL_CRONJOB_MANAGER_FILE_PATH,
+    HELP_SETUP_NEW_ENVIRONMENT, HELP_SETUP_NEW_ENVIRONMENT_END, HELP_SETUP_NEW_ENVIRONMENT_HELP,
+    LOCAL_AMI_ENV_CONFIG_FILE_PATH, LOCAL_APACHE_CONFIG_FILE_PATH, LOCAL_CRONJOB_MANAGER_FILE_PATH,
     LOCAL_CRONJOB_SINGLE_SERVER_AMI_FILE_PATH, LOCAL_CRONJOB_WORKER_FILE_PATH,
     LOCAL_INSTALL_CELERY_WORKER, LOCAL_RABBIT_MQ_CONFIG_FILE_PATH, LOG_FILE,
     MANAGER_SERVER_INSTANCE_TYPE, PURGE_COMMAND_BLURB, PURGE_INSTANCE_PROFILES_HELP,
@@ -49,6 +40,7 @@ from deployment_helpers.constants import (APT_MANAGER_INSTALLS, APT_SINGLE_SERVE
     REMOTE_RABBIT_MQ_FINAL_CONFIG_FILE_PATH, REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH, REMOTE_USERNAME,
     STAGED_FILES, TERMINATE_PROCESSING_SERVERS_HELP, WORKER_SERVER_INSTANCE_TYPE)
 from deployment_helpers.general_utils import current_time_string, do_zip_reduction, EXIT, log, retry
+from fabric.api import env as fabric_env, put, run, sudo
 
 
 # Fabric configuration
@@ -82,6 +74,7 @@ def try_run(*args, **kwargs):
     except FabricExecutionError:
         pass
 
+
 def try_sudo(*args, **kwargs):
     try:
         sudo(*args, **kwargs)
@@ -105,7 +98,7 @@ def remove_unneeded_ssh_keys():
 def push_manager_private_ip_and_password(eb_environment_name):
     ip = get_manager_private_ip(eb_environment_name) + ":" + str(RABBIT_MQ_PORT)
     password = get_rabbit_mq_password(eb_environment_name)
-
+    
     # echo puts a new line at the end of the output
     run(f"echo {ip} > {REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH}")
     run(f"printf {password} >> {REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH}")
@@ -123,12 +116,12 @@ def load_git_repo():
     # Git clone the repository into the remote beiwe-backend folder
     # git operations print to both stderr *and* stdout, so redirect them both to the log file
     run(f'cd {REMOTE_HOME_DIR}; git clone https://github.com/onnela-lab/beiwe-backend.git 2>> {LOG_FILE}')
-
+    
     if DEV_MODE:
         branch = environ.get("DEV_BRANCH", "development")
     else:
         branch = "main"
-
+    
     run(f'cd {REMOTE_HOME_DIR}/beiwe-backend; git checkout {branch} 1>> {LOG_FILE} 2>> {LOG_FILE}')
 
 
@@ -155,7 +148,7 @@ def manager_fix():
     # least one occasion did not respond to kill -9 commands even when run as the superuser. This
     # occurs on both workers and managers, a 20 second sleep operation fixes it, 10 seconds does not.
     # Tested on the slowest server, t3a.nano' with swap that is required to run the celery tasks.)
-
+    
     # Update: it turns out there is an alternate failure mode if you try to do the 20 second
     # wait (which works for workers), which is that all calls to the celery Inspect object
     # block for exceptionally long periods, even when a timeout value is provided. (This behavior
@@ -164,7 +157,7 @@ def manager_fix():
     log.warning("rebooting server to fix rabbitmq bugs...")
     sleep(5)
     retry(run, "# waiting for server to reboot, this might take a while.")
-
+    
     # we need to re-enable the swap after the reboot, then we can finally start supervisor without
     # creating zombie celery threads.
     sudo("swapon /swapfile")
@@ -185,18 +178,18 @@ def setup_manager_cron():
 
 def setup_rabbitmq(eb_environment_name):
     create_rabbit_mq_password_file(eb_environment_name)
-
+    
     # push the configuration file so that it listens on the configured port
     put(LOCAL_RABBIT_MQ_CONFIG_FILE_PATH, REMOTE_RABBIT_MQ_CONFIG_FILE_PATH)
     sudo(f"cp {REMOTE_RABBIT_MQ_CONFIG_FILE_PATH} {REMOTE_RABBIT_MQ_FINAL_CONFIG_FILE_PATH}")
-
+    
     # setup a new password
     sudo(f"rabbitmqctl add_user beiwe {get_rabbit_mq_password(eb_environment_name)}")
     sudo('rabbitmqctl set_permissions -p / beiwe ".*" ".*" ".*"')
 
 
 def apt_installs(manager=False, single_server_ami=False):
-
+    
     if manager:
         apt_install_list = APT_MANAGER_INSTALLS
     elif single_server_ami:
@@ -204,7 +197,7 @@ def apt_installs(manager=False, single_server_ami=False):
     else:
         apt_install_list = APT_WORKER_INSTALLS
     installs_string = " ".join(apt_install_list)
-
+    
     # Sometimes (usually on slower servers) the remote server isn't done with initial setup when
     # we get to this step, so it has a bunch of retry logic.
     installs_failed = True
@@ -221,7 +214,7 @@ def apt_installs(manager=False, single_server_ami=False):
                 "Will try 10 times, waiting 5 seconds each time."
             )
             sleep(5)
-
+    
     # we run supervisor manually at the end
     sudo("service supervisor stop")
     if installs_failed:
@@ -292,7 +285,7 @@ def do_fail_if_bad_environment_name(name):
     if not (4 <= len(name) < 40):
         log.error("That name is either too long or too short.")
         EXIT(1)
-
+    
     if not re.match("^[a-zA-Z0-9-]+$", name) or name.endswith("-"):
         log.error("that is not a valid Elastic Beanstalk environment name.")
         EXIT(1)
@@ -323,13 +316,13 @@ def prompt_for_extant_eb_environment_name():
 
 def do_setup_eb_update():
     print("\n", DO_SETUP_EB_UPDATE_OPEN)
-
+    
     files = sorted([f for f in os.listdir(STAGED_FILES) if f.lower().endswith(".zip")])
-
+    
     if not files:
         print("Could not find any zip files in " + STAGED_FILES)
         EXIT(1)
-
+    
     print("Enter the version of the codebase do you want to use:")
     for i, file_name in enumerate(files):
         print("[%s]: %s" % (i + 1, file_name))
@@ -340,11 +333,11 @@ def do_setup_eb_update():
         log.error("Could not parse input.")
         index = None  # ide warnings
         EXIT(1)
-
+    
     if index < 1 or index > len(files):
         log.error("%s was not a valid option." % index)
         EXIT(1)
-
+    
     # handle 1-indexing
     file_name = files[index - 1]
     # log.info("Processing %s..." % file_name)
@@ -369,43 +362,84 @@ def do_create_environment():
     log.info("Created Beiwe cluster environment successfully")
 
 
+def do_clone_environment():
+    print(DO_CREATE_CLONE)
+    existing_name = prompt_for_new_eb_environment_name(with_prompt=False)
+    validate_beiwe_environment_config(existing_name)  # Exits if any non-autogenerated credentials are bad.
+    
+    print("Enter a name for the new environment you wish to create:")
+    new_name = prompt_for_new_eb_environment_name(with_prompt=True)
+    do_fail_if_environment_exists(new_name)
+    
+    # this list needs to match output of full file path from the filepath getter functions
+    extant_files = [
+        abspath(path_join(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER, p))
+        for p in os.listdir(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER)
+    ]
+    
+    # we need to confirm these are all present and copy them.
+    file_path_getter_functions = [
+        get_pushed_full_processing_server_env_file_path,
+        get_finalized_credentials_file_path,
+        get_db_credentials_file_path,
+        get_beiwe_environment_variables_file_path,
+        get_server_configuration_file_path
+    ]
+    failed = False
+    for func in file_path_getter_functions:
+        if func(existing_name) not in extant_files:
+            failed = True
+            log.error(f"The following credential file is missing: {func(existing_name)}")
+        if func(new_name) in extant_files:
+            failed = True
+            log.error(f"The following credential file already exists: {func(new_name)}")
+    if failed:
+        log.warn("No actions have been taken.")
+        EXIT(1)
+    
+    # files have been validated, we can now copy them.
+    for func in file_path_getter_functions:
+        shutil.copyfile(func(existing_name), func(new_name))
+    
+    create_eb_environment(new_name)
+    log.info("Created Beiwe cluster environment successfully")
+
+
 def do_help_setup_new_environment():
     print(HELP_SETUP_NEW_ENVIRONMENT)
     name = prompt_for_new_eb_environment_name()
     do_fail_if_bad_environment_name(name)
     do_fail_if_environment_exists(name)
-
-    beiwe_environment_fp = get_beiwe_python_environment_variables_file_path(name)
+    
+    beiwe_environment_fp = get_beiwe_environment_variables_file_path(name)
     processing_server_settings_fp = get_server_configuration_file_path(name)
     extant_files = os.listdir(DEPLOYMENT_SPECIFIC_CONFIG_FOLDER)
-
+    
     for fp in (beiwe_environment_fp, processing_server_settings_fp):
         if os.path.basename(fp) in extant_files:
             log.error("is already a file at %s" % relpath(beiwe_environment_fp))
             EXIT(1)
-
+    
     with open(beiwe_environment_fp, 'w') as f:
         json.dump(reference_environment_configuration_file(), f, indent=1)
     with open(processing_server_settings_fp, 'w') as f:
         json.dump(reference_data_processing_server_configuration(), f, indent=1)
-
+    
     print("Environment specific files have been created at %s and %s." % (
         relpath(beiwe_environment_fp),
         relpath(processing_server_settings_fp),
     ))
-
+    
     # Note: we actually cannot generate RDS credentials until we have a server, this is because
     # the hostname cannot exist until the server exists.
-    print("""After filling in the required contents of these newly created files you will be able
-    to run the -create-environment command.  Note that several more credentials files will be
-    generated as part of that process. """)
+    print(HELP_SETUP_NEW_ENVIRONMENT_END)
 
 
 def do_create_manager():
     name = prompt_for_extant_eb_environment_name()
     do_fail_if_environment_does_not_exist(name)
     create_processing_server_configuration_file(name)
-
+    
     try:
         settings = get_server_configuration_file(name)
     except Exception as e:
@@ -413,7 +447,7 @@ def do_create_manager():
         log.error(e)
         settings = None  # ide warnings...
         EXIT(1)
-
+    
     log.info("creating manager server for %s..." % name)
     try:
         instance = create_processing_control_server(name, settings[MANAGER_SERVER_INSTANCE_TYPE])
@@ -422,7 +456,7 @@ def do_create_manager():
         instance = None  # ide warnings...
         EXIT(1)
     public_ip = instance['NetworkInterfaces'][0]['PrivateIpAddresses'][0]['Association']['PublicIp']
-
+    
     configure_fabric(name, public_ip)
     create_swap()
     push_home_directory_files()
@@ -446,7 +480,7 @@ def do_create_worker():
         log.error(
             "There is no manager server for the %s cluster, cannot deploy a worker until there is." % name)
         EXIT(1)
-
+    
     try:
         settings = get_server_configuration_file(name)
     except Exception as e:
@@ -454,7 +488,7 @@ def do_create_worker():
         log.error(e)
         settings = None  # ide warnings...
         EXIT(1)
-
+    
     log.info("creating worker server for %s..." % name)
     try:
         instance = create_processing_server(name, settings[WORKER_SERVER_INSTANCE_TYPE])
@@ -463,7 +497,7 @@ def do_create_worker():
         instance = None  # ide warnings...
         EXIT(1)
     instance_ip = instance['NetworkInterfaces'][0]['PrivateIpAddresses'][0]['Association']['PublicIp']
-
+    
     configure_fabric(name, instance_ip)
     create_swap()
     push_home_directory_files()
@@ -539,6 +573,7 @@ def do_get_worker_ip_addresses():
 def cli_args_validation():
     # Use '"count"' as the type, don't try and be fancy, argparse is a pain.
     parser.add_argument('-create-environment', action="count", help=CREATE_ENVIRONMENT_HELP)
+    parser.add_argument('-clone-environment', action="count", help=CLONE_ENVIRONMENT_HELP)
     parser.add_argument('-create-manager', action="count", help=CREATE_MANAGER_HELP)
     parser.add_argument('-create-worker', action="count", help=CREATE_WORKER_HELP)
     parser.add_argument("-help-setup-new-environment", action="count", help=HELP_SETUP_NEW_ENVIRONMENT_HELP)
@@ -548,16 +583,16 @@ def cli_args_validation():
     parser.add_argument("-terminate-processing-servers", action="count", help=TERMINATE_PROCESSING_SERVERS_HELP)
     parser.add_argument('-get-manager-ip', action="count", help=GET_MANAGER_IP_ADDRESS_HELP)
     parser.add_argument('-get-worker-ips', action="count", help=GET_WORKER_IP_ADDRESS_HELP)
-
+    
     # Note: this arguments variable is not iterable.
     # access entities as arguments.long_name_of_argument, like arguments.update_manager
     arguments = parser.parse_args()
-
+    
     # print help message if no arguments were supplied
     if len(sys.argv) == 1:
         parser.print_help()
         EXIT()
-
+    
     return arguments
 
 
@@ -569,51 +604,55 @@ if __name__ == "__main__":
     # validate the global configuration file
     if not all((are_aws_credentials_present(), is_global_configuration_valid())):
         EXIT(1)
-
+    
     # get CLI arguments, see function for details
     arguments = cli_args_validation()
-
+    
     if arguments.dev:
         DEV_MODE.set(True)
         log.warning("RUNNING IN DEV MODE")
-
+    
     if arguments.help_setup_new_environment:
         do_help_setup_new_environment()
         EXIT(0)
-
+    
     if arguments.create_environment:
         do_create_environment()
         EXIT(0)
-
+    
+    if arguments.clone_environment:
+        do_clone_environment()
+        EXIT(0)
+    
     if arguments.create_manager:
         do_create_manager()
         EXIT(0)
-
+    
     if arguments.create_worker:
         do_create_worker()
         EXIT(0)
-
+    
     if arguments.fix_health_checks_blocking_deployment:
         do_fix_health_checks()
         EXIT(0)
-
+    
     if arguments.purge_instance_profiles:
         print(PURGE_COMMAND_BLURB, "\n\n\n")
         iam_purge_instance_profiles()
         EXIT(0)
-
+    
     if arguments.terminate_processing_servers:
         do_terminate_all_processing_servers()
         EXIT(0)
-
+    
     if arguments.get_manager_ip:
         do_get_manager_ip_address()
         EXIT(0)
-
+    
     if arguments.get_worker_ips:
         do_get_worker_ip_addresses()
         EXIT(0)
-
+    
     # print help if nothing else did (make just supplying -dev print the help screen)
     parser.print_help()
     EXIT(0)

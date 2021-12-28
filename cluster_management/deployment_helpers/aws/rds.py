@@ -6,11 +6,13 @@ from deployment_helpers.aws.boto_helpers import create_ec2_resource, create_rds_
 from deployment_helpers.aws.security_groups import (
     create_sec_grp_rule_parameters_allowing_traffic_from_another_security_group,
     create_security_group, get_security_group_by_name)
-from deployment_helpers.constants import (DBInstanceNotFound, get_db_credentials_file_path,
-    get_server_configuration_file, RDS_NAME_OVERRIDE, RDS_INSTANCE_SEC_GROUP_NAME_OVERRIDE,
-    RDS_DATABASE_SEC_GROUP_NAME_OVERRIDE, DB_SERVER_TYPE)
-from deployment_helpers.general_utils import (EXIT, current_time_string, log,
+from deployment_helpers.constants import (DB_SERVER_TYPE, DBInstanceNotFound,
+    get_db_credentials_file_path, get_finalized_credentials_file_path,
+    get_finalized_environment_variables, get_server_configuration_file,
+    RDS_DATABASE_SEC_GROUP_NAME_OVERRIDE, RDS_INSTANCE_SEC_GROUP_NAME_OVERRIDE, RDS_NAME_OVERRIDE)
+from deployment_helpers.general_utils import (current_time_string, EXIT, log,
     random_alphanumeric_starting_with_letter, random_alphanumeric_string)
+
 
 # t1.micro, m1.small, m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge,
 # m3.medium, m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
@@ -68,7 +70,7 @@ def write_rds_credentials(eb_environment_name, credentials, test_for_existing_fi
         msg = "Encountered a file at %s, aborting." % db_credentials_path
         log.error(msg)
         raise Exception(msg)
-
+    
     with open(db_credentials_path, 'w') as f:
         json.dump(credentials, f, indent=1)
         log.info("database credentials have been written to %s" % db_credentials_path)
@@ -78,15 +80,26 @@ def write_rds_credentials(eb_environment_name, credentials, test_for_existing_fi
 ####################################################################################################
 
 def construct_db_name(eb_environment_name):
+    # this value can be manually overridden by setting this env variable
     if RDS_NAME_OVERRIDE:
         return RDS_NAME_OVERRIDE
+    
+    # extending functionality to source information from the settings file, if it is present.
+    if os.path.exists(get_finalized_credentials_file_path(eb_environment_name)):
+        rds_endpoint_url = get_finalized_environment_variables(eb_environment_name)["RDS_HOSTNAME"]
+        instances_by_url = {
+            instance["Endpoint"]["Address"]: instance["DBInstanceIdentifier"]
+            for instance in create_rds_client().describe_db_instances()["DBInstances"]
+        }
+        return instances_by_url[rds_endpoint_url]
+    # otherwise we use the default construction
     return eb_environment_name + '-database'
 
 
 def get_rds_security_group_names(db_identifier):
     instance_sec_group_name = db_identifier + "_database_access"
     database_sec_group_name = db_identifier + "_allow_database_connections"
-
+    
     if RDS_INSTANCE_SEC_GROUP_NAME_OVERRIDE:
         instance_sec_group_name = RDS_INSTANCE_SEC_GROUP_NAME_OVERRIDE
     if RDS_DATABASE_SEC_GROUP_NAME_OVERRIDE:
@@ -108,11 +121,11 @@ def get_rds_security_groups(db_identifier):
 
 def create_rds_security_groups(db_identifier):
     instance_sec_grp_name, database_sec_grp_name = get_rds_security_group_names(db_identifier)
-
+    
     # create the security group that we will then allow for the database
     instance_sec_grp = create_security_group(instance_sec_grp_name,
                                              instance_database_sec_group_description % db_identifier)
-
+    
     # construct the rule that will allow access from anything with the above security group
     ingress_rule = create_sec_grp_rule_parameters_allowing_traffic_from_another_security_group(
             POSTGRES_PORT,
@@ -129,7 +142,7 @@ def add_eb_environment_to_rds_database_security_group(eb_environment_name, eb_se
     ingress_params = create_sec_grp_rule_parameters_allowing_traffic_from_another_security_group(
             tcp_port=POSTGRES_PORT, sec_grp_id=eb_sec_grp_id
     )
-
+    
     _, database_sec_grp_name = get_rds_security_group_names(construct_db_name(eb_environment_name))
     db_sec_grp = get_security_group_by_name(database_sec_grp_name)
     sec_grp_resource = create_ec2_resource().SecurityGroup(db_sec_grp['GroupId'])
@@ -148,21 +161,20 @@ def get_most_recent_postgres_engine():
     (The pagination code was tested by not filtering by engine type and worked when committed.) """
     rds_client = create_rds_client()
     query_response = rds_client.describe_db_engine_versions(Engine="postgres")
-
+    
     list_of_database_versions = []
     list_of_database_versions.extend(query_response['DBEngineVersions'])
-
+    
     while 'Marker' in query_response:
         query_response = rds_client.describe_db_engine_versions(
                 Marker=query_response['Marker'], Engine="postgres"
         )
         list_of_database_versions.extend(query_response['DBEngineVersions'])
-
+    
     if not list_of_database_versions:
         raise Exception("Could not find most recent postgres version.")
-
+    
     return list_of_database_versions[-1]
-
 
 
 def get_db_info(eb_environment_name):
@@ -187,78 +199,78 @@ def create_new_rds_instance(eb_environment_name):
         EXIT()
     except DBInstanceNotFound:
         pass
-
+    
     database_server_type = get_server_configuration_file(eb_environment_name)[DB_SERVER_TYPE]
     engine = get_most_recent_postgres_engine()
-
+    
     credentials = generate_valid_postgres_credentials()
     log.info("writing database credentials to disk, database address will be added later.")
-
+    
     write_rds_credentials(eb_environment_name, credentials, True)
-
+    
     # There is some weirdness involving security groups.  It looks like there is this concept of
     # non-vpc security groups, I am fairly certain that this interacts with cross-vpc, IAM based
     # database access.
     create_rds_security_groups(db_instance_identifier)
     db_sec_grp_id = get_rds_security_groups(db_instance_identifier)['database_sec_grp']['GroupId']
-
+    
     log.info("Creating RDS Postgres database named %s" % db_instance_identifier)
-
+    
     rds_client = create_rds_client()
     rds_instance = rds_client.create_db_instance(
             # server details
             DBInstanceIdentifier=db_instance_identifier,
             DBInstanceClass="db." + database_server_type,
             MultiAZ=False,
-
+            
             PubliclyAccessible=False,
             Port=POSTGRES_PORT,
-
+            
             # attach the security group that will allow access
             VpcSecurityGroupIds=[db_sec_grp_id],
             #TODO: is this even relevant?
             # providing the subnet is critical, not providing this value causes the db to be non-vpc
             # DBSubnetGroupName='string',
-
+            
             # db storage
             StorageType='gp2',  # valid options are standard, gp2, io1
             # Iops=1000,  # multiple between 3 and 10 times the storage; only for use with io1.
-
+            
             # AllocatedStorage has weird constraints:
             # General Purpose (SSD) storage (gp2): Must be an integer from 5 to 6144.
             # Provisioned IOPS storage (io1): Must be an integer from 100 to 6144.
             # Magnetic storage (standard): Must be an integer from 5 to 3072.
             AllocatedStorage=50,  # in gigabytes
-
+            
             StorageEncrypted=True,  # Encryption of data at rest, drive encryption.
             # KmsKeyId='string',
             # TdeCredentialArn='string',  # probably not something we will implement
             # TdeCredentialPassword='string',  # probably not something we will implement
-
+            
             # Security
             MasterUsername=credentials['RDS_USERNAME'],
             MasterUserPassword=credentials['RDS_PASSWORD'],
             DBName=credentials['RDS_DB_NAME'],
-
+            
             EnableIAMDatabaseAuthentication=False,
-
+            
             Engine=engine['Engine'],  # will be "postgres"
             EngineVersion=engine['EngineVersion'],  # most recent postgres version in this region.
             PreferredMaintenanceWindow=MAINTENANCE_WINDOW,
             PreferredBackupWindow=BACKUP_WINDOW,
             AutoMinorVersionUpgrade=True,  # auto-upgrades are fantastic
             BackupRetentionPeriod=BACKUP_RETENTION_PERIOD_DAYS,
-
+            
             Tags=[{'Key': 'BEIWE-NAME',
                    'Value': 'Beiwe postgres database for %s' % eb_environment_name},],
-
+            
             # Enhanced monitoring, leave disabled
             # MonitoringInterval=5,  # in seconds, Valid Values: 0, 1, 5, 10, 15, 30, 60
             # MonitoringRoleArn='string',  # required for monitoring interval other than 0
-
+            
             # near as I can tell this is the "insert postgres parameters here" section.
             # DBParameterGroupName='string',
-
+            
             # AvailabilityZone='string',  # leave as default (random)
             # DBSecurityGroups=['strings'], # non-vpc rds instance settings
             # LicenseModel='string',
@@ -273,7 +285,7 @@ def create_new_rds_instance(eb_environment_name):
             # PerformanceInsightsKMSKeyId='string'  # Aurora specific
             # PromotionTier = 123,  # Aurora specific
     )
-
+    
     while True:
         try:
             db = get_db_info(eb_environment_name)
@@ -291,5 +303,5 @@ def create_new_rds_instance(eb_environment_name):
             break
         else:
             raise Exception('encountered unknown database state "%s"' % db['DBInstanceStatus'])
-
+    
     return db

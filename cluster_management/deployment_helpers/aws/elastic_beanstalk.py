@@ -37,7 +37,7 @@ def construct_eb_environment_variables(eb_environment_name):
         log.error(e)
         raise
     # This needs to be a comma separated list of environment variables declared as "var=value"
-    env_var_string = ",".join(["%s=%s" % (k, v) for k, v in environment_variables.items()])
+    env_var_string = ",".join([f"{k}={v}" for k, v in environment_variables.items()])
     generated_configuration_details = {
         "ServiceRole": get_or_create_eb_service_role()['RoleName'],
         "IamInstanceProfile": get_or_create_eb_instance_profile()['Arn'],
@@ -67,9 +67,9 @@ def get_python38_platform_arn():
     """ Gets the most recent platform arn for a python 3.8 elastic beanstalk cluster, is region specific.."""
     eb_client = create_eb_client()
     platforms = []
-    botoFilters = [{'Operator': 'contains', 'Type': 'PlatformName', 'Values': ['Python']}]
+    boto_filters = [{'Operator': 'contains', 'Type': 'PlatformName', 'Values': ['Python']}]
     # Note: regardless of the MaxRecords value, we're only seeing boto3 return 100 records max
-    for platform in eb_client.list_platform_versions(MaxRecords=1000, Filters=botoFilters)['PlatformSummaryList']:
+    for platform in eb_client.list_platform_versions(MaxRecords=1000, Filters=boto_filters)['PlatformSummaryList']:
         if (platform.get(
                 'PlatformCategory', None) == 'Python' and
                 "Python 3.8" in platform.get('PlatformArn', []) and
