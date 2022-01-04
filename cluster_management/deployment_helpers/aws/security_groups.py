@@ -35,6 +35,8 @@ def get_security_group_by_name(sec_grp_name):
         if "InvalidGroup.NotFound" in str(e):
             log.debug(str(e))
             raise InvalidSecurityGroupNameException(sec_grp_name)
+        else:
+            log.error(str(e))
         raise
 
 
@@ -72,7 +74,7 @@ def create_security_group(group_name, description,
         list_of_dicts_of_ingress_kwargs = []
     if list_of_dicts_of_egress_kwargs is None:
         list_of_dicts_of_egress_kwargs = []
-
+    
     if not isinstance(list_of_dicts_of_ingress_kwargs, list):
         raise Exception("list_of_dicts_of_ingress_kwargs was not a list, it was a %s" % type(list_of_dicts_of_ingress_kwargs))
     if not isinstance(list_of_dicts_of_egress_kwargs, list):
@@ -90,8 +92,8 @@ def create_security_group(group_name, description,
     
     for ingress_params in list_of_dicts_of_ingress_kwargs:
         sec_grp_resource.authorize_ingress(**ingress_params)
-        
+    
     for egress_params in list_of_dicts_of_egress_kwargs:
         sec_grp_resource.authorize_egress(**egress_params)
-
+    
     return get_security_group_by_id(sec_grp["GroupId"])
