@@ -39,6 +39,7 @@ else:
 
 DEBUG = 'localhost' in DOMAIN_NAME or '127.0.0.1' in DOMAIN_NAME or '::1' in DOMAIN_NAME
 
+SECURE_SSL_REDIRECT = not DEBUG
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -149,7 +150,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
 if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
     RAVEN_CONFIG = {'dsn': normalize_sentry_dsn(SENTRY_ELASTIC_BEANSTALK_DSN)}
-
+    
     # sourced directly from https://raven.readthedocs.io/en/stable/integrations/django.html,
     # custom tags have been disabled
     LOGGING = {
