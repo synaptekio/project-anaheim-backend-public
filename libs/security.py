@@ -67,11 +67,11 @@ def decode_base64(data: bytes) -> bytes:
         length = len(data.strip(b"="))
         if length % 4 != 0:
             raise Base64LengthException(f"Data provided had invalid length {length} after padding was removed.")
-
-        if "incorrect padding" in str(e).lower():
+        
+        if "incorrect padding" in str(e).lower() or "number of data characters" in str(e).lower():
             # str(data) here is correct, we need a representation of the data, not the raw data.
             raise PaddingException(f'{str(e)} -- "{str(data)}"')
-
+        
         raise
 
 
