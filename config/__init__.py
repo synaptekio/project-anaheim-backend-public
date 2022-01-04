@@ -11,6 +11,7 @@ DB_MODE_SQLITE = "sqlite"
 # The explicit remote env file should be beiwe-backend/config/remote_db_env.py
 CELERY_SERVER_ENV_FILE = join(abspath(dirname(__file__)), "remote_db_env.py")
 ELASTIC_BEANSTALK_ENV_FILE = join(abspath(dirname(dirname(dirname(__file__)))), "env")
+ELASTIC_BEANSTALK_2_VENV_FILE = join(abspath(dirname(dirname(dirname(__file__)))), "venv")
 POSTGRES_DATABASE_SETTINGS = ("RDS_DB_NAME", "RDS_USERNAME", "RDS_PASSWORD", "RDS_HOSTNAME")
 SENTRY_ENVS = ('SENTRY_DATA_PROCESSING_DSN', 'SENTRY_ELASTIC_BEANSTALK_DSN','SENTRY_JAVASCRIPT_DSN')
 
@@ -31,8 +32,8 @@ MANDATORY_VARS = {
     'SYSADMIN_EMAILS',
 }
 
-# server modes
-MODE_EB_SERVER = file_exists(ELASTIC_BEANSTALK_ENV_FILE)
+# server modes - aws linux 2 has a different file structure, we currently test for both.
+MODE_EB_SERVER = file_exists(ELASTIC_BEANSTALK_ENV_FILE) or file_exists(ELASTIC_BEANSTALK_2_VENV_FILE)
 MODE_CELERY_SERVER = file_exists(CELERY_SERVER_ENV_FILE)
 
 # Evaluate the config.remote_db_env file if it exists.  This file is auto generated during the
