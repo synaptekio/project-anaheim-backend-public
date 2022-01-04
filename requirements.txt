@@ -8,30 +8,26 @@ backcall==0.2.0
     # via ipython
 bleach==4.1.0
     # via -r requirements.in
-boto3==1.17.71
+boto3==1.20.26
     # via -r requirements.in
-botocore==1.20.71
+botocore==1.23.26
     # via
     #   boto3
     #   s3transfer
-cachecontrol==0.12.6
+cachecontrol==0.12.10
     # via firebase-admin
-cachetools==4.2.2
+cachetools==4.2.4
     # via google-auth
-certifi==2020.12.5
+certifi==2021.10.8
     # via requests
-cffi==1.14.5
-    # via google-crc32c
-chardet==4.0.0
+charset-normalizer==2.0.9
     # via requests
-click==8.0.0
+click==8.0.3
     # via pip-tools
-cronutils==0.3.1
+cronutils==0.3.2
     # via -r requirements.in
-decorator==5.0.7
-    # via
-    #   ipython
-    #   traitlets
+decorator==5.1.0
+    # via ipython
 django-extensions==3.1.3
     # via -r requirements.in
 django-timezone-field==4.1.1
@@ -46,52 +42,49 @@ djangorestframework==3.12.4
     # via -r requirements.in
 firebase-admin==4.5.1
     # via -r requirements.in
-google-api-core[grpc]==1.26.3
+google-api-core[grpc]==1.31.5
     # via
     #   firebase-admin
     #   google-api-python-client
     #   google-cloud-core
     #   google-cloud-firestore
-google-api-python-client==2.3.0
+    #   google-cloud-storage
+google-api-python-client==2.33.0
     # via firebase-admin
 google-auth-httplib2==0.1.0
     # via google-api-python-client
-google-auth==1.30.0
+google-auth==1.35.0
     # via
     #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
     #   google-cloud-core
     #   google-cloud-storage
-google-cloud-core==1.6.0
+google-cloud-core==2.2.1
     # via
     #   google-cloud-firestore
     #   google-cloud-storage
-google-cloud-firestore==2.1.1
+google-cloud-firestore==2.3.4
     # via firebase-admin
-google-cloud-storage==1.38.0
+google-cloud-storage==1.43.0
     # via firebase-admin
-google-crc32c==1.1.2
+google-crc32c==1.3.0
     # via google-resumable-media
-google-resumable-media==1.2.0
+google-resumable-media==2.1.0
     # via google-cloud-storage
-googleapis-common-protos==1.53.0
+googleapis-common-protos==1.54.0
     # via google-api-core
-grpcio==1.37.1
+grpcio==1.43.0
     # via google-api-core
-httplib2==0.19.1
+httplib2==0.20.2
     # via
     #   google-api-python-client
     #   google-auth-httplib2
-idna==2.10
+idna==3.3
     # via requests
-importlib-metadata==4.8.2
-    # via pep517
-ipython-genutils==0.2.0
-    # via traitlets
-ipython==7.16.2
+ipython==7.30.1
     # via -r requirements.in
-jedi==0.17.2
+jedi==0.18.1
     # via ipython
 jinja2==3.0.2
     # via -r requirements.in
@@ -99,31 +92,35 @@ jmespath==0.10.0
     # via
     #   boto3
     #   botocore
-markupsafe==2.0.0
+markupsafe==2.0.1
     # via jinja2
-msgpack==1.0.2
+matplotlib-inline==0.1.3
+    # via ipython
+msgpack==1.0.3
     # via cachecontrol
-packaging==20.9
+packaging==21.3
     # via
     #   bleach
     #   google-api-core
-parso==0.7.1
+    #   google-cloud-firestore
+parso==0.8.3
     # via jedi
-pep517==0.10.0
+pep517==0.12.0
     # via pip-tools
 pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
-pip-tools==6.1.0
+pip-tools==6.4.0
     # via -r requirements.in
-prompt-toolkit==2.0.10
+prompt-toolkit==3.0.24
     # via ipython
-proto-plus==1.18.1
+proto-plus==1.19.8
     # via google-cloud-firestore
-protobuf==3.16.0
+protobuf==3.19.1
     # via
     #   google-api-core
+    #   google-cloud-storage
     #   googleapis-common-protos
     #   proto-plus
 psycopg2==2.8.6
@@ -136,15 +133,13 @@ pyasn1==0.4.8
     # via
     #   pyasn1-modules
     #   rsa
-pycparser==2.20
-    # via cffi
 pycrypto==2.6.1
     # via -r requirements.in
 pycryptodomex==3.11.0
     # via -r requirements.in
-pygments==2.9.0
+pygments==2.11.0
     # via ipython
-pyparsing==2.4.7
+pyparsing==3.0.6
     # via
     #   httplib2
     #   packaging
@@ -152,51 +147,45 @@ python-dateutil==2.8.2
     # via
     #   -r requirements.in
     #   botocore
-pytz==2021.1
+pytz==2021.3
     # via
     #   -r requirements.in
     #   django
     #   django-timezone-field
     #   google-api-core
-    #   google-cloud-firestore
 raven==6.10.0
     # via
     #   -r requirements.in
     #   cronutils
-requests==2.25.1
+requests==2.26.0
     # via
     #   cachecontrol
     #   google-api-core
     #   google-cloud-storage
-rsa==4.7.2
+rsa==4.8
     # via google-auth
-s3transfer==0.4.2
+s3transfer==0.5.0
     # via boto3
 six==1.16.0
     # via
     #   bleach
     #   google-api-core
-    #   google-api-python-client
     #   google-auth
     #   google-auth-httplib2
-    #   google-cloud-core
-    #   google-resumable-media
+    #   google-cloud-storage
     #   grpcio
-    #   prompt-toolkit
-    #   protobuf
     #   python-dateutil
-    #   traitlets
 sqlparse==0.4.2
     # via django
-toml==0.10.2
+tomli==2.0.0
     # via pep517
-traitlets==4.3.3
-    # via ipython
-typing-extensions==4.0.1
-    # via importlib-metadata
-uritemplate==3.0.1
+traitlets==5.1.1
+    # via
+    #   ipython
+    #   matplotlib-inline
+uritemplate==4.1.1
     # via google-api-python-client
-urllib3==1.26.5
+urllib3==1.26.7
     # via
     #   botocore
     #   requests
@@ -204,10 +193,8 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-zipp==3.6.0
-    # via
-    #   importlib-metadata
-    #   pep517
+wheel==0.37.1
+    # via pip-tools
 zstd==1.5.0.4
     # via -r requirements.in
 
