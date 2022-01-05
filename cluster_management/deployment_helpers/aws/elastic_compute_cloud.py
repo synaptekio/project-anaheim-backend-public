@@ -170,7 +170,7 @@ def create_server(eb_environment_name, aws_server_type, security_groups=None):
         'Ebs': {
             'DeleteOnTermination': True,
             'Encrypted': True,
-            'VolumeSize': 8,
+            'VolumeSize': 20,
         # gigabytes, No storage is required on any ubuntu machines, 8 is default
             'VolumeType': 'gp2'}  # SSD...
     }

@@ -118,7 +118,7 @@ def load_git_repo():
     run(f'cd {REMOTE_HOME_DIR}; git clone https://github.com/onnela-lab/beiwe-backend.git 2>> {LOG_FILE}')
     
     if DEV_MODE:
-        branch = environ.get("DEV_BRANCH", "development")
+        branch = environ.get("DEV_BRANCH", "main")
     else:
         branch = "main"
     
@@ -128,19 +128,17 @@ def load_git_repo():
 def setup_python():
     """ Installs requirements. """
     # sudo required because we are using the
-    sudo("python3 -m pip install --upgrade pip==21.0.1 setuptools==53.0.0 >> {log}")
-    run('python3 -m pip install --user -r {home}/beiwe-backend/requirements.txt >> {log}'.
-         format(home=REMOTE_HOME_DIR, log=LOG_FILE))
-    run('python3 -m pip install --user -r {home}/beiwe-backend/requirements_data_processing.txt >> {log}'.
-         format(home=REMOTE_HOME_DIR, log=LOG_FILE))
+    sudo(f"python3.8 -m pip install --upgrade pip setuptools >> {LOG_FILE}")
+    run(f'python3.8 -m pip install --user -r {REMOTE_HOME_DIR}/beiwe-backend/requirements.txt >> {LOG_FILE}')
+    run(f'python3.8 -m pip install --user -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_data_processing.txt >> {LOG_FILE}')
 
 
 def setup_celery_worker():
     # Copy the script from the local repository onto the remote server,
     # make it executable and execute it.
     put(LOCAL_INSTALL_CELERY_WORKER, REMOTE_INSTALL_CELERY_WORKER)
-    run('chmod +x {file}'.format(file=REMOTE_INSTALL_CELERY_WORKER))
-    run('{file} >> {log}'.format(file=REMOTE_INSTALL_CELERY_WORKER, log=LOG_FILE))
+    run(f'chmod +x {REMOTE_INSTALL_CELERY_WORKER}')
+    run(f'{REMOTE_INSTALL_CELERY_WORKER} >> {LOG_FILE}')
 
 
 def manager_fix():
@@ -167,13 +165,13 @@ def manager_fix():
 def setup_worker_cron():
     # Copy the cronjob file onto the remote server and add it to the remote crontab
     put(LOCAL_CRONJOB_WORKER_FILE_PATH, REMOTE_CRONJOB_FILE_PATH)
-    run('crontab -u {user} {file}'.format(file=REMOTE_CRONJOB_FILE_PATH, user=REMOTE_USERNAME))
+    run(f'crontab -u {REMOTE_USERNAME} {REMOTE_CRONJOB_FILE_PATH}')
 
 
 def setup_manager_cron():
     # Copy the cronjob file onto the remote server and add it to the remote crontab
     put(LOCAL_CRONJOB_MANAGER_FILE_PATH, REMOTE_CRONJOB_FILE_PATH)
-    run('crontab -u {user} {file}'.format(file=REMOTE_CRONJOB_FILE_PATH, user=REMOTE_USERNAME))
+    run(f'crontab -u {REMOTE_USERNAME} {REMOTE_CRONJOB_FILE_PATH}')
 
 
 def setup_rabbitmq(eb_environment_name):
@@ -203,8 +201,8 @@ def apt_installs(manager=False, single_server_ami=False):
     installs_failed = True
     for i in range(10):
         try:
-            sudo('apt-get -y update >> {log}'.format(log=LOG_FILE))
-            sudo('apt-get -y install {installs} >> {log}'.format(installs=installs_string, log=LOG_FILE))
+            sudo(f'apt-get -y update >> {LOG_FILE}')
+            sudo(f'apt-get -y install {installs_string} >> {LOG_FILE}')
             installs_failed = False
             break
         except FabricExecutionError:
@@ -223,7 +221,7 @@ def apt_installs(manager=False, single_server_ami=False):
 
 def setup_single_server_ami_cron():
     put(LOCAL_CRONJOB_SINGLE_SERVER_AMI_FILE_PATH, REMOTE_CRONJOB_FILE_PATH)
-    run('crontab -u {user} {file}'.format(file=REMOTE_CRONJOB_FILE_PATH, user=REMOTE_USERNAME))
+    run(f'crontab -u {REMOTE_USERNAME} {REMOTE_CRONJOB_FILE_PATH}')
 
 
 def push_beiwe_configuration(eb_environment_name, single_server_ami=False):
@@ -238,7 +236,7 @@ def push_beiwe_configuration(eb_environment_name, single_server_ami=False):
 
 def configure_apache():
     put(LOCAL_APACHE_CONFIG_FILE_PATH, REMOTE_APACHE_CONFIG_FILE_PATH)
-    sudo("mv {file} /etc/apache2/sites-available/000-default.conf".format(file=REMOTE_APACHE_CONFIG_FILE_PATH))
+    sudo(f"mv {REMOTE_APACHE_CONFIG_FILE_PATH} /etc/apache2/sites-available/000-default.conf")
     sudo("service apache2 restart")
 
 
@@ -527,7 +525,7 @@ def do_create_single_server_ami(ip_address, key_filename):
     push_beiwe_configuration(None, single_server_ami=True)
     configure_local_postgres()
     manage_script_filepath = path_join(REMOTE_HOME_DIR, "beiwe-backend/manage.py")
-    run('python3 {filename} migrate'.format(filename=manage_script_filepath))
+    run('python3.8 {filename} migrate'.format(filename=manage_script_filepath))
     setup_single_server_ami_cron()
     configure_apache()
     remove_unneeded_ssh_keys()

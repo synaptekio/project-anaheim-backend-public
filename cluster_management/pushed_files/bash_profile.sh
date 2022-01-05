@@ -49,8 +49,8 @@ alias ri="rm -i"
 alias htop="htop -d 5"
 alias nload="nload -a 5 -i 80000 -o 80000"
 alias df="df -h"
-alias pip="python3 -m pip"
-alias pip3="python3 -m pip"
+alias pip="python3.8 -m pip"
+alias pip3="python3.8 -m pip"
 
 #Git
 alias s='git status'
@@ -97,11 +97,11 @@ alias superconf='sudo nano /etc/supervisord.conf'
 alias boot="sudo sysv-rc-conf"
 
 #Developer tools
-alias db="cd $HOME/beiwe-backend/; python3 manage.py shell_plus"
-alias py="python3"
+alias db="cd $HOME/beiwe-backend/; python3.8 manage.py shell_plus"
+alias py="python3.8"
 alias ipy="ipython"
-alias manage="python3 manage.py"
-alias shell="python3 manage.py shell_plus"
+alias manage="python3.8 manage.py"
+alias shell="python3.8 manage.py shell_plus"
 alias ag="clear; printf '_%.0s' {1..100}; echo ''; echo 'Silver results begin here:'; ag --column"
 
 function run {
@@ -173,5 +173,3 @@ YELLOW="\[\033[0;33m\]"
 GREEN="\[\033[0;32m\]"
 NO_COLOUR="\[\033[0m\]"
 PS1="$GREEN\u$NO_COLOUR:\w$YELLOW\$(parse_git_branch)$NO_COLOUR\$ "
-
-

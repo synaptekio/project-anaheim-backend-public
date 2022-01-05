@@ -54,6 +54,7 @@ BASE_INSTALLS = [
     'htop',
     
     # python pip as pip3, celery, supervisor.
+    'python3.8',
     'python3-pip',
     'libpq-dev',
     "python3-celery",
