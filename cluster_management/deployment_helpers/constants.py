@@ -122,6 +122,7 @@ DEPLOYMENT_SPECIFIC_CONFIG_FOLDER = path_join(CLUSTER_MANAGEMENT_FOLDER, 'enviro
 GENERAL_CONFIG_FOLDER = path_join(CLUSTER_MANAGEMENT_FOLDER, 'general_configuration')
 STAGED_FILES = path_join(CLUSTER_MANAGEMENT_FOLDER, 'staged_files')
 RABBIT_MQ_PASSWORD_FILE_NAME = "rabbit_mq_password.txt"
+PYCRYPTO_FILE_NAME = "crypto.tar.gz"
 
 ## Global EC2 Instance __remote__ folder paths
 REMOTE_HOME_DIR = path_join('/home', REMOTE_USERNAME)

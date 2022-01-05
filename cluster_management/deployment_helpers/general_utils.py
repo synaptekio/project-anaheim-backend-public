@@ -34,7 +34,7 @@ def current_time_string():
 
 def EXIT(n=None):
     """ Ipython has some weirdness with exit statements. """
-    if DEV_MODE:
+    if DEV_MODE and n != 0:
         traceback.print_stack()
 
     if n is None:

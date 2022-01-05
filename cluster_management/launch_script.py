@@ -35,12 +35,14 @@ from deployment_helpers.constants import (APT_MANAGER_INSTALLS, APT_SINGLE_SERVE
     LOCAL_CRONJOB_MANAGER_FILE_PATH, LOCAL_CRONJOB_SINGLE_SERVER_AMI_FILE_PATH,
     LOCAL_CRONJOB_WORKER_FILE_PATH, LOCAL_INSTALL_CELERY_WORKER, LOCAL_RABBIT_MQ_CONFIG_FILE_PATH,
     LOG_FILE, MANAGER_SERVER_INSTANCE_TYPE, PURGE_COMMAND_BLURB, PURGE_INSTANCE_PROFILES_HELP,
-    PUSHED_FILES_FOLDER, RABBIT_MQ_PORT, REMOTE_APACHE_CONFIG_FILE_PATH, REMOTE_CRONJOB_FILE_PATH,
-    REMOTE_HOME_DIR, REMOTE_INSTALL_CELERY_WORKER, REMOTE_RABBIT_MQ_CONFIG_FILE_PATH,
-    REMOTE_RABBIT_MQ_FINAL_CONFIG_FILE_PATH, REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH, REMOTE_USERNAME,
-    STAGED_FILES, TERMINATE_PROCESSING_SERVERS_HELP, WORKER_SERVER_INSTANCE_TYPE)
+    PUSHED_FILES_FOLDER, PYCRYPTO_FILE_NAME, RABBIT_MQ_PORT, REMOTE_APACHE_CONFIG_FILE_PATH,
+    REMOTE_CRONJOB_FILE_PATH, REMOTE_HOME_DIR, REMOTE_INSTALL_CELERY_WORKER,
+    REMOTE_RABBIT_MQ_CONFIG_FILE_PATH, REMOTE_RABBIT_MQ_FINAL_CONFIG_FILE_PATH,
+    REMOTE_RABBIT_MQ_PASSWORD_FILE_PATH, REMOTE_USERNAME, STAGED_FILES,
+    TERMINATE_PROCESSING_SERVERS_HELP, WORKER_SERVER_INSTANCE_TYPE)
 from deployment_helpers.general_utils import current_time_string, do_zip_reduction, EXIT, log, retry
 from fabric.api import env as fabric_env, put, run, sudo
+from fabric.context_managers import cd
 
 
 # Fabric configuration
@@ -130,14 +132,25 @@ def setup_python():
     # sudo required because we are using the
     pyenv = "/home/ubuntu/.pyenv/bin/pyenv"
     python = "/home/ubuntu/.pyenv/versions/beiwe/bin/python"
+    pycrypto_folder = "/home/ubuntu/.pyenv/versions/beiwe/lib/python3.8/site-packages/Crypto/"
+    
     run(f"curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash >> {LOG_FILE}")
+    run(f"{pyenv} update >> {LOG_FILE}")
     log.warning("For technical reasons we need to compile python. This will take some time.")
     run(f"{pyenv} install -v 3.8.12 >> {LOG_FILE}")
     run(f"{pyenv} virtualenv 3.8.12 beiwe >> {LOG_FILE}")
     run(f"{python} -m pip install --upgrade pip setuptools wheel >> {LOG_FILE}")
     run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements.txt >> {LOG_FILE}')
-    run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_ubuntu_server_patch.txt >> {LOG_FILE}')
     run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_data_processing.txt >> {LOG_FILE}')
+    
+    log.warning("and now we patch pycrypto, because it is simply broken on aws ubuntu 18.04")
+    # so pycrypto is broken in python 3.8 on the ubuntu server, and only on the server.  It has a
+    # component of the install script that fails to patch some python 2 syntax stuff, and we need to
+    # manually fix it.  The pushed_files/crypto.tar.gz file contains the correctly formatted python
+    # files that we need.
+    with cd(pycrypto_folder):
+        put(path_join(PUSHED_FILES_FOLDER, PYCRYPTO_FILE_NAME), PYCRYPTO_FILE_NAME)
+        run(f"tar -xf {PYCRYPTO_FILE_NAME}")
 
 
 def setup_celery_worker():

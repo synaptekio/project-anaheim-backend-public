@@ -1,4 +1,0 @@
-# For unclear reasons the ubuntu 18.04 server, when running python 3.8, fails to correctly install
-# pycrypto correctly.  For whatever reason this install target works.
-# (the normal install installs python 3 syntax incompatible files.)
-git+https://git@github.com/pycrypto/pycrypto@7acba5f3a6ff10f1424c309d0d34d2b713233019
