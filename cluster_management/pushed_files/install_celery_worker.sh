@@ -52,7 +52,7 @@ serverurl = http://127.0.0.1:50001
 [program:celery_processing]
 # the queue and app names are declared in constants.py.
 directory = /home/ubuntu/beiwe-backend/
-command = python3.8 -m celery -A services.celery_data_processing worker -Q data_processing --loglevel=info -Ofair --hostname=%%h_processing
+command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_data_processing worker -Q data_processing --loglevel=info -Ofair --hostname=%%h_processing
 stdout_logfile = /home/ubuntu/celery_processing.log
 stderr_logfile = /home/ubuntu/celery_processing.log
 autostart = true
@@ -65,7 +65,7 @@ startsecs = 5
 [program:celery_forest]
 # the queue and app names are declared in constants.py.
 directory = /home/ubuntu/beiwe-backend/
-command = python3.8 -m celery -A services.celery_forest worker -Q forest_queue --loglevel=info -Ofair --hostname=%%h_forest
+command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_forest worker -Q forest_queue --loglevel=info -Ofair --hostname=%%h_forest
 stdout_logfile = /home/ubuntu/celery_forest.log
 stderr_logfile = /home/ubuntu/celery_forest.log
 autostart = true
@@ -78,7 +78,7 @@ startsecs = 5
 [program:celery_push_send]
 # the queue and app names are declared in constants.py.
 directory = /home/ubuntu/beiwe-backend/
-command = python3.8 -m celery -A services.celery_push_notifications worker -Q push_notifications --loglevel=info -Ofair --hostname=%%h_notifications --concurrency=20 --pool=threads
+command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_push_notifications worker -Q push_notifications --loglevel=info -Ofair --hostname=%%h_notifications --concurrency=20 --pool=threads
 stdout_logfile = /home/ubuntu/celery_push_send.log
 stderr_logfile = /home/ubuntu/celery_push_send.log
 autostart = true

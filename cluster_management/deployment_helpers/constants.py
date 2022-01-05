@@ -30,44 +30,46 @@ RABBIT_MQ_PORT = 50000
 
 
 PYTHON_COMPILE_REQUIREMENTS = [
-    # Compile python installs - this may be out of date for building python 3.8
-    'build-essential',  # Includes a C compiler for compiling python
+    'build-essential',
+    'curl',
+    'gcc',
+    'git',
     'libbz2-dev',
-    'libreadline-gplv2-dev',
+    'libffi-dev',
+    'liblzma-dev',
+    'libncurses5-dev',
+    'libncursesw5-dev',
+    'libreadline-dev',
     'libsqlite3-dev',
     'libssl-dev',
+    'make',
+    'tk-dev',
+    'wget',
+    'xz-utils',
+    'zlib1g-dev',
 ]
 
 ## EC2 Instance Deployment Variables
 BASE_INSTALLS = [
-    # Search within files
-    'ack-grep',
-    'silversearcher-ag',
-    
+    # we use supervisor to manage processes
+    "supervisor",
     # Necessary for cronutils
-    'mailutils',
     'moreutils',
-    'sendmail',
-    
     # utils
     'nload',
     'htop',
-    
-    # python pip as pip3, celery, supervisor.
-    'python3.8',
-    'python3-pip',
+    'ack-grep',
+    'silversearcher-ag',
+    # libraries
     'libpq-dev',
-    "python3-celery",
-    "supervisor",
+    "zstd",
 ]
 
-APT_WORKER_INSTALLS = copy(BASE_INSTALLS)
-
-APT_MANAGER_INSTALLS = copy(BASE_INSTALLS)
+APT_WORKER_INSTALLS = copy(BASE_INSTALLS) + copy(PYTHON_COMPILE_REQUIREMENTS)
+APT_MANAGER_INSTALLS = copy(APT_WORKER_INSTALLS)
 APT_MANAGER_INSTALLS.append('rabbitmq-server')  # Queue tasks to run using celery
 
 APT_SINGLE_SERVER_AMI_INSTALLS = copy(APT_WORKER_INSTALLS)
-APT_SINGLE_SERVER_AMI_INSTALLS.extend(copy(PYTHON_COMPILE_REQUIREMENTS))
 APT_SINGLE_SERVER_AMI_INSTALLS.extend([
     'apache2',
     'haveged',  # For generating Flask secret key random string

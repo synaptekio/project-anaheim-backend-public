@@ -10,6 +10,15 @@
 # for ssh logins, install and configure the libpam-umask package.
 #umask 022
 
+if test -f "/home/ubuntu/.pyenv/versions/beiwe/bin/python"; then
+    export PATH="$HOME/.pyenv/bin:$PATH"
+    eval "$(pyenv init --path)"
+    eval "$(pyenv virtualenv-init -)"
+
+    # set the global pyenv environment to this at every login
+    pyenv global beiwe
+fi
+
 alias b='cd ~/beiwe-backend/'
 
 alias update-commandline='cp ~/beiwe-backend/cluster_management/pushed_files/bash_profile.sh ~/.profile; cp ~/beiwe-backend/cluster_management/pushed_files/.inputrc ~/.inputrc'
@@ -49,8 +58,6 @@ alias ri="rm -i"
 alias htop="htop -d 5"
 alias nload="nload -a 5 -i 80000 -o 80000"
 alias df="df -h"
-alias pip="python3.8 -m pip"
-alias pip3="python3.8 -m pip"
 
 #Git
 alias s='git status'
@@ -97,11 +104,11 @@ alias superconf='sudo nano /etc/supervisord.conf'
 alias boot="sudo sysv-rc-conf"
 
 #Developer tools
-alias db="cd $HOME/beiwe-backend/; python3.8 manage.py shell_plus"
-alias py="python3.8"
+alias db="cd $HOME/beiwe-backend/; python manage.py shell_plus"
+alias py="python"
 alias ipy="ipython"
-alias manage="python3.8 manage.py"
-alias shell="python3.8 manage.py shell_plus"
+alias manage="python manage.py"
+alias shell="python manage.py shell_plus"
 alias ag="clear; printf '_%.0s' {1..100}; echo ''; echo 'Silver results begin here:'; ag --column"
 
 function run {

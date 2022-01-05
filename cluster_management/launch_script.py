@@ -128,9 +128,16 @@ def load_git_repo():
 def setup_python():
     """ Installs requirements. """
     # sudo required because we are using the
-    sudo(f"python3.8 -m pip install --upgrade pip setuptools >> {LOG_FILE}")
-    run(f'python3.8 -m pip install --user -r {REMOTE_HOME_DIR}/beiwe-backend/requirements.txt >> {LOG_FILE}')
-    run(f'python3.8 -m pip install --user -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_data_processing.txt >> {LOG_FILE}')
+    pyenv = "/home/ubuntu/.pyenv/bin/pyenv"
+    python = "/home/ubuntu/.pyenv/versions/beiwe/bin/python"
+    run(f"curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash >> {LOG_FILE}")
+    log.warning("For technical reasons we need to compile python. This will take some time.")
+    run(f"{pyenv} install -v 3.8.12 >> {LOG_FILE}")
+    run(f"{pyenv} virtualenv 3.8.12 beiwe >> {LOG_FILE}")
+    run(f"{python} -m pip install --upgrade pip setuptools wheel >> {LOG_FILE}")
+    run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements.txt >> {LOG_FILE}')
+    run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_ubuntu_server_patch.txt >> {LOG_FILE}')
+    run(f'{python} -m pip install -r {REMOTE_HOME_DIR}/beiwe-backend/requirements_data_processing.txt >> {LOG_FILE}')
 
 
 def setup_celery_worker():
@@ -450,7 +457,7 @@ def do_create_manager():
     try:
         instance = create_processing_control_server(name, settings[MANAGER_SERVER_INSTANCE_TYPE])
     except Exception as e:
-        log.error(e)
+        log.error(f"{type(e)}, {e}")
         instance = None  # ide warnings...
         EXIT(1)
     public_ip = instance['NetworkInterfaces'][0]['PrivateIpAddresses'][0]['Association']['PublicIp']
@@ -524,8 +531,9 @@ def do_create_single_server_ami(ip_address, key_filename):
     setup_python()
     push_beiwe_configuration(None, single_server_ami=True)
     configure_local_postgres()
+    python = "/home/ubuntu/.pyenv/versions/beiwe/bin/python"
     manage_script_filepath = path_join(REMOTE_HOME_DIR, "beiwe-backend/manage.py")
-    run('python3.8 {filename} migrate'.format(filename=manage_script_filepath))
+    run(f'{python} {manage_script_filepath} migrate')
     setup_single_server_ami_cron()
     configure_apache()
     remove_unneeded_ssh_keys()

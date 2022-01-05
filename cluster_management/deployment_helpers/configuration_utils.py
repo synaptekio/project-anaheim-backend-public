@@ -139,7 +139,6 @@ def validate_beiwe_environment_config(eb_environment_name):
     # SYSADMIN_EMAILS
     
     finalized = os.path.exists(get_finalized_settings_file_path(eb_environment_name))
-    print("finalized:", finalized)
     errors = []
     try:
         aws_credentials = get_aws_credentials()
