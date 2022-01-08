@@ -5,7 +5,7 @@ import time
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.http.response import HttpResponse
 from django.utils import timezone
 
@@ -165,9 +165,9 @@ def get_uploaded_file(request: ParticipantRequest):
     else:
         # no uploaded file, is a bad request.
         return abort(400)
-    
-    # file should always be an InMemoryUploadedFile
-    if isinstance(uploaded_file, (ContentFile, InMemoryUploadedFile)):
+
+    # okay for some reason we get different file-like types in different scenarios?
+    if isinstance(uploaded_file, (ContentFile, InMemoryUploadedFile, TemporaryUploadedFile)):
         uploaded_file = uploaded_file.read()
     
     if isinstance(uploaded_file, str):

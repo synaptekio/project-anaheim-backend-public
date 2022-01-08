@@ -219,8 +219,9 @@ def decrypt_device_file(file_name: str, original_data: bytes, participant: Parti
                 bad_lines.append(line)
                 continue
             
-            elif 'IV must be' in error_string:
-                # shifted this to an okay-to-proceed line error March 2021.
+            elif "Incorrect IV length" in error_string or 'IV must be' in error_string:
+                # shifted this to an okay-to-proceed line error March 2021
+                # Jan 2022: encountered pycryptodome form: "Incorrect IV length"
                 error_message += "iv has bad length."
                 create_line_error_db_entry(LineEncryptionError.IV_BAD_LENGTH)
                 error_types.append(LineEncryptionError.IV_BAD_LENGTH)
@@ -252,7 +253,7 @@ def decrypt_device_file(file_name: str, original_data: bytes, participant: Parti
     
     if error_count:
         EncryptionErrorMetadata.objects.create(
-            file_name=request.POST['file_name'],
+            file_name=file_name,
             total_lines=len(file_data),
             number_errors=error_count,
             # generator comprehension:
