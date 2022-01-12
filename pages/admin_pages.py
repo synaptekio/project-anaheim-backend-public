@@ -90,8 +90,14 @@ def manage_credentials(request: ResearcherRequest):
     return render(
         request,
         'manage_credentials.html',
-        context=dict(is_admin=request.session_researcher.is_an_admin(),
-                     api_keys=sorted(serializer.data, reverse=True, key=lambda x: x['created_on']))
+        context=dict(
+            is_admin=request.session_researcher.is_an_admin(),
+            api_keys=sorted(serializer.data, reverse=True, key=lambda x: x['created_on']),
+            new_api_access_key=request.session.pop("new_access_key", None),
+            new_api_secret_key=request.session.pop("new_secret_key", None),
+            new_tableau_key_id=request.session.pop("new_tableau_key_id", None),
+            new_tableau_secret_key=request.session.pop("new_tableau_secret_key", None),
+        )
     )
 
 
@@ -126,7 +132,9 @@ def reset_admin_password(request: ResearcherRequest):
 @authenticate_researcher_login
 def reset_download_api_credentials(request: ResearcherRequest):
     access_key, secret_key = request.session_researcher.reset_access_credentials()
-    messages.warning(request, Markup(RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE % (access_key, secret_key)))
+    messages.warning(request, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE)
+    request.session["new_access_key"] = access_key
+    request.session["new_secret_key"] = secret_key
     return redirect("admin_pages.manage_credentials")
 
 
@@ -142,7 +150,10 @@ def new_tableau_api_key(request: ResearcherRequest):
         has_tableau_api_permissions=True,
         readable_name=form.cleaned_data['readable_name'],
     )
-    msg = NEW_API_KEY_MESSAGE % (api_key.access_key_id, api_key.access_key_secret_plaintext)
+    msg = NEW_API_KEY_MESSAGE #% (api_key.access_key_id, api_key.access_key_secret_plaintext)
+    
+    request.session["new_tableau_key_id"] = api_key.access_key_id
+    request.session["new_tableau_secret_key"] = api_key.access_key_secret_plaintext
     messages.warning(request, Markup(msg))
     return redirect("admin_pages.manage_credentials")
 
