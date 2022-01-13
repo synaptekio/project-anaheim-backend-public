@@ -1,6 +1,7 @@
 import json
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from django.shortcuts import render
 
@@ -183,11 +184,11 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     participant = get_participant(patient_id, study_id)
     start, end = extract_date_args_from_request(request)
     chunks = dashboard_chunkregistry_query(participant.id)
-    patient_ids = list(Participant.objects
-                       .filter(study=study_id)
-                       .exclude(patient_id=patient_id)
-                       .values_list("patient_id", flat=True)
-                       )
+    patient_ids = list(
+        Participant.objects.filter(study=study_id)
+        .exclude(patient_id=patient_id)
+        .values_list("patient_id", flat=True)
+    )
 
     # ----------------- dates for bytes data streams -----------------------
     if chunks:
@@ -359,9 +360,9 @@ def parse_patient_processed_data(study_id, participant):
 
 
 def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream):
-    all_flags_list = request.POST.get("all_flags_list", "[]")
-    color_high_range = request.POST.get("color_high_range", 0)
-    color_low_range = request.POST.get("color_low_range", 0)
+    all_flags_list = argument_grabber(request, "all_flags_list", "[]")
+    color_high_range = argument_grabber(request, "color_high_range", 0)
+    color_low_range = argument_grabber(request, "color_low_range", 0)
 
     # convert parameters from unicode to correct types
     # if they didn't save a gradient we don't want to save garbage
@@ -615,8 +616,8 @@ def dashboard_pipelineregistry_query(study_id, participant_id):
 
 def extract_date_args_from_request(request: ResearcherRequest):
     """ Gets start and end arguments from GET/POST params, throws 400 on date formatting errors. """
-    start = request.POST.get("start", None)
-    end = request.POST.get("end", None)
+    start = argument_grabber(request, "start", None)
+    end = argument_grabber(request, "end", None)
     try:
         if start:
             start = datetime.strptime(start, API_DATE_FORMAT)
@@ -630,15 +631,15 @@ def extract_date_args_from_request(request: ResearcherRequest):
 
 def extract_range_args_from_request(request: ResearcherRequest):
     """ Gets minimum and maximum arguments from GET/POST params """
-    color_low_range = request.POST.get("color_low", None)
-    color_high_range = request.POST.get("color_high", None)
-    show_color = request.POST.get("show_color", True)
+    color_low_range = argument_grabber(request, "color_low", None)
+    color_high_range = argument_grabber(request, "color_high", None)
+    show_color = argument_grabber(request, "show_color", True)
     return color_low_range, color_high_range, show_color
 
 
 def extract_flag_args_from_request(request: ResearcherRequest):
     """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None or empty """
-    all_flags_string = request.POST.get("flags", "")
+    all_flags_string = argument_grabber(request, "flags", "")
     all_flags_list = []
     # parse to create a dict of flags
     flags_separated = all_flags_string.split('*')
@@ -653,7 +654,7 @@ def extract_flag_args_from_request(request: ResearcherRequest):
 def extract_data_stream_args_from_request(request: ResearcherRequest):
     """ Gets data stream if it is provided as a request POST or GET parameter,
     throws 400 errors on unknown data streams. """
-    data_stream = request.POST.get("data_stream", None)
+    data_stream = argument_grabber(request, "data_stream", None)
     if data_stream:
         if data_stream not in ALL_DATA_STREAMS:
             return abort(400, "unrecognized data stream '%s'" % data_stream)
@@ -670,3 +671,7 @@ def get_participant(patient_id, study_id):
             return abort(400, "No such user exists.")
         else:
             return abort(400, "No such user exists in this study.")
+
+
+def argument_grabber(request: ResearcherRequest, key: str, default: Any = None):
+    return request.GET.get(key, request.POST.get(key, default))
