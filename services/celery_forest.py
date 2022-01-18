@@ -38,6 +38,9 @@ TREE_TO_FOREST_FUNCTION = {
 }
 
 
+FOREST_ERROR_LOCATION_KEY = "forest_error_location"
+
+
 def create_forest_celery_tasks():
     pending_tasks = ForestTask.objects.filter(status=ForestTaskStatus.queued)
     with make_error_sentry(sentry_type=SentryTypes.data_processing):
@@ -122,11 +125,32 @@ def celery_run_forest(forest_task_id):
         task.forest_output_exists = task.construct_summary_statistics()
         task.save(update_fields=["forest_output_exists"])
         save_cached_files(task)
+    
     except Exception:
         task.status = ForestTaskStatus.error
         task.stacktrace = traceback.format_exc()
+        tags = {k: str(v) for k, v in task.as_dict().items()}
+        tags[FOREST_ERROR_LOCATION_KEY] = "forest task general error"
+        with make_error_sentry(SentryTypes.data_processing, tags=tags):
+            raise
+    
     else:
         task.status = ForestTaskStatus.success
+    
+    finally:
+        log("deleting files 1")
+        try:
+            task.clean_up_files()
+        except Exception:
+            if task.stacktrace is None:
+                task.stacktrace = traceback.format_exc()
+            else:
+                task.stacktrace = task.stacktrace + "\n\n" + traceback.format_exc()
+            
+            tags = {k: str(v) for k, v in task.as_dict().items()}
+            tags[FOREST_ERROR_LOCATION_KEY] = "forest task cleanup error"
+            with make_error_sentry(SentryTypes.data_processing, tags=tags):
+                raise
     
     log("task.status:", task.status)
     if task.stacktrace:
@@ -134,7 +158,7 @@ def celery_run_forest(forest_task_id):
     
     task.save(update_fields=["status", "stacktrace"])
     
-    log("deleting files")
+    log("deleting files 2")
     task.clean_up_files()
     task.process_end_time = timezone.now()
     task.save(update_fields=["process_end_time"])
