@@ -5,6 +5,7 @@ import os
 import pickle
 import shutil
 import uuid
+from time import sleep
 
 from django.db import models
 
@@ -13,6 +14,7 @@ from constants.forest_constants import (ForestTaskStatus, ForestTree,
 from database.common_models import TimestampedModel
 from database.user_models import Participant
 from libs.utils.date_utils import datetime_to_list
+
 
 class BadForestField(Exception): pass
 YEAR_MONTH_DAY = ('year', 'month', 'day')
@@ -127,7 +129,14 @@ class ForestTask(TimestampedModel):
     
     def clean_up_files(self):
         """ Delete temporary input and output files from this Forest run. """
-        shutil.rmtree(self.data_base_path)
+        for i in range(10):
+            shutil.rmtree(self.data_base_path)
+            sleep(0.5)
+            if not os.path.exists(self.data_base_path):
+                return
+        raise Exception(
+            f"Could not delete folder {self.data_base_path} for participant {self.external_id}, tried {i} times."
+        )
     
     def params_dict(self):
         """ Return a dict of params to pass into the Forest function. """
