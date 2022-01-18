@@ -74,6 +74,9 @@ class ForestTask(TimestampedModel):
     all_bv_set_s3_key = models.TextField(blank=True)
     all_memory_dict_s3_key = models.TextField(blank=True)
     
+    # non-fields
+    _tmp_parent_folder_exists = False
+    
     def construct_summary_statistics(self):
         """ Construct summary statistics from forest output, returning whether or not any
         SummaryStatisticDaily has potentially been created or updated. """
@@ -210,7 +213,14 @@ class ForestTask(TimestampedModel):
     @property
     def data_base_path(self):
         """ Return the path to the base data folder, creating it if it doesn't already exist. """
-        return os.path.join("/tmp", str(self.external_id), self.forest_tree)
+        # on first access of the base path check for the presence of the /tmp/forest
+        if not self._tmp_parent_folder_exists and not os.path.exists("/tmp/forest/"):
+            try:
+                os.mkdir("/tmp/forest/")
+            except FileExistsError:
+                pass  # it just needs to exist
+            self._tmp_parent_folder_exists = True
+        return os.path.join("/tmp/forest/", str(self.external_id), self.forest_tree)
     
     @property
     def data_input_path(self):
