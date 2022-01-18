@@ -1,6 +1,5 @@
 import bleach
 from django import forms
-from django.utils.datastructures import MultiValueDict
 
 from constants.forest_constants import ForestTaskStatus, ForestTree
 from constants.tableau_api_constants import (HEADER_IS_REQUIRED, SERIALIZABLE_FIELD_NAMES,
@@ -51,6 +50,14 @@ class CreateTasksForm(forms.Form):
     
     def clean(self):
         cleaned_data = super().clean()
+        # handle cases of missing fields.
+        if "date_end" not in cleaned_data:
+            self.add_error("date_end"), "date end was not provided."
+        if "date_start" not in cleaned_data:
+            self.add_error("date_start"), "date start was not provided."
+        if "date_end" not in cleaned_data or "date_start" not in cleaned_data:
+            return
+
         if cleaned_data["date_end"] < cleaned_data["date_start"]:
             error_message = "Start date must be before or the same as end date."
             self.add_error("date_start", error_message)
