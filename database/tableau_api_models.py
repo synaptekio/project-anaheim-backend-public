@@ -305,10 +305,10 @@ class SummaryStatisticDaily(TimestampedModel):
     # Willow, Calls
     willow_incoming_call_count = models.IntegerField(null=True, blank=True)
     willow_incoming_call_degree = models.IntegerField(null=True, blank=True)
-    willow_incoming_call_duration = models.IntegerField(null=True, blank=True)
+    willow_incoming_call_duration = models.FloatField(null=True, blank=True)
     willow_outgoing_call_count = models.IntegerField(null=True, blank=True)
     willow_outgoing_call_degree = models.IntegerField(null=True, blank=True)
-    willow_outgoing_call_duration = models.IntegerField(null=True, blank=True)
+    willow_outgoing_call_duration = models.FloatField(null=True, blank=True)
     willow_missed_call_count = models.IntegerField(null=True, blank=True)
     willow_missed_callers = models.IntegerField(null=True, blank=True)
     

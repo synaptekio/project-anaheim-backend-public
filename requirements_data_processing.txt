@@ -2,7 +2,7 @@
 celery==4.4.7
 
 # This is temporary until forest is open-sourced
-git+https://git@github.com/onnela-lab/forest@8dea5ed987d5f7782a59712b0d6d23ca2fd2d488
+git+https://git@github.com/onnela-lab/forest@e72ac1d4fd36698a050867218fd5894c5ea16e9d
 
 
 # it is possible you will need to imstall the following system dependencies on ubuntu:
