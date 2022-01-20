@@ -1140,7 +1140,7 @@ class TestStudyParticipantApi(ResearcherSessionTest):
     ORDER_DIRECTION_KEY = "order[0][dir]"
     SEARCH_PARAMETER = "search[value]"
     SOME_TIMESTAMP = timezone.make_aware(datetime(2020, 10, 1))
-
+    
     @property
     def DEFAULT_PARAMETERS(self):
         return {
@@ -1223,7 +1223,9 @@ class TestStudyFields(RedirectSessionApiTest):
     def test_get(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.generate_study_field(self.session_study, "obscure_name_of_study_field")
-        resp = self.smart_get(self.session_study.id)
+        # This isn't a pure redirect endpoint, we need get to have a 200
+        resp = super(RedirectSessionApiTest, self).smart_get(self.session_study.id)
+        self.assertEqual(resp.status_code, 200)
         self.assert_present("obscure_name_of_study_field", resp.content)
     
     def test_post(self):
@@ -1276,7 +1278,9 @@ class TestParticipantPage(RedirectSessionApiTest):
     
     def test_get(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
-        resp = self.smart_get(self.session_study.id, self.default_participant.patient_id)
+        # This isn't a pure redirect endpoint, we need get to have a 200
+        resp = super(RedirectSessionApiTest, self) \
+            .smart_get(self.session_study.id, self.default_participant.patient_id)
         self.assertEqual(resp.status_code, 200)
     
     def test_post(self):

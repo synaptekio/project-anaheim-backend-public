@@ -306,6 +306,16 @@ class RedirectSessionApiTest(PopulatedResearcherSessionTestCase, SmartRequestsTe
         self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
         return response
     
+    def smart_get(self, *reverse_params, reverse_kwargs=None, **get_kwargs) -> HttpResponse:
+        if self.REDIRECT_ENDPOINT_NAME is None:
+            raise ImproperlyConfigured("You must provide a value for REDIRECT_ENDPOINT_NAME.")
+        response = super().smart_get(*reverse_params, reverse_kwargs=reverse_kwargs, **get_kwargs)
+        self.assertEqual(response.status_code, 302)
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertEqual(resolve(response.url).url_name, self.REDIRECT_ENDPOINT_NAME)
+        return response
+    
+    
     def get_redirect_content(self, *args, **kwargs) -> bytes:
         # Tests for this class usually need a page to test for content messages.  This method loads
         # the REDIRECT_ENDPOINT_NAME page, ensures it has the required 200 code, and returns the

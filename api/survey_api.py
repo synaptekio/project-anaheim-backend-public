@@ -23,7 +23,7 @@ from libs.push_notification_helpers import (repopulate_absolute_survey_schedule_
 @authenticate_researcher_study_access
 def create_survey(request: ResearcherRequest, study_id=None, survey_type: str = 'tracking_survey'):
     new_survey = Survey.create_with_settings(study_id=study_id, survey_type=survey_type)
-    return redirect(f'/edit_survey/{new_survey.id}')
+    return redirect(f'/edit_survey/{new_survey.study.id}/{new_survey.id}')
 
 
 @require_http_methods(['GET', 'POST'])
