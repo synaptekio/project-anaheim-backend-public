@@ -58,7 +58,7 @@ def check_tableau_permissions(request: HttpRequest, study_object_id=None):
     
     # sanitize
     if not authorization_form.is_valid():
-        study_object_id("form not valid")
+        log("form not valid")
         raise TableauAuthenticationFailed(authorization_form.errors)
     
     try:
