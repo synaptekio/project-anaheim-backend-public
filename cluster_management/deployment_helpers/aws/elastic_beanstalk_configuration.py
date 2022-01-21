@@ -54,7 +54,7 @@ def get_base_eb_configuration():
         {
             'Namespace': 'aws:cloudformation:template:parameter',
             'OptionName': 'InstancePort',
-            'Value': '80'
+            'Value': '443'
         },
         
         # deployment network details
@@ -87,7 +87,7 @@ def get_base_eb_configuration():
         }, {
             'Namespace': 'aws:elasticbeanstalk:application',
             'OptionName': 'Application Healthcheck URL',
-            'Value': ''
+            'Value': 'HTTPS:443/'
         },
         # autoscaling settings
         {
@@ -306,7 +306,23 @@ def get_base_eb_configuration():
             'OptionName': 'UnhealthyThreshold',
             'Value': '5'
         },
-    
+
+        # Configure the default listener to use HTTPS to talk to the instance.
+        {
+            'Namespace': 'aws:elb:listener',
+            'OptionName': 'ListenerProtocol',
+            'Value': 'HTTP'
+        }, {
+            'Namespace': 'aws:elb:listener',
+            'OptionName': 'InstancePort',
+            'Value': '443'
+        }, {
+            'Namespace': 'aws:elb:listener',
+            'OptionName': 'InstanceProtocol',
+            'Value': 'HTTPS'
+        },
+
+
         # Storage configuration.  We use the default, which is 8gb gp2.
         # {
         #     'Namespace': 'aws:autoscaling:launchconfiguration',
@@ -341,7 +357,8 @@ def get_base_eb_configuration():
             'Namespace': 'aws:elasticbeanstalk:environment',
             'OptionName': 'ServiceRole',
             'Value': DynamicParameter("ServiceRole")
-        },# {
+        },
+        # {
         #     'Namespace': 'aws:elasticbeanstalk:environment',
         #     'OptionName': 'ExternalExtensionsS3Bucket'
         # }, {
@@ -352,22 +369,6 @@ def get_base_eb_configuration():
         #     'OptionName': 'SecurityGroups',
         #     'Value': 'sg-********'
         # },{
-        #     'Namespace': 'aws:elb:listener:80',
-        #     'OptionName': 'InstancePort',
-        #     'Value': '80'
-        # }, {
-        #     'Namespace': 'aws:elb:listener:80',
-        #     'OptionName': 'InstanceProtocol',
-        #     'Value': 'HTTP'
-        # }, {
-        #     'Namespace': 'aws:elb:listener:80',
-        #     'OptionName': 'ListenerEnabled',
-        #     'Value': 'true'
-        # }, {
-        #     'Namespace': 'aws:elb:listener:80',
-        #     'OptionName': 'ListenerProtocol',
-        #     'Value': 'HTTP'
-        # }, {
         #     'Namespace': 'aws:elb:listener:80',
         #     'OptionName': 'PolicyNames',
         # }, {
