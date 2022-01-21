@@ -46,12 +46,16 @@ def get_data(request: ApiStudyResearcherRequest):
     get_these_files = handle_database_query(
         request.api_study.pk, query_args, registry_dict=parse_registry(request)
     )
-    return FileResponse(
+    streaming_response = FileResponse(
         zip_generator(get_these_files, construct_registry='web_form' not in request.POST),
-        content_type="zip",
+        content_type="application/zip",
         as_attachment='web_form' in request.POST,
         filename="data.zip",
     )
+    # for unknown reasons this call never happens in django's responding process, and so the
+    # headers, which includes the file name, are never set.
+    streaming_response.set_headers(None)
+    return streaming_response
 
 # @require_http_methods(["GET", "POST"])
 # @api_study_credential_check()
