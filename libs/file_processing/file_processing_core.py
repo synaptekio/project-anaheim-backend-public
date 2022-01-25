@@ -180,56 +180,65 @@ def process_one_file(
     # there are two cases: chunkable data that can be stuck into "time bins" for each hour, and
     # files that do not need to be "binified" and pretty much just go into the ChunkRegistry unmodified.
     if file_for_processing.chunkable:
-        newly_binified_data, survey_id_hash = process_csv_data(file_for_processing)
-        
-        # survey answers store the survey id in the file name (truly ancient design decision).
-        if file_for_processing.data_type in SURVEY_DATA_FILES:
-            survey_id_dict[survey_id_hash] = resolve_survey_id_from_file_name(
-                file_for_processing.file_to_process.s3_file_path)
-        
-        if newly_binified_data:
-            append_binified_csvs(
-                all_binified_data, newly_binified_data, file_for_processing.file_to_process
-            )
-        else:  # delete empty files from FilesToProcess
-            ftps_to_remove.add(file_for_processing.file_to_process.id)
-        return
-    
+        process_chunkable_file(file_for_processing, survey_id_dict, all_binified_data, ftps_to_remove)
     else:
-        # case: unchunkable data file
-        timestamp = clean_java_timecode(
-            file_for_processing.file_to_process.s3_file_path.rsplit("/", 1)[-1][:-4]
+        process_unchunkable_file(file_for_processing, ftps_to_remove)
+
+
+def process_chunkable_file(
+    file_for_processing: FileForProcessing, survey_id_dict: dict, all_binified_data: DefaultDict,
+    ftps_to_remove: set
+):
+    newly_binified_data, survey_id_hash = process_csv_data(file_for_processing)
+    
+    # survey answers store the survey id in the file name (truly ancient design decision).
+    if file_for_processing.data_type in SURVEY_DATA_FILES:
+        survey_id_dict[survey_id_hash] = resolve_survey_id_from_file_name(
+            file_for_processing.file_to_process.s3_file_path)
+    
+    if newly_binified_data:
+        append_binified_csvs(
+            all_binified_data, newly_binified_data, file_for_processing.file_to_process
         )
-        # Since we aren't binning the data by hour, just create a ChunkRegistry that
-        # points to the already existing S3 file.
-        try:
-            ChunkRegistry.register_unchunked_data(
+    else:  # delete empty files from FilesToProcess
+        ftps_to_remove.add(file_for_processing.file_to_process.id)
+
+
+def process_unchunkable_file(file_for_processing: FileForProcessing, ftps_to_remove: set):
+    # case: unchunkable data file
+    timestamp = clean_java_timecode(
+        file_for_processing.file_to_process.s3_file_path.rsplit("/", 1)[-1][:-4]
+    )
+    # Since we aren't binning the data by hour, just create a ChunkRegistry that
+    # points to the already existing S3 file.
+    try:
+        ChunkRegistry.register_unchunked_data(
+            file_for_processing.data_type,
+            timestamp,
+            file_for_processing.file_to_process.s3_file_path,
+            file_for_processing.file_to_process.study.pk,
+            file_for_processing.file_to_process.participant.pk,
+            file_for_processing.file_contents,
+        )
+        ftps_to_remove.add(file_for_processing.file_to_process.id)
+    except ValidationError as ve:
+        if len(ve.messages) != 1:
+            # case: the error case (below) is very specific, we only want that singular error.
+            raise
+        
+        # case: an unchunkable file was re-uploaded, causing a duplicate file path collision
+        # we detect this specific case and update the registry with the new file size
+        # (hopefully it doesn't actually change)
+        if 'Chunk registry with this Chunk path already exists.' in ve.messages:
+            ChunkRegistry.update_registered_unchunked_data(
                 file_for_processing.data_type,
-                timestamp,
                 file_for_processing.file_to_process.s3_file_path,
-                file_for_processing.file_to_process.study.pk,
-                file_for_processing.file_to_process.participant.pk,
                 file_for_processing.file_contents,
             )
             ftps_to_remove.add(file_for_processing.file_to_process.id)
-        except ValidationError as ve:
-            if len(ve.messages) != 1:
-                # case: the error case (below) is very specific, we only want that singular error.
-                raise
-            
-            # case: an unchunkable file was re-uploaded, causing a duplicate file path collision
-            # we detect this specific case and update the registry with the new file size
-            # (hopefully it doesn't actually change)
-            if 'Chunk registry with this Chunk path already exists.' in ve.messages:
-                ChunkRegistry.update_registered_unchunked_data(
-                    file_for_processing.data_type,
-                    file_for_processing.file_to_process.s3_file_path,
-                    file_for_processing.file_contents,
-                )
-                ftps_to_remove.add(file_for_processing.file_to_process.id)
-            else:
-                # any other errors, add
-                raise
+        else:
+            # any other errors, add
+            raise
 
 
 def upload_binified_data(binified_data, error_handler, survey_id_dict):
