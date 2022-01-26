@@ -34,9 +34,15 @@ def calculate_data_quantity_stats(participant: Participant):
     for day, day_data in daily_data_quantities.items():
         data_quantity = {"participant": participant, "date": day, "defaults": {}}
         for data_type, total_bytes in day_data.items():
-            data_quantity["defaults"][f"{data_type}_bytes"] = total_bytes
-        # print(day)
-        SummaryStatisticDaily.objects.update_or_create(**data_quantity)
+            data_quantity["defaults"][f"beiwe_{data_type}_bytes"] = total_bytes
+        
+        # if something fails we need the data_quantity dict contents
+        try:
+            SummaryStatisticDaily.objects.update_or_create(**data_quantity)
+        except Exception:
+            from pprint import pprint
+            pprint(data_quantity)
+            raise
 
 
 for participant in Participant.objects.all():
