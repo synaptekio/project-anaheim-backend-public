@@ -1,8 +1,3 @@
-from os.path import abspath as _abspath
-from sys import path as _path
-_one_folder_up = _abspath(__file__).rsplit('/',2)[0]
-_path.insert(1, _one_folder_up)
-
 from datetime import datetime
 
 from database.data_access_models import ChunkRegistry
@@ -19,7 +14,6 @@ if study_object_ids:
 
 # this could be a huge query, use the iterator
 query = ChunkRegistry.objects.filter(**filters).values_list("pk", "chunk_path").iterator()
-
 
 for i, (pk, path) in enumerate(query):
     if i % 1000 == 0:
