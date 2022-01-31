@@ -150,6 +150,9 @@ def download_task_log(request: ResearcherRequest):
 @authenticate_admin
 @forest_enabled
 def cancel_task(request: ResearcherRequest, study_id, forest_task_external_id):
+    if not request.session_researcher.site_admin:
+        return abort(403)
+        
     number_updated = \
         ForestTask.objects.filter(
             external_id=forest_task_external_id, status=ForestTaskStatus.queued
