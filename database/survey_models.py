@@ -59,6 +59,7 @@ class Survey(SurveyBase):
     object_id = models.CharField(max_length=24, unique=True, validators=[LengthValidator(24)])
     # the study field is not inherited because we need to change its related name
     study = models.ForeignKey('Study', on_delete=models.PROTECT, related_name='surveys')
+    name = models.TextField(blank=True, null=False, default="")
 
     @classmethod
     def create_with_object_id(cls, **kwargs):
