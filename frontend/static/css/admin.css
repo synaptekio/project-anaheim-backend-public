@@ -74,3 +74,34 @@ table>tbody>tr>td.viewParticipantTable {
 .tableRowError {
     background-color: #f2dede;
 }
+
+.survey-label {
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.1;
+    color: inherit;
+}
+
+.h3-margins {
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    /* margin-inline-start: -4em; */
+    margin-inline-end: -4em;
+}
+
+.survey-button-margins {
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+}
+
+.survey-micro-label {
+    font-size: 12px;
+    color: rgb(128, 128, 128);
+    font-family: monospace;
+}
+
+.survey-inline-table {
+    margin-top: -4pt;
+    margin-bottom: -4pt;
+}

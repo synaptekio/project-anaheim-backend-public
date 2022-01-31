@@ -6,6 +6,7 @@ from markupsafe import Markup
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
     logout_researcher)
+from constants.datetime_constants import API_TIME_FORMAT, DISPLAY_TIME_FORMAT
 from constants.message_strings import (NEW_API_KEY_MESSAGE, NEW_PASSWORD_MISMATCH,
     PASSWORD_RESET_SUCCESS, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_API_KEY_NOW_DISABLED, TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
@@ -57,6 +58,15 @@ def choose_study(request: ResearcherRequest):
 @authenticate_researcher_study_access
 def view_study(request: ResearcherRequest, study_id=None):
     study: Study = Study.objects.get(pk=study_id)
+    def get_survey_info(survey_type: str):
+        survey_info = list(
+            study.surveys.filter(survey_type=survey_type, deleted=False)
+            .values('id', 'object_id', 'name', "last_updated")
+        )
+        for info in survey_info:
+            info["last_updated"] = \
+                 info["last_updated"].astimezone(study.timezone).strftime(DISPLAY_TIME_FORMAT)
+        return survey_info
     
     return render(
         request,
@@ -64,9 +74,9 @@ def view_study(request: ResearcherRequest, study_id=None):
         context=dict(
             study=study,
             participants_ever_registered_count=study.participants.exclude(os_type='').count(),
-            audio_survey_ids=study.get_survey_ids_and_object_ids('audio_survey'),
-            image_survey_ids=study.get_survey_ids_and_object_ids('image_survey'),
-            tracking_survey_ids=study.get_survey_ids_and_object_ids('tracking_survey'),
+            audio_survey_info=get_survey_info('audio_survey'),
+            image_survey_info=get_survey_info('image_survey'),
+            tracking_survey_info=get_survey_info('tracking_survey'),
             # these need to be lists because they will be converted to json.
             study_fields=list(study.fields.all().values_list('field_name', flat=True)),
             interventions=list(study.interventions.all().values_list("name", flat=True)),

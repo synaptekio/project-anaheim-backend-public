@@ -92,9 +92,6 @@ class Study(TimestampedModel):
     def get_researcher_studies_by_name(cls, researcher):
         return cls.get_all_studies_by_name().filter(study_relations__researcher=researcher)
     
-    def get_survey_ids_and_object_ids(self, survey_type='tracking_survey'):
-        return self.surveys.filter(survey_type=survey_type, deleted=False).values_list('id', 'object_id')
-    
     def get_researchers(self):
         return Researcher.objects.filter(study_relations__study=self)
     

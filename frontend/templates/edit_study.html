@@ -19,10 +19,8 @@
       </li>
     </ol>
 
-    {% if study.is_test %}
-      This is a test study. Researchers will be able to download raw data and processed data output from the Data Analysis Pipeline.
-    {% else %}
-      This is a production study. Researchers will only be able to download processed data output from the Data Analysis Pipeline.
+    {% if not study.is_test %}
+      Note: data in this study is restricted, only Forest summaries are accessible to Researchers
     {% endif %}
 
     <h2>Authorized researchers on this study</h2>
