@@ -11,7 +11,12 @@ def environment(**options):
     """ This enables us to use Django template tags like
     {% url “index” %} or {% static “path/to/static/file.js” %}
     in our Jinja2 templates.  """
-    env = Environment(**options)
+    env = Environment(
+        line_comment_prefix="{#",
+        comment_start_string="{% comment %}",
+        comment_end_string="{% endcomment %}",
+        **options
+    )
     env.globals.update({
         "static": staticfiles_storage.url,
         "url": reverse,
