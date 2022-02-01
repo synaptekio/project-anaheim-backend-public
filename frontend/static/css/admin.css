@@ -105,3 +105,20 @@ table>tbody>tr>td.viewParticipantTable {
     margin-top: -4pt;
     margin-bottom: -4pt;
 }
+
+.text-align-right {
+    text-align: right;
+}
+
+.right1 {
+    margin-right: -1em;
+}
+.right2 {
+    margin-right: -2em;
+}
+.right3 {
+    margin-right: -3em;
+}
+.right4 {
+    margin-right: -4em;
+}
