@@ -125,13 +125,11 @@ class TestViewStudy(ResearcherSessionTest):
         response = self.smart_get_status_code(200, study.id)
         
         # template has several customizations, test for some relevant strings
-        self.assertIn(b"This is a test study.", response.content)
-        self.assertNotIn(b"This is a production study", response.content)
+        self.assertNotIn(b"data in this study is restricted", response.content)
         study.update(is_test=False)
         
         response = self.smart_get_status_code(200, study.id)
-        self.assertNotIn(b"This is a test study.", response.content)
-        self.assertIn(b"This is a production study", response.content)
+        self.assertIn(b"data in this study is restricted", response.content)
     
     def test_view_study_study_admin(self):
         self.set_session_study_relation(ResearcherRole.study_admin)
@@ -146,16 +144,16 @@ class TestViewStudy(ResearcherSessionTest):
         study.update(forest_enabled=False)
         check_firebase_instance.return_value = False
         response = self.smart_get_status_code(200, study.id)
-        self.assertNotIn(b"Edit interventions for this study", response.content)
+        self.assertNotIn(b"Configure Interventions for use with Relative survey schedules", response.content)
         self.assertNotIn(b"View Forest Task Log", response.content)
         
         check_firebase_instance.return_value = True
         study.update(forest_enabled=True)
         response = self.smart_get_status_code(200, study.id)
-        self.assertIn(b"Edit interventions for this study", response.content)
+        self.assertIn(b"Configure Interventions for use with Relative survey schedules", response.content)
         self.assertIn(b"View Forest Task Log", response.content)
         # assertInHTML is several hundred times slower but has much better output when it fails...
-        # self.assertInHTML("Edit interventions for this study", response.content.decode())
+        # self.assertInHTML("Configure Interventions for use with Relative survey schedules", response.content.decode())
 
 
 class TestManageCredentials(ResearcherSessionTest):
@@ -658,19 +656,18 @@ class TestEditStudy(ResearcherSessionTest):
         """ tests that various important pieces of information are present """
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.session_study.update(is_test=True, forest_enabled=False)
-        resp = self.smart_get_status_code(200, self.session_study.id)
-        self.assert_present("Forest is currently disabled.", resp.content)
-        self.assert_present("This is a test study", resp.content)
-        self.assert_present(self.session_researcher.username, resp.content)
+        resp1 = self.smart_get_status_code(200, self.session_study.id)
+        self.assert_present("Forest is currently disabled.", resp1.content)
+        self.assert_not_present("data in this study is restricted", resp1.content)
+        self.assert_present(self.session_researcher.username, resp1.content)
         
         self.session_study.update(is_test=False, forest_enabled=True)
         r2 = self.generate_researcher(relation_to_session_study=ResearcherRole.researcher)
         
-        resp = self.smart_get_status_code(200, self.session_study.id)
-        self.assert_present(self.session_researcher.username, resp.content)
-        self.assert_present(r2.username, resp.content)
-        self.assert_present("Forest is currently enabled.", resp.content)
-        self.assert_present("This is a production study", resp.content)
+        resp2 = self.smart_get_status_code(200, self.session_study.id)
+        self.assert_present(self.session_researcher.username, resp2.content)
+        self.assert_present(r2.username, resp2.content)
+        self.assert_present("data in this study is restricted", resp2.content)
 
 
 # FIXME: need to implement tests for copy study.
@@ -2351,7 +2348,8 @@ class TestGetLatestSurveys(ParticipantSessionTest):
                 'content': [],
                 'settings': {},
                 'survey_type': 'tracking_survey',
-                'timings': [[], [], [], [], [], [], []]
+                'timings': [[], [], [], [], [], [], []],
+                'name': "",
             }
         ]
         self.assertEqual(output_survey, basic_survey)
