@@ -200,58 +200,70 @@
       </div>
     </div>
 
+    <div class="row" >
+      <h3>Study Configuration</h3>
+      
+      <div class="col-xs-12 well ">  
+        {% if push_notifications_enabled %}
+          <div class="col-xs-3">
+
+            <p><a class="btn btn-info h3-margins" 
+            href={{ easy_url("study_api.interventions_page", study_id=study.id) }}>
+              Edit Interventions
+            </a></p>
+            Configure Interventions for use with Relative survey schedules
+          </div>
+          
+        {% endif %}
+
+        <div class="col-xs-6">
+          <p><a class="btn btn-info h3-margins"  href="/device_settings/{{ study['id'] }}">
+            Edit App Settings
+          </a></p>
+          Configure types and quantity of the passive data streams this study collects, and the wording that study participants see in the app
+        </div>
+
+        <div class="col-xs-3">
+          <p><a class="btn btn-info h3-margins"  href="/study_fields/{{ study['id'] }}">
+            Edit Custom Fields
+          </a></p>
+          Edit custom tags for organizing participants in your study.
+        </div>
+      </div>
+    </div>
+
     {% if study.forest_enabled %}
       <div class="row" >
-        <h3>Forest</h3>
+        <h3>Forest Data Analysis</h3>
         <div class="col-xs-12 well">
 
           {% if is_site_admin %}
-            <div class="col-xs-3">
-                <a class="btn btn-info" href="{{ easy_url('forest_pages.create_tasks', study_id=study.id) }}">
-                  Dispatch New Forest Tasks
-                </a>
+            <div class="col-xs-4">
+              <p><a class="btn btn-info" href="{{ easy_url('forest_pages.create_tasks', study_id=study.id) }}">
+                Dispatch New Forest Tasks
+              </a></p>
+              Queue up new Forest analysis runs on participant data.
             </div>
           {% endif %}
 
-          <div class="col-xs-3">
-              <a class="btn btn-info" href="{{ easy_url('forest_pages.task_log', study_id=study.id) }}">
-                View Forest Task History
-              </a>
+          <div class="col-xs-4">
+            <p><a class="btn btn-info" href="{{ easy_url('forest_pages.task_log', study_id=study.id) }}">
+              View Forest Task History
+            </a></p>
+            View the runtime history of all Forest analysis tasks that have run on data from this study.
           </div>
           
-          <div class="col-xs-3">
-              <a class="btn btn-info" href="{{ easy_url('forest_pages.analysis_progress', study_id=study.id) }}">
-                View Forest Task Summaries
-              </a>
+          <div class="col-xs-4">
+            <p><a class="btn btn-info" href="{{ easy_url('forest_pages.analysis_progress', study_id=study.id) }}">
+              View Forest Task Summaries
+            </a></p>
+            View a high-level summary about the data that Forest analysis run on.
           </div>
-        
-          {% if is_site_admin %}
-            <div class="col-xs-3 ">
-                <a class="btn btn-info" href="{{ url('forest_pages.download_task_log') }}">
-                  Download Forest Task Log (all studies)
-                </a>
-            </div>
-          {% endif %}
+
         </div>
       </div>
     {% endif %}
 
-    {% if push_notifications_enabled %}
-      <div class="row">
-        <h3>Interventions</h3>
-        <p><a href={{ easy_url("study_api.interventions_page", study_id=study.id) }}>Edit interventions for this study</a></p>
-      </div>
-    {% endif %}
-
-    <div class="row">
-      <h3>App Settings</h3>
-      <p><a href="/device_settings/{{ study['id'] }}">View the types of data this study collects and the wording that study participants see in the app</a></p>
-    </div>
-
-    <div class="row">
-      <h3>Custom Fields</h3>
-      <p><a href="/study_fields/{{ study['id'] }}">Edit custom fields available for this study</a></p>
-    </div>
   </div>
 </div>
 
