@@ -2,22 +2,21 @@
 
 from django.db import migrations
 
-from database.survey_models import Survey
 
-
-def backfill_missing_survey_archives(*args, **kwargs):
+def backfill_missing_survey_archives(apps, schema_editor):
     """ We need to fill SurveyArchive objects for all surveys predating its existence. """
+    Survey = apps.get_model('database', 'Survey')
     for survey in Survey.objects.filter(archives__isnull=True):
         # SurveyArchives are created and tested in the save trigger.
         survey.save()
 
 
 class Migration(migrations.Migration):
-
+    
     dependencies = [
         ('database', '0034_auto_20200506_2212'),
     ]
-
+    
     operations = [
         migrations.RemoveField(
             model_name='surveyarchive',

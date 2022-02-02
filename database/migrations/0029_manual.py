@@ -4,20 +4,19 @@ from __future__ import unicode_literals
 
 from django.db import migrations
 
-from database.survey_models import Survey
 
-
-def fix_bad_survey_content(*args, **kwargs):
+def fix_bad_survey_content(apps, schema_editor):
+    Survey = apps.get_model('database', 'Survey')
     Survey.objects.filter(content="null").update(content="[]")
 
 
 class Migration(migrations.Migration):
-
+    
     dependencies = [
         ('database', '0028_auto_20200305_2015'),
     ]
-
+    
     operations = [
         migrations.RunPython(fix_bad_survey_content, reverse_code=migrations.RunPython.noop)
-
+    
     ]

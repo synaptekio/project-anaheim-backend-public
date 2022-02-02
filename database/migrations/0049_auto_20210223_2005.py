@@ -3,13 +3,12 @@ from collections import Counter
 
 from django.db import migrations, models
 
-from database.data_access_models import FileToProcess
-
 
 def purge_absolute_schedules(apps, schema_editor):
     """ Removes all but one entry of any duplicates in FileToProcess. """
+    FileToProcess = apps.get_model('database', 'FileToProcess')
     files = Counter(FileToProcess.objects.values_list("s3_file_path", flat=True))
-
+    
     for path, count in files.items():
         if count > 1:
             # get ids, remove the "first", delete all that remain.
@@ -19,11 +18,11 @@ def purge_absolute_schedules(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
+    
     dependencies = [
         ('database', '0048_auto_20210212_1946'),
     ]
-
+    
     operations = [
         migrations.RunPython(purge_absolute_schedules, migrations.RunPython.noop),
         migrations.AlterField(

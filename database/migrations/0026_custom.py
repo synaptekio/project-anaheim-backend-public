@@ -1,14 +1,14 @@
 from django.db import migrations
 
-from database.schedule_models import WeeklySchedule
-from database.survey_models import Survey
 
 SQL_GET_TIMINGS = """
 SELECT "id", "database_survey"."timings" FROM "database_survey"
 """.strip()
 
 
-def initial_weekly_schedules(*args, **kwargs):
+def initial_weekly_schedules(apps, schema_editor):
+    Survey = apps.get_model('database', 'Survey')
+    WeeklySchedule = apps.get_model('database', 'WeeklySchedule')
     # We are removing the timings column field and django doesn't like having the attribute accessed
     # without a custom query.
     # we then create weekly schedules, copying the content of the create_weekly_schedules function.
@@ -17,13 +17,13 @@ def initial_weekly_schedules(*args, **kwargs):
         
         if not survey.timings:
             continue
-
+        
         if not len(survey.timings) == 7:
             # bad source data, shouldn't exist, survey is corrupted. Ignore
             continue
-
+        
         survey.weekly_schedules.all().delete()
-
+        
         for day in range(7):
             for seconds in survey.timings[day]:
                 hour = seconds // 3600
@@ -35,11 +35,11 @@ def initial_weekly_schedules(*args, **kwargs):
 
 
 class Migration(migrations.Migration):
-
+    
     dependencies = [
         ('database', '0026_auto_20200304_2001'),
     ]
-
+    
     operations = [
         migrations.RunPython(initial_weekly_schedules, reverse_code=migrations.RunPython.noop),
         migrations.RemoveField(

@@ -5,22 +5,21 @@ import datetime
 import django.core.validators
 from django.db import migrations, models
 
-from database.schedule_models import AbsoluteSchedule
-
 
 # due to complex timezone bugs we are simply deleting all absolute schedules from the system
 # in this migration.  There were no live deployments other than onnela lab's staging deployment
 # at time of writing.
 def purge_absolute_schedules(apps, schema_editor):
+    AbsoluteSchedule = apps.get_model('database', 'AbsoluteSchedule')
     AbsoluteSchedule.objects.all().delete()
 
 
 class Migration(migrations.Migration):
-
+    
     dependencies = [
         ('database', '0045_auto_20210121_0301'),
     ]
-
+    
     operations = [
         migrations.RemoveField(
             model_name='participant',
