@@ -215,9 +215,7 @@ class Researcher(AbstractPasswordUser):
     access_key_id = models.CharField(max_length=64, validators=[STANDARD_BASE_64_VALIDATOR], unique=True, null=True, blank=True)
     access_key_secret = models.CharField(max_length=44, validators=[URL_SAFE_BASE_64_VALIDATOR], blank=True)
     access_key_secret_salt = models.CharField(max_length=24, validators=[URL_SAFE_BASE_64_VALIDATOR], blank=True)
-    
-    is_batch_user = models.BooleanField(default=False)
-    
+
     @classmethod
     def create_with_password(cls, username, password, **kwargs) -> Researcher:
         """
@@ -256,7 +254,7 @@ class Researcher(AbstractPasswordUser):
             Researcher.objects
                 .annotate(username_lower=Func(F('username'), function='LOWER'))
                 .order_by('username_lower')
-                .filter(is_batch_user=False, *args, **kwargs)
+                .filter(*args, **kwargs)
         )
 
     def get_administered_researchers(self) -> QuerySet[Researcher]:
@@ -264,7 +262,7 @@ class Researcher(AbstractPasswordUser):
             relationship=ResearcherRole.study_admin).values_list("study_id", flat=True)
         researchers = StudyRelation.objects.filter(
             study_id__in=studies).values_list("researcher_id", flat=True).distinct()
-        return Researcher.objects.filter(id__in=researchers, is_batch_user=False)
+        return Researcher.objects.filter(id__in=researchers)
 
     def get_administered_researchers_by_username(self) -> Researcher:
 

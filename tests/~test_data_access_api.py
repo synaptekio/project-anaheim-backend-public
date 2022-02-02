@@ -24,7 +24,7 @@ download_data.SKIP_DOWNLOAD = True
 
 def helper(
         allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, site_admin,
-        batch_user, study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study,
+        study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study,
         corrupt_study_object_id
 ):
     if not study_as_object_id and corrupt_study_object_id:
@@ -34,13 +34,12 @@ def helper(
     access_key, secret_key = test_user.reset_access_credentials()
     test_user.study_relations.all().delete()
     test_user.site_admin = site_admin
-    test_user.is_batch_user = batch_user
     test_user.save()
 
     # set test study flag
     Study.objects.filter(pk=debugging_study.pk).update(is_test=is_test_study)
 
-    if not site_admin and not batch_user:
+    if not site_admin:
         # regular_user
         relationship = ResearcherRole.study_admin if researcher_admin else ResearcherRole.researcher
         if allowed_on_study:
@@ -88,7 +87,7 @@ all_possible_combinations = [
 variable_names = helper.__code__.co_varnames
 
 for allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, site_admin, \
-    batch_user, study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study, \
+    study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study, \
     corrupt_study_object_id in all_possible_combinations:
 
     print("\n=======================================================================\n")
@@ -99,7 +98,6 @@ for allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, s
         "corrupt_secret_key": corrupt_secret_key,
         "researcher_admin": researcher_admin,  # not tested below, present to test false negatives.
         "site_admin": site_admin,
-        "batch_user": batch_user,
         "study_as_object_id": study_as_object_id,
         "wrong_access_key": wrong_access_key,
         "wrong_secret_key": wrong_secret_key,
@@ -127,7 +125,7 @@ for allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, s
     try:
         helper(
             allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, site_admin,
-            batch_user, study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study,
+            study_as_object_id, wrong_access_key, wrong_secret_key, is_test_study,
             corrupt_study_object_id
         )
     except requests.exceptions.HTTPError as e:
@@ -143,9 +141,9 @@ for allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, s
             assert not corrupt_secret_key, "200: corrupt_secret_key..."
             assert not wrong_access_key, "200: wrong_access_key..."
             assert not wrong_secret_key, "200: wrong_secret_key..."
-            assert any((is_test_study, batch_user, site_admin)), "200: shouldn't be allowed on study 1"
+            assert any((is_test_study, site_admin)), "200: shouldn't be allowed on study 1"
             # needs to be allowed and study acceptable
-            if not batch_user and not site_admin:
+            if not site_admin:
                 assert allowed_on_study, "200: should be allowed on study 2"
                 assert is_test_study, "200: should be allowed on study 3"
 
@@ -166,5 +164,3 @@ for allowed_on_study, corrupt_access_id, corrupt_secret_key, researcher_admin, s
         if error_code in (404, 403) and not wrong_access_key and not wrong_secret_key:
             # provided access and secret key are correct 404s and 403s should never happen to special users
             assert not site_admin, f"{error_code}, site admin should have global access."
-            assert not batch_user, f"{error_code}, batch_user should have global access."
-

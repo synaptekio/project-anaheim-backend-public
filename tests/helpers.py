@@ -135,7 +135,6 @@ class ReferenceObjectMixin:
             password='zsk387ts02hDMRAALwL2SL3nVHFgMs84UcZRYIQWYNQ=',
             salt='hllJauvRYDJMQpXQKzTdwQ==',  # these will get immediately overwritten
             site_admin=relation_to_session_study == ResearcherRole.site_admin,
-            is_batch_user=False,
         )
         # set password saves...
         researcher.set_password(self.DEFAULT_RESEARCHER_PASSWORD)

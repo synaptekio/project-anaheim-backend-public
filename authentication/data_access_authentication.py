@@ -98,10 +98,9 @@ def api_check_researcher_study_access(request: ResearcherRequest, block_test_stu
     study = api_get_study_confirm_exists(request)
     researcher = api_get_validate_researcher_on_study(request, study)
     
-    user_exceptions = researcher.site_admin or researcher.is_batch_user
     do_block = block_test_studies and not study.is_test
     
-    if not user_exceptions and do_block:
+    if not researcher.site_admin and do_block:
         # You're only allowed to download chunked data from test studies, otherwise doesn't exist.
         log("study not accessible to researcher")
         return abort(404)
@@ -139,13 +138,16 @@ def api_get_validate_researcher_on_study(request: ResearcherRequest, study: Stud
     does not match. """
     researcher = api_get_and_validate_researcher(request)
     
-    # if the researcher has no relation to the study, and isn't a batch user or site admin, 403.
-    # case: batch users and site admins have access to everything.
+    # case site admins have access to everything.
+    if researcher.site_admin:
+        log(f"researcher is site_admin")
+        return researcher
+    
+    # if the researcher has no relation to the study, 403.
     # case: researcher is not credentialed for this study.
     query = StudyRelation.objects.filter(study_id=study.pk, researcher=researcher)
-    if not query.exists() and not researcher.site_admin:
+    if not query.exists():
         log(f"study relation found: {list(query.values())}")
-        log(f"researcher.site_admin: {researcher.site_admin}")
         log("no study access")
         return abort(403)
     return researcher
