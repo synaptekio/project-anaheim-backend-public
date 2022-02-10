@@ -47,7 +47,7 @@ SENTRY_JAVASCRIPT_DSN = getenv("SENTRY_JAVASCRIPT_DSN")
 S3_REGION_NAME = getenv("S3_REGION_NAME", "us-east-1")
 
 # Location of the downloadable Android APK file that'll be served from /download
-DOWNLOADABLE_APK_URL = getenv("DOWNLOADABLE_APK_URL", "https://s3.amazonaws.com/beiwe-app-backups/release/Beiwe-2.4.1-onnelaLabServer-release.apk")
+DOWNLOADABLE_APK_URL = getenv("DOWNLOADABLE_APK_URL", "https://play.google.com/store/apps/details?id=org.beiwe.app&hl=en_US&gl=US")
 
 #
 # File processing options
