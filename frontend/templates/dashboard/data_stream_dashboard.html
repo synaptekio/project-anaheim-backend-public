@@ -167,9 +167,9 @@
                 <button class="btn btn-primary save_settings" type="submit">
                   Save Current Filter Bar as Default Settings
                 </button>
-                {#       note: can add this command to the save button to have user confirmation that settings are saved
+                       {% comment %} note: can add this command to the save button to have user confirmation that settings are saved
                          - it's a little weird though bc it says saved before it reloads the page.
-                         onclick="alert('Default Settings Saved')"#}
+                         onclick="alert('Default Settings Saved')" {% endcomment %}
               </form>
             </div>
           </div>

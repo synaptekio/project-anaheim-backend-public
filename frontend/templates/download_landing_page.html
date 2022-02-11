@@ -19,24 +19,23 @@
 
     <h3><b>Download the test Android apps</b></h3>
     <p>The Beta versions of the Beiwe and Study Debugger apps are in development.  They may contain updates and bug-fixes, or they may contain unfinished or buggy features.  Make sure to read the descriptions and changelog below the links to understand how the current Beta differs from production.</p>
-{#       <p><b>Note:</b> beta versions of the Beiwe Android app are directed at <a href="https://staging.beiwe.org">staging.beiwe.org</a>, and will only work on with users in studies on that website.</p>
- #}    
-      {# this text is going to change whenever we upload a new version of the app, keep it simple #}
-      {# There is currently no Beta version of the Beiwe app. #}
-{#        <div class="row">
+       {% comment %} <p><b>Note:</b> beta versions of the Beiwe Android app are directed at <a href="https://staging.beiwe.org">staging.beiwe.org</a>, and will only work on with users in studies on that website.</p>
+       this text is going to change whenever we upload a new version of the app, keep it simple
+       There is currently no Beta version of the Beiwe app.
+        <div class="row">
         <div class="col-xs-12">
           <a href="/download_beta" class="btn btn-primary btn-block">Download Beiwe <b>version 2.1.3 </b> </a>
           <div class="text-center">
             You must be logged in to download either of the Beta apps.
           </div>
         </div>
-      </div> #}
+      </div>  {% endcomment %}
 
       <div class="well">
         <i>No test apps are available right now.</i>
       </div>
 
-{#    <div class="well">
+{% comment %}    <div class="well">
       <div class="row">
         <div class="col-xs-12">
           <a href="/download_beta_debug" class="btn btn-primary">Download the Beiwe Android APK- <b>version 2.1.3 (beta)</b></a>
@@ -61,7 +60,7 @@
     		</ul>
         </div>
       </div>
-    </div> #}
+    </div> {% endcomment %}
 
     <br><hr><br>
 
@@ -223,10 +222,4 @@
     If you encounter a problem with the Beiwe App please send the Beiwe Administrators a bug report.  Remember to include the version of the app you were using, whether it was the Study Debugger or regular App release, the version of Android OS on the device, the user ID and study you were enrolled in, the full model name of the device you were using, and a description of your activity before experiencing the issue.
   </div>
 
-
-  {# <h2> Data API Status </h2>
-    <div class="well">
-      In the event of planned downtime there will be a notice here stating when the Data Access API and download page will be unavailable.
-      {# There is downtime planned starting the evening of Friday March 4th and continuing until data processing tasks are completed. Expected downtime is a limited to a few hours.
-    </div> #}
 {% endblock %}
