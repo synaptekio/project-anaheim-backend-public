@@ -83,6 +83,13 @@ table>tbody>tr>td.viewParticipantTable {
     color: inherit;
 }
 
+.bold {
+    font-weight: bold;
+}
+.text-blackish{
+    color: rgb(32, 32, 32);
+}
+
 .h3-margins {
     margin-block-start: 1em;
     margin-block-end: 1em;
