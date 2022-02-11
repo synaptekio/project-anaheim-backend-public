@@ -109,6 +109,9 @@ table>tbody>tr>td.viewParticipantTable {
 .text-align-right {
     text-align: right;
 }
+.text-align-left {
+    text-align: left;
+}
 
 .right-neg-1 {
     margin-right: -1em;
@@ -123,6 +126,19 @@ table>tbody>tr>td.viewParticipantTable {
     margin-right: -4em;
 }
 
+.right-1 {
+    margin-right: 1em;
+}
+.right-2 {
+    margin-right: 2em;
+}
+.right-3 {
+    margin-right: 3em;
+}
+.right-4 {
+    padding-right: 4em;
+}
+
 .left-neg-1 {
     margin-left: -1em;
 }
@@ -134,4 +150,17 @@ table>tbody>tr>td.viewParticipantTable {
 }
 .left-neg-4 {
     margin-left: -4em;
+}
+
+.left-1 {
+    margin-left: 1em;
+}
+.left-2 {
+    margin-left: 2em;
+}
+.left-3 {
+    margin-left: 3em;
+}
+.left-4 {
+    margin-left: 4em;
 }

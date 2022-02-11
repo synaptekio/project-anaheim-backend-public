@@ -91,16 +91,18 @@
           </tr>
           </thead>
         </table>
+
         <form action="/create_new_participant" method="post">
-          <div class="form-inline pull-left">
+          <div class="form-inline pull-right h3-margins right-1">
             <input type="hidden" name="study_id" value="{{ study.id }}">
-            <button type="submit" class="btn btn-primary add_new_patient_button">Add new participant</button>
+            <button type="submit" class="btn btn-primary ">Add new participant</button>
           </div>
         </form>
 
-        <button type="button" class="btn btn-warning add_many_patients_button" data-toggle="modal" data-target="#addManyPatientsModal" 
-        title="Enable a number of new participants to enroll in {{ study.name }}: 
-        download a file of new Patient IDs and registration passwords">Add many new participants</button>
+        <button type="button" class="btn btn-warning pull-left h3-margins" data-toggle="modal" data-target="#addManyPatientsModal" 
+                title="Enable a number of new participants to enroll in {{ study.name }}: 
+                download a file of new Patient IDs and registration passwords">Add many new participants</button>
+
         {% include 'create_many_participants_modal.html' %}
       </div>
     </div>
