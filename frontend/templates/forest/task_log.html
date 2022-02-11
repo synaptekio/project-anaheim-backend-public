@@ -46,7 +46,7 @@
             <th scope="col">Data Start Date</th>
             <th scope="col">Data End Date</th>
             <th scope="col">Status</th>
-            {% if is_site_admin %}
+            {% if site_admin %}
               <th scope="col">Actions</th>
             {% endif %}
           </tr>
@@ -66,7 +66,7 @@
                             {{ status_choices.cancelled }}: 'list-group-item-warning'}[log.status]">
               {% raw %}{{ log.status }}{% endraw %}
             </td>
-            {% if is_site_admin %}
+            {% if site_admin %}
               <td>
                 <div>
                   <button class="btn-link" ng-click="showErrorModal(log)" style="padding: 0;">

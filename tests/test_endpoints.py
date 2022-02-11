@@ -108,7 +108,7 @@ class TestChooseStudy(ResearcherSessionTest):
 
 class TestViewStudy(ResearcherSessionTest):
     """ view_study is pretty simple, no custom content in the :
-    tests push_notifications_enabled, is_site_admin, study.is_test, study.forest_enabled
+    tests push_notifications_enabled, study.is_test, study.forest_enabled
     populates html elements with custom field values
     populates html elements of survey buttons
     """

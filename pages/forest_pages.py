@@ -127,7 +127,6 @@ def task_log(request: ResearcherRequest, study_id=None):
         "forest/task_log.html",
         context=dict(
             study=study,
-            is_site_admin=request.session_researcher.site_admin,
             status_choices=ForestTaskStatus,
             forest_log=ForestTaskSerializer(forest_tasks, many=True).data,
         )

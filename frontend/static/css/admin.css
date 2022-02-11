@@ -110,15 +110,28 @@ table>tbody>tr>td.viewParticipantTable {
     text-align: right;
 }
 
-.right1 {
+.right-neg-1 {
     margin-right: -1em;
 }
-.right2 {
+.right-neg-2 {
     margin-right: -2em;
 }
-.right3 {
+.right-neg-3 {
     margin-right: -3em;
 }
-.right4 {
+.right-neg-4 {
     margin-right: -4em;
+}
+
+.left-neg-1 {
+    margin-left: -1em;
+}
+.left-neg-2 {
+    margin-left: -2em;
+}
+.left-neg-3 {
+    margin-left: -3em;
+}
+.left-neg-4 {
+    margin-left: -4em;
 }

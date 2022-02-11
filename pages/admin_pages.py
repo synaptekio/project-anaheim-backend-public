@@ -6,13 +6,14 @@ from markupsafe import Markup
 from authentication.admin_authentication import (authenticate_researcher_login,
     authenticate_researcher_study_access, get_researcher_allowed_studies_as_query_set,
     logout_researcher)
-from constants.datetime_constants import API_TIME_FORMAT, DISPLAY_TIME_FORMAT
+from constants.datetime_constants import DISPLAY_TIME_FORMAT
 from constants.message_strings import (NEW_API_KEY_MESSAGE, NEW_PASSWORD_MISMATCH,
     PASSWORD_RESET_SUCCESS, RESET_DOWNLOAD_API_CREDENTIALS_MESSAGE, TABLEAU_API_KEY_IS_DISABLED,
     TABLEAU_API_KEY_NOW_DISABLED, TABLEAU_NO_MATCHING_API_KEY, WRONG_CURRENT_PASSWORD)
+from constants.researcher_constants import ResearcherRole
 from database.security_models import ApiKey
 from database.study_models import Study
-from database.user_models import Researcher
+from database.user_models import Researcher, StudyRelation
 from forms.django_forms import DisableApiKeyForm, NewApiKeyForm
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import ResearcherRequest
@@ -68,6 +69,10 @@ def view_study(request: ResearcherRequest, study_id=None):
                  info["last_updated"].astimezone(study.timezone).strftime(DISPLAY_TIME_FORMAT)
         return survey_info
     
+    is_study_admin = StudyRelation.objects.filter(
+        researcher=request.session_researcher, study=study, relationship=ResearcherRole.study_admin
+    ).exists()
+    
     return render(
         request,
         template_name='view_study.html',
@@ -82,7 +87,7 @@ def view_study(request: ResearcherRequest, study_id=None):
             interventions=list(study.interventions.all().values_list("name", flat=True)),
             page_location='study_landing',
             study_id=study_id,
-            is_site_admin=request.session_researcher.site_admin,
+            is_study_admin=is_study_admin,
             push_notifications_enabled=check_firebase_instance(require_android=True) or
                                        check_firebase_instance(require_ios=True),
         )
