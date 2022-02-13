@@ -1,7 +1,7 @@
 import json
 from collections import OrderedDict
-from datetime import datetime, timedelta
-from typing import Any, List
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List
 
 import pytz
 from django.shortcuts import render
@@ -153,32 +153,23 @@ def if_data_stream_in_ALL_DATA_STREAMS(
     end: datetime
 ):
     first_day, last_day = dashboard_chunkregistry_date_query(study_id, data_stream)
+    data_exists = False
     if first_day is not None:
-        stream_data = OrderedDict(
-            (
-                participant.patient_id,
-                dashboard_chunkregistry_query(participant.id, data_stream=data_stream)
-            )
+        stream_data = dict(
+            (participant.patient_id,
+                dashboard_chunkregistry_query(participant.id, data_stream=data_stream))
             for participant in participant_objects
         )
         unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
         
         # get the byte streams per date for each patient for a specific data stream for those dates
-        byte_streams = OrderedDict(
-            (
-                participant.patient_id,
-                [get_bytes_participant_match(stream_data[participant.patient_id], date) for date in unique_dates]
-            )
+        byte_streams = dict(
+            (participant.patient_id,
+                [get_bytes_participant_match(stream_data[participant.patient_id], date) for date in unique_dates])
             for participant in participant_objects
         )
         # check if there is data to display
         data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
-    else:
-        unique_dates = []
-        # next_url = ""
-        # past_url = ""
-        byte_streams = {}
-        data_exists = False
     
     return data_exists, first_day, last_day
 
@@ -189,28 +180,18 @@ def if_data_stream_NOT_in_ALL_DATA_STREAMS(
 ):
     start, end = extract_date_args_from_request(request)
     first_day, last_day, stream_data = parse_processed_data(study_id, participant_objects, data_stream)
-    
+    data_exists = False
     if first_day is not None:
         unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
         
         # get the byte streams per date for each patient for a specific data stream for those dates
-        byte_streams = OrderedDict(
-            (
-                participant.patient_id,
-                [get_bytes_processed_data_match(stream_data[participant.patient_id], date) for date in unique_dates]
-            )
+        byte_streams = dict(
+            (participant.patient_id,
+                [get_bytes_processed_data_match(stream_data[participant.patient_id], date) for date in unique_dates])
             for participant in participant_objects
         )
         # check if there is data to display
-        data_exists = len(
-            [data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
-    
-    else:
-        unique_dates = []
-        # next_url = ""
-        # past_url = ""
-        byte_streams = {}
-        data_exists = False
+        data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
     
     return data_exists, first_day, last_day
 
@@ -559,10 +540,10 @@ def get_bytes_data_stream_match(chunks, date, stream):
         return None
 
 
-def get_bytes_participant_match(stream_data, date):
+def get_bytes_participant_match(stream_data: List[Dict[str, datetime]], a_date: date):
     all_bytes = None
     for data_point in stream_data:
-        if (data_point["time_bin"]).date() == date:
+        if (data_point["time_bin"]).date() == a_date:
             if all_bytes is None:
                 all_bytes = data_point.get("bytes", 0) or 0
             else:
@@ -573,31 +554,31 @@ def get_bytes_participant_match(stream_data, date):
         return None
 
 
-def get_bytes_processed_data_match(participant_data, date):
-    # participant_data is a list of dicts which hold {time_bin: , processed_data: }
+def get_bytes_processed_data_match(participant_data: List[Dict[str, datetime]], a_date: date):
+    # participant_data is a list of dicts which hold {time_bin: _, processed_data: _}
     # there should only ever be one data_point corresponding to a specific date per patient
     # if no data exists, return None -- if the participant_data object is none, there is no data for this data
     # stream for this participant
     if participant_data is not None:
         for data_point in participant_data:
-            if(data_point["time_bin"]) == date:
+            if(data_point["time_bin"]) == a_date:
                 return data_point["processed_data"]
     return None
 
 
-def get_bytes_patient_processed_match(participant_data, date, stream):
-    # participant_data is a list of dicts which hold {time_bin: , processed_data: , stream:, }
+def get_bytes_patient_processed_match(participant_data, a_date: date, stream: str):
+    # participant_data is a list of dicts which hold {time_bin: _, processed_data: _, stream:, _}
     # there should only ever be one data_point corresponding to a specific date per patient
     # if no data exists, return None -- if the participant_data object is none, there is no data for this data
     # stream for this participant
     if participant_data is not None:
         for data_point in participant_data:
-            if (data_point["time_bin"]) == date and data_point["data_stream"] == stream:
+            if (data_point["time_bin"]) == a_date and data_point["data_stream"] == stream:
                 return data_point["processed_data"]
     return None
 
 
-def dashboard_chunkregistry_date_query(study_id, data_stream=None):
+def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
     """ gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error and makes
     the frontend annoying to use """
     unix_epoch_start_sorta = make_aware(datetime(1970, 1, 2), pytz.utc)
@@ -618,7 +599,9 @@ def dashboard_chunkregistry_date_query(study_id, data_stream=None):
     return all_time_bins[0].date(), all_time_bins[-1].date()
 
 
-def dashboard_chunkregistry_query(participant_id, data_stream=None, start=None, end=None):
+def dashboard_chunkregistry_query(
+    participant_id: int, data_stream: str = None, start: date = None, end: date = None
+):
     """ Queries ChunkRegistry based on the provided parameters and returns a list of dictionaries
     with 3 keys: bytes, data_stream, and time_bin. """
     kwargs = {"participant__id": participant_id}
@@ -645,7 +628,7 @@ def dashboard_chunkregistry_query(participant_id, data_stream=None, start=None, 
     return chunks
 
 
-def dashboard_pipelineregistry_query(study_id, participant_id):
+def dashboard_pipelineregistry_query(study_id: int, participant_id: int):
     """ Queries Pipeline based on the provided parameters and returns a list of dicts with
     an id (which is ignored), a "day", and a bunch of strings which are data streams """
     # pipeline_chunks looks like this: [{day: 3/4/4, "data_stream1": 36634, "data_stream2": 2525}, ... ]
@@ -706,7 +689,7 @@ def extract_data_stream_args_from_request(request: ResearcherRequest):
     return data_stream
 
 
-def get_participant(patient_id, study_id):
+def get_participant(patient_id: str, study_id: int):
     """ Just factoring out a common abort operation. """
     try:
         return Participant.objects.get(study=study_id, patient_id=patient_id)
