@@ -155,11 +155,7 @@ def if_data_stream_in_ALL_DATA_STREAMS(
     first_day, last_day = dashboard_chunkregistry_date_query(study_id, data_stream)
     data_exists = False
     if first_day is not None:
-        stream_data = dict(
-            (participant.patient_id,
-                dashboard_chunkregistry_query(participant.id, data_stream=data_stream))
-            for participant in participant_objects
-        )
+        stream_data = dashboard_chunkregistry_query(participant_objects, data_stream=data_stream)
         unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
         
         # get the byte streams per date for each patient for a specific data stream for those dates
@@ -202,7 +198,10 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     study = Study.get_or_404(pk=study_id)
     participant = get_participant(patient_id, study_id)
     start, end = extract_date_args_from_request(request)
-    chunks = dashboard_chunkregistry_query(participant.id)
+    # query is optimized for bulk participants, weird case handling
+    chunk_data = dashboard_chunkregistry_query(participant)
+    chunks = chunk_data[participant.patient_id] if participant.patient_id in chunk_data else {}
+
     patient_ids = list(
         Participant.objects.filter(study=study_id)
         .exclude(patient_id=patient_id)
@@ -599,12 +598,17 @@ def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
     return all_time_bins[0].date(), all_time_bins[-1].date()
 
 
+# Fixme: start and end dates are never used
 def dashboard_chunkregistry_query(
-    participant_id: int, data_stream: str = None, start: date = None, end: date = None
+    participants: ParticipantQuerySet, data_stream: str = None, start: date = None, end: date = None
 ):
     """ Queries ChunkRegistry based on the provided parameters and returns a list of dictionaries
-    with 3 keys: bytes, data_stream, and time_bin. """
-    kwargs = {"participant__id": participant_id}
+    with 3 keys: bytes, data_stream, and time_bin. """    
+    if isinstance(participants, Participant):
+        kwargs = {"participant": participants}
+    else:
+        kwargs = {"participant_id__in": participants}
+
     if start:
         kwargs["time_bin__gte"] = start
     if end:
@@ -612,20 +616,11 @@ def dashboard_chunkregistry_query(
     if data_stream:
         kwargs["data_type"] = data_stream
     
-    # on a (good) test device running on sqlite, for 12,200 chunks, this takes ~135ms
-    # sticking the query_set directly into a list is a slight speedup. (We need it all in memory anyway.)
-    chunks = list(
-        ChunkRegistry.objects.filter(**kwargs)
-        .extra(
-            select={
-                # rename the data_type and file_size fields in the db query itself for speed
-                'data_stream': 'data_type',
-                'bytes': 'file_size',
-            }
-        ).values("bytes", "data_stream", "time_bin")
-    )
-    
-    return chunks
+    # rename the data_type and file_size fields in the db query itself for speed
+    chunks = ChunkRegistry.objects.filter(**kwargs).extra(
+        select={'data_stream': 'data_type', 'bytes': 'file_size'}
+    ).values("participant__patient_id", "bytes", "data_stream", "time_bin")
+    return {d.pop("participant__patient_id"): d for d in chunks}
 
 
 def dashboard_pipelineregistry_query(study_id: int, participant_id: int):
@@ -679,7 +674,7 @@ def extract_flag_args_from_request(request: ResearcherRequest):
     return all_flags_list
 
 
-def extract_data_stream_args_from_request(request: ResearcherRequest):
+def extract_data_stream_args_from_request(request: ResearcherRequest) -> str or None:
     """ Gets data stream if it is provided as a request POST or GET parameter,
     throws 400 errors on unknown data streams. """
     data_stream = argument_grabber(request, "data_stream", None)
@@ -689,7 +684,7 @@ def extract_data_stream_args_from_request(request: ResearcherRequest):
     return data_stream
 
 
-def get_participant(patient_id: str, study_id: int):
+def get_participant(patient_id: str, study_id: int) -> Participant:
     """ Just factoring out a common abort operation. """
     try:
         return Participant.objects.get(study=study_id, patient_id=patient_id)
@@ -701,5 +696,5 @@ def get_participant(patient_id: str, study_id: int):
             return abort(400, "No such user exists in this study.")
 
 
-def argument_grabber(request: ResearcherRequest, key: str, default: Any = None):
+def argument_grabber(request: ResearcherRequest, key: str, default: Any = None) -> str or None:
     return request.GET.get(key, request.POST.get(key, default))
