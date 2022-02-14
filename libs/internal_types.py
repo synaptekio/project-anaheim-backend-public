@@ -4,8 +4,7 @@ from django.db.models import Manager, QuerySet
 from django.http.request import HttpRequest
 
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
-from database.data_access_models import (ChunkRegistry, FileToProcess, PipelineRegistry,
-    PipelineUpload, PipelineUploadTags)
+from database.data_access_models import (ChunkRegistry, FileToProcess)
 from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetadata,
     LineEncryptionError, UploadTracking)
 from database.schedule_models import (AbsoluteSchedule, ArchivedEvent, Intervention,
@@ -77,9 +76,6 @@ LineEncryptionErrorQuerySet = Union[QuerySet, List[LineEncryptionError]]
 ParticipantFCMHistoryQuerySet = Union[QuerySet, List[ParticipantFCMHistory]]
 ParticipantFieldValueQuerySet = Union[QuerySet, List[ParticipantFieldValue]]
 ParticipantQuerySet = Union[QuerySet, List[Participant]]
-PipelineRegistryQuerySet = Union[QuerySet, List[PipelineRegistry]]
-PipelineUploadQuerySet = Union[QuerySet, List[PipelineUpload]]
-PipelineUploadTagsQuerySet = Union[QuerySet, List[PipelineUploadTags]]
 PushNotificationDisabledEventQuerySet = Union[QuerySet, List[PushNotificationDisabledEvent]]
 RelativeScheduleQuerySet = Union[QuerySet, List[RelativeSchedule]]
 ResearcherQuerySet = Union[QuerySet, List[Researcher]]
@@ -108,9 +104,6 @@ InterventionManager = Union[Manager, List[Intervention]]
 ParticipantFCMHistoryManager = Union[Manager, List[ParticipantFCMHistory]]
 ParticipantFieldValueManager = Union[Manager, List[ParticipantFieldValue]]
 ParticipantManager = Union[Manager, List[Participant]]
-PipelineRegistryManager = Union[Manager, List[PipelineRegistry]]
-PipelineUploadManager = Union[Manager, List[PipelineUpload]]
-PipelineUploadTagsManager = Union[Manager, List[PipelineUploadTags]]
 RelativeScheduleManager = Union[Manager, List[RelativeSchedule]]
 ScheduledEventManager = Union[Manager, List[ScheduledEvent]]
 StudyFieldManager = Union[Manager, List[StudyField]]

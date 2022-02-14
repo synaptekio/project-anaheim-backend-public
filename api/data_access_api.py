@@ -57,27 +57,6 @@ def get_data(request: ApiStudyResearcherRequest):
     streaming_response.set_headers(None)
     return streaming_response
 
-# @require_http_methods(["GET", "POST"])
-# @api_study_credential_check()
-# def pipeline_data_download(request: ApiStudyResearcherRequest):
-#     # the following two cases are for difference in content wrapping between the CLI script and
-#     # the download page.
-#     if 'tags' in request.POST:
-#         try:
-#             tags = json.loads(request.POST['tags'])
-#         except ValueError:
-#             tags = request.POST.getlist('tags')
-#         query = PipelineUpload.objects.filter(study__id=request.api_study.id, tags__tag__in=tags)
-#     else:
-#         query = PipelineUpload.objects.filter(study__id=request.api_study.id)
-
-#     return StreamingHttpResponse(
-#         request,
-#         zip_generator_for_pipeline(query),
-#         mimetype="zip",
-#         headers={'Content-Disposition': 'attachment; filename="data.zip"'}
-#     )
-
 
 def parse_registry(request: ApiStudyResearcherRequest):
     """ Parses the provided registry.dat file and returns a dictionary of chunk

@@ -266,17 +266,3 @@ class FileToProcess(TimestampedModel):
 
 # Everything below this line should [only] be deleting by reverting the correct commit.
 class InvalidUploadParameterError(Exception): pass
-
-
-class PipelineUpload(TimestampedModel):
-    # no related name, this is
-    object_id = models.CharField(max_length=24, unique=True, validators=[LengthValidator(24)])
-    study = models.ForeignKey(Study, related_name="pipeline_uploads", on_delete=models.PROTECT)
-    file_name = models.TextField()
-    s3_path = models.TextField()
-    file_hash = models.CharField(max_length=128)
-
-
-class PipelineUploadTags(TimestampedModel):
-    pipeline_upload = models.ForeignKey(PipelineUpload, related_name="tags", on_delete=models.CASCADE)
-    tag = models.TextField()
