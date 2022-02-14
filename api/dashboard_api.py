@@ -51,6 +51,56 @@ def get_data_for_dashboard_datastream_display(
     we don't want all of the get request running. """
     study = Study.get_or_404(pk=study_id)
     
+    # -----------------------------------  general data fetching --------------------------------------------
+    participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
+    
+    # --------------------- decide whether data is in Processed DB or Bytes DB -----------------------------
+    if data_stream in ALL_DATA_STREAMS:
+        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_in_ALL_DATA_STREAMS(
+            request, study_id, data_stream, participant_objects
+        )
+    else:
+        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_NOT_in_ALL_DATA_STREAMS(
+            request, study_id, data_stream, participant_objects
+        )
+    
+    # ---------------------------------- base case if there is no data ------------------------------------------
+    if first_day is None or (not data_exists and past_url == ""):
+        # TODO: test that these default values are unnecessary and fall out of above logic
+        next_url, past_url = "", ""
+    else:
+        start, end = extract_date_args_from_request(request)
+        next_url, past_url = create_next_past_urls(first_day, last_day, start=start, end=end)
+    
+    show_color, color_low_range, color_high_range, all_flags_list = handle_filters(
+        request, study, data_stream
+    )
+    
+    return render(
+        request,
+        'dashboard/data_stream_dashboard.html',
+        context=dict(
+            study=study,
+            data_stream=COMPLETE_DATA_STREAM_DICT.get(data_stream),
+            times=unique_dates,
+            byte_streams=byte_streams,
+            base_next_url=next_url,
+            base_past_url=past_url,
+            study_id=study_id,
+            data_stream_dict=COMPLETE_DATA_STREAM_DICT,
+            color_low_range=color_low_range,
+            color_high_range=color_high_range,
+            first_day=first_day,
+            last_day=last_day,
+            show_color=show_color,
+            all_flags_list=all_flags_list,
+            page_location='dashboard_data',
+        )
+    )
+
+def handle_filters(request: ResearcherRequest, study: Study, data_stream: str):
+    color_settings: DashboardColorSetting
+    
     if request.method == "POST":
         color_low_range, color_high_range, all_flags_list =\
             set_default_settings_post_request(request, study, data_stream)
@@ -59,11 +109,11 @@ def get_data_for_dashboard_datastream_display(
         color_low_range, color_high_range, show_color = extract_range_args_from_request(request)
         all_flags_list = extract_flag_args_from_request(request)
     
-    default_filters = ""
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
-        color_settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
+        color_settings = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
         default_filters = DashboardColorSetting.get_dashboard_color_settings(color_settings)
     else:
+        default_filters = ""
         color_settings = None
     
     # -------------------------------- dealing with color settings -------------------------------------------------
@@ -89,54 +139,14 @@ def get_data_for_dashboard_datastream_display(
             # set the values for the flag/inflection filter*s*
             # the html is expecting a list of lists for the flags [[operator, value], ... ]
             all_flags_list = [
-                [flag_info["operator"], flag_info["inflection_point"]] for flag_info in inflection_info
+                [flag_info["operator"], flag_info["inflection_point"]]
+                for flag_info in inflection_info
             ]
     
     # change the url params from jinja t/f to python understood T/F
     show_color = True if show_color == "true" else False
     
-    # -----------------------------------  general data fetching --------------------------------------------
-    participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
-    
-    # --------------------- decide whether data is in Processed DB or Bytes DB -----------------------------
-    if data_stream in ALL_DATA_STREAMS:
-        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_in_ALL_DATA_STREAMS(
-            request, study_id, data_stream, participant_objects
-        )
-    else:
-        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_NOT_in_ALL_DATA_STREAMS(
-            request, study_id, data_stream, participant_objects
-        )
-    
-    # ---------------------------------- base case if there is no data ------------------------------------------
-    if first_day is None or (not data_exists and past_url == ""):
-        # TODO: test that these default values are unnecessary and fall out of above logic
-        next_url = past_url = ""
-    else:
-        start, end = extract_date_args_from_request(request)
-        next_url, past_url = create_next_past_urls(first_day, last_day, start=start, end=end)
-    
-    return render(
-        request,
-        'dashboard/data_stream_dashboard.html',
-        context=dict(
-            study=study,
-            data_stream=COMPLETE_DATA_STREAM_DICT.get(data_stream),
-            times=unique_dates,
-            byte_streams=byte_streams,
-            base_next_url=next_url,
-            base_past_url=past_url,
-            study_id=study_id,
-            data_stream_dict=COMPLETE_DATA_STREAM_DICT,
-            color_low_range=color_low_range,
-            color_high_range=color_high_range,
-            first_day=first_day,
-            last_day=last_day,
-            show_color=show_color,
-            all_flags_list=all_flags_list,
-            page_location='dashboard_data',
-        )
-    )
+    return show_color, color_low_range, color_high_range, all_flags_list
 
 
 def if_data_stream_in_ALL_DATA_STREAMS(
@@ -382,12 +392,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
         bool_create_gradient = True
         color_low_range = int(json.loads(color_low_range))
         color_high_range = int(json.loads(color_high_range))
-    
-    # Should be unnecessary in in python?
-    # make the operator a string
-    # for flag in all_flags_list:
-    #     flag[0] = flag[0].encode("utf-8")
-    
+
     # try to get a DashboardColorSetting object and check if it exists
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
         # case: a default settings model already exists; delete the inflections associated with it
