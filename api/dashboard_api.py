@@ -61,10 +61,10 @@ def get_data_for_dashboard_datastream_display(
     
     default_filters = ""
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
-        settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
-        default_filters = DashboardColorSetting.get_dashboard_color_settings(settings)
+        color_settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
+        default_filters = DashboardColorSetting.get_dashboard_color_settings(color_settings)
     else:
-        settings = None
+        color_settings = None
     
     # -------------------------------- dealing with color settings -------------------------------------------------
     # test if there are default settings saved,
@@ -77,22 +77,20 @@ def get_data_for_dashboard_datastream_display(
             
             # backend: color_range_min, color_range_max --> frontend: color_low_range,
             # color_high_range the above is consistent throughout the back and front ends
-            if settings.gradient_exists():
+            if color_settings.gradient_exists():
                 gradient_info = default_filters["gradient"]
                 color_low_range = gradient_info["color_range_min"]
                 color_high_range = gradient_info["color_range_max"]
                 show_color = "true"
             else:
-                color_high_range = 0
-                color_low_range = 0
+                color_high_range, color_low_range = 0, 0
                 show_color = "false"
             
             # set the values for the flag/inflection filter*s*
             # the html is expecting a list of lists for the flags [[operator, value], ... ]
-            all_flags_list = []
-            for flag_info in inflection_info:
-                single_flag = [flag_info["operator"], flag_info["inflection_point"]]
-                all_flags_list.append(single_flag)
+            all_flags_list = [
+                [flag_info["operator"], flag_info["inflection_point"]] for flag_info in inflection_info
+            ]
     
     # change the url params from jinja t/f to python understood T/F
     show_color = True if show_color == "true" else False
@@ -100,28 +98,21 @@ def get_data_for_dashboard_datastream_display(
     # -----------------------------------  general data fetching --------------------------------------------
     start, end = extract_date_args_from_request(request)
     participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
-    unique_dates = []
-    next_url = ""
-    past_url = ""
-    byte_streams = {}
-    data_exists = None
     
     # --------------------- decide whether data is in Processed DB or Bytes DB -----------------------------
     if data_stream in ALL_DATA_STREAMS:
-        data_exists, first_day, last_day = if_data_stream_in_ALL_DATA_STREAMS(
+        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_in_ALL_DATA_STREAMS(
             study_id, data_stream, participant_objects, start, end
         )
     else:
-        data_exists, first_day, last_day = if_data_stream_NOT_in_ALL_DATA_STREAMS(
+        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_NOT_in_ALL_DATA_STREAMS(
             request, study_id, data_stream, participant_objects, start, end
         )
     
     # ---------------------------------- base case if there is no data ------------------------------------------
     if first_day is None or (not data_exists and past_url == ""):
-        unique_dates = []
-        next_url = ""
-        past_url = ""
-        byte_streams = {}
+        # TODO: test that these default values are unnecessary and fall out of above logic
+        next_url = past_url = ""
     else:
         next_url, past_url = create_next_past_urls(first_day, last_day, start=start, end=end)
     
@@ -154,6 +145,8 @@ def if_data_stream_in_ALL_DATA_STREAMS(
 ):
     first_day, last_day = dashboard_chunkregistry_date_query(study_id, data_stream)
     data_exists = False
+    unique_dates = []
+    byte_streams = {}
     if first_day is not None:
         stream_data = dashboard_chunkregistry_query(participant_objects, data_stream=data_stream)
         unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
@@ -167,7 +160,7 @@ def if_data_stream_in_ALL_DATA_STREAMS(
         # check if there is data to display
         data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
     
-    return data_exists, first_day, last_day
+    return data_exists, first_day, last_day, unique_dates, byte_streams
 
 
 def if_data_stream_NOT_in_ALL_DATA_STREAMS(
@@ -177,6 +170,8 @@ def if_data_stream_NOT_in_ALL_DATA_STREAMS(
     start, end = extract_date_args_from_request(request)
     first_day, last_day, stream_data = parse_processed_data(study_id, participant_objects, data_stream)
     data_exists = False
+    unique_dates = []
+    byte_streams = {}
     if first_day is not None:
         unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
         
@@ -189,7 +184,10 @@ def if_data_stream_NOT_in_ALL_DATA_STREAMS(
         # check if there is data to display
         data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
     
-    return data_exists, first_day, last_day
+    return data_exists, first_day, last_day, unique_dates, byte_streams
+
+
+
 
 
 @authenticate_researcher_study_access
@@ -201,7 +199,7 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     # query is optimized for bulk participants, weird case handling
     chunk_data = dashboard_chunkregistry_query(participant)
     chunks = chunk_data[participant.patient_id] if participant.patient_id in chunk_data else {}
-
+    
     patient_ids = list(
         Participant.objects.filter(study=study_id)
         .exclude(patient_id=patient_id)
@@ -302,13 +300,11 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     )
 
 
-def parse_processed_data(study_id, participant_objects, data_stream):
-    """
-    get a list of dicts (pipeline_chunks) of the patient's data and extract the data for the data stream we want
-    stream_data = OrderedDict(participant.patient_id: {"time_bin":time_bin, "processed_data": processed_data}, ...)
-    this structure is similar to the stream_data structure in get_data_for_dashboard_data_stream_display
-    since they perform similar functions
-    """
+def parse_processed_data(study_id: int, participant_objects: ParticipantQuerySet, data_stream: str):
+    """ get a list of dicts (pipeline_chunks) of the patient's data and extract the data for the data
+    stream we want stream_data = OrderedDict(participant.patient_id: {"time_bin": _,
+    "processed_data": _}, ...) this structure is similar to the stream_data structure in
+    get_data_for_dashboard_data_stream_display since they perform similar functions. """
     first = True
     data_exists = False
     first_day = None
@@ -343,12 +339,10 @@ def parse_processed_data(study_id, participant_objects, data_stream):
     return first_day, last_day, stream_data
 
 
-def parse_patient_processed_data(study_id, participant):
-    """
-    Create a list of dicts of processed data for one patient.
+def parse_patient_processed_data(study_id: int, participant: Participant):
+    """ Create a list of dicts of processed data for one patient.
     [{"time_bin": , "processed_data": , "data_stream": ,}...]
-    if there is no data for a patient, first_day and last_day will be None, and all_data will be an empty list
-    """
+    if there is no data for a patient first_day and last_day will be None, all_data will be a [] """
     first = True
     first_day = None
     last_day = None
@@ -377,7 +371,7 @@ def parse_patient_processed_data(study_id, participant):
     return first_day, last_day, all_data
 
 
-def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream):
+def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream: str):
     all_flags_list = argument_grabber(request, "all_flags_list", "[]")
     color_high_range = argument_grabber(request, "color_high_range", 0)
     color_low_range = argument_grabber(request, "color_low_range", 0)
@@ -386,8 +380,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
     # if they didn't save a gradient we don't want to save garbage
     all_flags_list = json.loads(all_flags_list)
     if color_high_range == "0" and color_low_range == "0":
-        color_low_range = 0
-        color_high_range = 0
+        color_low_range, color_high_range = 0, 0
         bool_create_gradient = False
     else:
         bool_create_gradient = True
@@ -402,7 +395,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
     # try to get a DashboardColorSetting object and check if it exists
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
         # case: a default settings model already exists; delete the inflections associated with it
-        settings = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
+        settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
         settings.inflections.all().delete()
         if settings.gradient_exists():
             settings.gradient.delete()
@@ -447,8 +440,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
 
 def get_unique_dates(start, end, first_day, last_day, chunks=None):
     """ create a list of all the unique days in which data was recorded for this study """
-    first_date_data_entry = None
-    last_date_data_entry = None
+    first_date_data_entry = last_date_data_entry = None
     if chunks:
         all_dates = sorted(
             chunk["time_bin"].date() for chunk in chunks if chunk["time_bin"].date() >= first_day
@@ -603,12 +595,12 @@ def dashboard_chunkregistry_query(
     participants: ParticipantQuerySet, data_stream: str = None, start: date = None, end: date = None
 ):
     """ Queries ChunkRegistry based on the provided parameters and returns a list of dictionaries
-    with 3 keys: bytes, data_stream, and time_bin. """    
+    with 3 keys: bytes, data_stream, and time_bin. """
     if isinstance(participants, Participant):
         kwargs = {"participant": participants}
     else:
         kwargs = {"participant_id__in": participants}
-
+    
     if start:
         kwargs["time_bin__gte"] = start
     if end:
