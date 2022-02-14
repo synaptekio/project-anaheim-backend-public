@@ -156,7 +156,7 @@ def parse_data_streams(
         # get the byte streams per date for each patient for a specific data stream for those dates
         byte_streams = dict(
             (participant.patient_id,
-                [get_bytes_participant_match(stream_data[participant.patient_id], date) for date in unique_dates])
+                [get_bytes_date_match(stream_data[participant.patient_id], date) for date in unique_dates])
             for participant in participant_objects
         )
         # check if there is data to display
@@ -185,7 +185,7 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
         next_url, past_url = create_next_past_urls(
             first_date_data_entry, last_date_data_entry, start=start, end=end
         )
-        byte_streams = {
+        byte_streams: Dict[str, List[int]] = {
             stream: [get_bytes_data_stream_match(chunks, date, stream) for date in unique_dates]
                 for stream in ALL_DATA_STREAMS
         }
@@ -330,7 +330,7 @@ def get_unique_dates(start: datetime, end: datetime, first_day: date, last_day: 
     return unique_dates, first_date_data_entry, last_date_data_entry
 
 
-def create_next_past_urls(first_day: date, last_day: date, start: date, end: date) -> Tuple[str, str]:
+def create_next_past_urls(first_day: date, last_day: date, start: datetime, end: datetime) -> Tuple[str, str]:
     """ set the URLs of the next/past pages for patient and data stream dashboard """
     # note: in the "if" cases, the dates are intentionally allowed outside the data collection date
     # range so that the duration stays the same if you page backwards instead of resetting
@@ -366,25 +366,17 @@ def create_next_past_urls(first_day: date, last_day: date, start: date, end: dat
 
 def get_bytes_data_stream_match(chunks: List[Dict[str, datetime]], a_date: date, stream: str):
     """ returns byte value for correct chunk based on data stream and type comparisons"""
-    all_bytes = None
-    for chunk in chunks:
-        if (chunk["time_bin"]).date() == a_date and chunk["data_stream"] == stream:
-            if all_bytes is None:
-                all_bytes = chunk.get("bytes", 0) or 0
-            else:
-                all_bytes += chunk.get("bytes", 0) or 0
-    return all_bytes
+    return sum(
+        chunk.get("bytes", 0) for chunk in chunks
+        if chunk["time_bin"].date() == a_date and chunk["data_stream"] == stream
+    )
 
 
-def get_bytes_participant_match(stream_data: List[Dict[str, datetime]], a_date: date):
-    all_bytes = None
-    for data_point in stream_data:
-        if (data_point["time_bin"]).date() == a_date:
-            if all_bytes is None:
-                all_bytes = data_point.get("bytes", 0) or 0
-            else:
-                all_bytes += data_point.get("bytes", 0) or 0
-    return all_bytes
+def get_bytes_date_match(stream_data: List[Dict[str, datetime]], a_date: date) -> int or None:
+    return sum(
+        data_point.get("bytes", 0) for data_point in stream_data
+        if (data_point["time_bin"]).date() == a_date
+    )
 
 
 def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
