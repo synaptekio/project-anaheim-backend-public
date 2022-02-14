@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.timezone import localtime
 
@@ -7,12 +7,11 @@ from config.settings import DOMAIN_NAME
 from database.survey_models import Survey
 from libs.firebase_config import check_firebase_instance
 from libs.internal_types import ResearcherRequest
-from middleware.abort_middleware import abort
 
 
 @authenticate_researcher_study_access
 def render_edit_survey(request: ResearcherRequest, study_id: int, survey_id: int):
-    survey = Survey.get_or_404(pk=survey_id)
+    survey = get_object_or_404(Survey, pk=survey_id)
     return render(
         request,
         'edit_survey.html',

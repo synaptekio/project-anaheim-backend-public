@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from random import choice as random_choice
 
@@ -5,7 +7,6 @@ from django.db import models
 from django.db.models.fields.related import RelatedField
 
 from constants.security_constants import OBJECT_ID_ALLOWED_CHARS
-from middleware.abort_middleware import abort
 
 
 class ObjectIdError(Exception): pass
@@ -34,14 +35,11 @@ class UtilityModel(models.Model):
     
     @classmethod
     def generate_objectid_string(cls, field_name):
-        """
-        Takes a django database class and a field name, generates a unique BSON-ObjectId-like
+        """ Takes a django database class and a field name, generates a unique BSON-ObjectId-like
         string for that field.
         In order to preserve functionality throughout the codebase we need to generate a random
         string of exactly 24 characters.  The value must be typeable, and special characters
-        should be avoided.
-        """
-        
+        should be avoided. """
         for _ in range(10):
             object_id = generate_objectid_string()
             if not cls.objects.filter(**{field_name: object_id}).exists():
@@ -50,13 +48,6 @@ class UtilityModel(models.Model):
             raise ObjectIdError("Could not generate unique id for %s." % cls.__name__)
         
         return object_id
-    
-    @classmethod
-    def get_or_404(cls, *args, **kwargs):
-        try:
-            return cls.objects.get(*args, **kwargs)
-        except cls.DoesNotExist:
-            return abort(404)
     
     def as_dict(self):
         """ Provides a dictionary representation of the object """

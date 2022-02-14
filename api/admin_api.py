@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http.request import HttpRequest
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
@@ -82,7 +82,7 @@ def delete_researcher(request: ResearcherRequest, researcher_id):
     # only site admins can delete researchers from the system.
     if not request.session_researcher.site_admin:
         return abort(403)
-    researcher = Researcher.get_or_404(pk=researcher_id)
+    researcher = get_object_or_404(Researcher, pk=researcher_id)
     
     StudyRelation.objects.filter(researcher=researcher).delete()
     researcher.delete()

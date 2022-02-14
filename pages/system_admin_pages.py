@@ -5,7 +5,7 @@ from typing import List
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from markupsafe import escape, Markup
 
@@ -194,8 +194,8 @@ def elevate_researcher(request: ResearcherRequest):
     
     study_pk = request.POST.get("study_id", None)
     assert_admin(request, study_pk)
-    edit_researcher = Researcher.get_or_404(pk=researcher_pk)
-    study = Study.get_or_404(pk=study_pk)
+    edit_researcher = get_object_or_404(Researcher, pk=researcher_pk)
+    study = get_object_or_404(Study, pk=study_pk)
     assert_researcher_under_admin(request, edit_researcher, study)
     if edit_researcher.site_admin:
         return abort(403)

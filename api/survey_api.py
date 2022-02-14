@@ -2,7 +2,7 @@ import json
 
 from django.contrib import messages
 from django.http.response import HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST, require_http_methods
 
 from authentication.admin_authentication import authenticate_researcher_study_access
@@ -29,7 +29,7 @@ def create_survey(request: ResearcherRequest, study_id=None, survey_type: str = 
 @require_http_methods(['GET', 'POST'])
 @authenticate_researcher_study_access
 def delete_survey(request: ResearcherRequest, study_id=None, survey_id=None):
-    survey: Survey = Survey.get_or_404(pk=survey_id)
+    survey = get_object_or_404(Survey, pk=survey_id)
     # mark as deleted, delete all schedules and schedule events
     survey.deleted = True
     survey.save()
@@ -51,7 +51,7 @@ def update_survey(request: ResearcherRequest, study_id: int, survey_id: int):
     Updates the survey when the 'Save & Deploy button on the edit_survey page is hit. Expects
     content, weekly_timings, absolute_timings, relative_timings, and settings in the request body
     """
-    survey = Survey.get_or_404(pk=survey_id)
+    survey = get_object_or_404(Survey, pk=survey_id)
     
     # BUG: There is an unknown situation where the frontend sends a string requiring an extra
     # deserialization operation, causing 'content' to be a string containing a json string
