@@ -96,17 +96,16 @@ def get_data_for_dashboard_datastream_display(
     show_color = True if show_color == "true" else False
     
     # -----------------------------------  general data fetching --------------------------------------------
-    start, end = extract_date_args_from_request(request)
     participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
     
     # --------------------- decide whether data is in Processed DB or Bytes DB -----------------------------
     if data_stream in ALL_DATA_STREAMS:
         data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_in_ALL_DATA_STREAMS(
-            study_id, data_stream, participant_objects, start, end
+            request, study_id, data_stream, participant_objects
         )
     else:
         data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_NOT_in_ALL_DATA_STREAMS(
-            request, study_id, data_stream, participant_objects, start, end
+            request, study_id, data_stream, participant_objects
         )
     
     # ---------------------------------- base case if there is no data ------------------------------------------
@@ -114,6 +113,7 @@ def get_data_for_dashboard_datastream_display(
         # TODO: test that these default values are unnecessary and fall out of above logic
         next_url = past_url = ""
     else:
+        start, end = extract_date_args_from_request(request)
         next_url, past_url = create_next_past_urls(first_day, last_day, start=start, end=end)
     
     return render(
@@ -140,9 +140,9 @@ def get_data_for_dashboard_datastream_display(
 
 
 def if_data_stream_in_ALL_DATA_STREAMS(
-    study_id: int, data_stream: str, participant_objects: ParticipantQuerySet, start: datetime,
-    end: datetime
+    request: ResearcherRequest, study_id: int, data_stream: str, participant_objects: ParticipantQuerySet
 ):
+    start, end = extract_date_args_from_request(request)
     first_day, last_day = dashboard_chunkregistry_date_query(study_id, data_stream)
     data_exists = False
     unique_dates = []
@@ -164,8 +164,7 @@ def if_data_stream_in_ALL_DATA_STREAMS(
 
 
 def if_data_stream_NOT_in_ALL_DATA_STREAMS(
-    request: ResearcherRequest, study_id: int, data_stream: str,
-    participant_objects: ParticipantQuerySet, start: datetime, end: datetime
+    request: ResearcherRequest, study_id: int, data_stream: str, participant_objects: ParticipantQuerySet
 ):
     start, end = extract_date_args_from_request(request)
     first_day, last_day, stream_data = parse_processed_data(study_id, participant_objects, data_stream)
@@ -185,9 +184,6 @@ def if_data_stream_NOT_in_ALL_DATA_STREAMS(
         data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
     
     return data_exists, first_day, last_day, unique_dates, byte_streams
-
-
-
 
 
 @authenticate_researcher_study_access
