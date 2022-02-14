@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from django.db.models import QuerySet
+from django.db.models import Manager, QuerySet
 from django.http.request import HttpRequest
 
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
@@ -11,7 +11,7 @@ from database.profiling_models import (DecryptionKeyError, EncryptionErrorMetada
 from database.schedule_models import (AbsoluteSchedule, ArchivedEvent, Intervention,
     InterventionDate, RelativeSchedule, ScheduledEvent, WeeklySchedule)
 from database.security_models import ApiKey
-from database.study_models import DeviceSettings, Study
+from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey, SurveyArchive, SurveyBase
 from database.system_models import FileAsText, FileProcessLock
 from database.tableau_api_models import ForestParam, ForestTask, SummaryStatisticDaily
@@ -53,19 +53,8 @@ class TableauRequest(HttpRequest):
 
 StrOrBytes = Union[str, bytes]
 
-# to generate the below list run this little script.  Don't use * imports.
-# from django.db.models.base import ModelBase
-# 
-# from database import models as database_models
-# from database.common_models import TimestampedModel, UtilityModel
-# 
-# for name, database_model in vars(database_models).items():
-#     if (
-#         isinstance(database_model, ModelBase) and UtilityModel in database_model.mro() and
-#         database_model is not UtilityModel and database_model is not TimestampedModel
-#     ):
-#        print(f"{name}QuerySet = Union[QuerySet, List[{name}]]")
 
+# Generated with scripts/generate_typing_hax.py on 2022-02-13
 AbsoluteScheduleQuerySet = Union[QuerySet, List[AbsoluteSchedule]]
 AbstractPasswordUserQuerySet = Union[QuerySet, List[AbstractPasswordUser]]
 ApiKeyQuerySet = Union[QuerySet, List[ApiKey]]
@@ -103,3 +92,31 @@ SurveyBaseQuerySet = Union[QuerySet, List[SurveyBase]]
 SurveyQuerySet = Union[QuerySet, List[Survey]]
 UploadTrackingQuerySet = Union[QuerySet, List[UploadTracking]]
 WeeklyScheduleQuerySet = Union[QuerySet, List[WeeklySchedule]]
+
+AbsoluteScheduleManager = Union[Manager, List[AbsoluteSchedule]]
+ApiKeyManager = Union[Manager, List[ApiKey]]
+ArchivedEventManager = Union[Manager, List[ArchivedEvent]]
+ChunkRegistryManager = Union[Manager, List[ChunkRegistry]]
+DashboardColorSettingManager = Union[Manager, List[DashboardColorSetting]]
+DashboardGradientManager = Union[Manager, List[DashboardGradient]]
+DashboardInflectionManager = Union[Manager, List[DashboardInflection]]
+DecryptionKeyErrorManager = Union[Manager, List[DecryptionKeyError]]
+DeviceSettingsManager = Union[Manager, List[DeviceSettings]]
+FileToProcessManager = Union[Manager, List[FileToProcess]]
+InterventionDateManager = Union[Manager, List[InterventionDate]]
+InterventionManager = Union[Manager, List[Intervention]]
+ParticipantFCMHistoryManager = Union[Manager, List[ParticipantFCMHistory]]
+ParticipantFieldValueManager = Union[Manager, List[ParticipantFieldValue]]
+ParticipantManager = Union[Manager, List[Participant]]
+PipelineRegistryManager = Union[Manager, List[PipelineRegistry]]
+PipelineUploadManager = Union[Manager, List[PipelineUpload]]
+PipelineUploadTagsManager = Union[Manager, List[PipelineUploadTags]]
+RelativeScheduleManager = Union[Manager, List[RelativeSchedule]]
+ScheduledEventManager = Union[Manager, List[ScheduledEvent]]
+StudyFieldManager = Union[Manager, List[StudyField]]
+StudyRelationManager = Union[Manager, List[StudyRelation]]
+SummaryStatisticDailyManager = Union[Manager, List[SummaryStatisticDaily]]
+SurveyArchiveManager = Union[Manager, List[SurveyArchive]]
+SurveyManager = Union[Manager, List[Survey]]
+UploadTrackingManager = Union[Manager, List[UploadTracking]]
+WeeklyScheduleManager = Union[Manager, List[WeeklySchedule]]
