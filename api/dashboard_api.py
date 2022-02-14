@@ -1,18 +1,17 @@
 import json
-from collections import OrderedDict
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import pytz
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils.timezone import make_aware
 
 from authentication.admin_authentication import authenticate_researcher_study_access
-from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT, PROCESSED_DATA_STREAM_DICT
+from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT
 from constants.data_stream_constants import ALL_DATA_STREAMS
 from constants.datetime_constants import API_DATE_FORMAT
 from database.dashboard_models import DashboardColorSetting, DashboardGradient, DashboardInflection
-from database.data_access_models import ChunkRegistry, PipelineRegistry
+from database.data_access_models import ChunkRegistry
 from database.study_models import Study
 from database.user_models import Participant
 from libs.internal_types import ParticipantQuerySet, ResearcherRequest
@@ -26,7 +25,7 @@ DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be form
 @authenticate_researcher_study_access
 def dashboard_page(request: ResearcherRequest, study_id: int):
     """ information for the general dashboard view for a study"""
-    study = Study.get_or_404(pk=study_id)
+    study = get_object_or_404(Study, pk=study_id)
     participants = list(Participant.objects.filter(study=study_id).values_list("patient_id", flat=True))
     return render(
         request,
@@ -49,21 +48,14 @@ def get_data_for_dashboard_datastream_display(
     and get requests in the same function because the body of the get request relies on the
     variables set in the post request if a post request is sent --thus if a post request is sent
     we don't want all of the get request running. """
-    study = Study.get_or_404(pk=study_id)
+    study = get_object_or_404(Study, pk=study_id)
     
     # -----------------------------------  general data fetching --------------------------------------------
     participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
-    
-    # --------------------- decide whether data is in Processed DB or Bytes DB -----------------------------
-    if data_stream in ALL_DATA_STREAMS:
-        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_in_ALL_DATA_STREAMS(
-            request, study_id, data_stream, participant_objects
-        )
-    else:
-        data_exists, first_day, last_day, unique_dates, byte_streams = if_data_stream_NOT_in_ALL_DATA_STREAMS(
-            request, study_id, data_stream, participant_objects
-        )
-    
+    data_exists, first_day, last_day, unique_dates, byte_streams = parse_data_streams(
+        request, study_id, data_stream, participant_objects
+    )
+
     # ---------------------------------- base case if there is no data ------------------------------------------
     if first_day is None or (not data_exists and past_url == ""):
         # TODO: test that these default values are unnecessary and fall out of above logic
@@ -149,7 +141,7 @@ def handle_filters(request: ResearcherRequest, study: Study, data_stream: str):
     return show_color, color_low_range, color_high_range, all_flags_list
 
 
-def if_data_stream_in_ALL_DATA_STREAMS(
+def parse_data_streams(
     request: ResearcherRequest, study_id: int, data_stream: str, participant_objects: ParticipantQuerySet
 ):
     start, end = extract_date_args_from_request(request)
@@ -173,104 +165,32 @@ def if_data_stream_in_ALL_DATA_STREAMS(
     return data_exists, first_day, last_day, unique_dates, byte_streams
 
 
-def if_data_stream_NOT_in_ALL_DATA_STREAMS(
-    request: ResearcherRequest, study_id: int, data_stream: str, participant_objects: ParticipantQuerySet
-):
-    start, end = extract_date_args_from_request(request)
-    first_day, last_day, stream_data = parse_processed_data(study_id, participant_objects, data_stream)
-    data_exists = False
-    unique_dates = []
-    byte_streams = {}
-    if first_day is not None:
-        unique_dates, _, _ = get_unique_dates(start, end, first_day, last_day)
-        
-        # get the byte streams per date for each patient for a specific data stream for those dates
-        byte_streams = dict(
-            (participant.patient_id,
-                [get_bytes_processed_data_match(stream_data[participant.patient_id], date) for date in unique_dates])
-            for participant in participant_objects
-        )
-        # check if there is data to display
-        data_exists = len([data for patient in byte_streams for data in byte_streams[patient] if data is not None]) > 0
-    
-    return data_exists, first_day, last_day, unique_dates, byte_streams
-
-
 @authenticate_researcher_study_access
 def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id):
-    """ parses data to be displayed for the singular participant dashboard view """
-    study = Study.get_or_404(pk=study_id)
-    participant = Participant.get_or_404(patient_id=patient_id, study_id=study_id)
-    start, end = extract_date_args_from_request(request)
-    # query is optimized for bulk participants, weird case handling
+    """ Parses data to be displayed for the singular participant dashboard view """
+    study = get_object_or_404(Study, pk=study_id)
+    participant = get_object_or_404(Participant, patient_id=patient_id, study_id=study_id)
+    
+    # query is optimized for bulk participants, so this is a little weird
     chunk_data = dashboard_chunkregistry_query(participant)
     chunks = chunk_data[participant.patient_id] if participant.patient_id in chunk_data else {}
     
     # ----------------- dates for bytes data streams -----------------------
     if chunks:
+        start, end = extract_date_args_from_request(request)
         first_day, last_day = dashboard_chunkregistry_date_query(study_id)
-        _, first_date_data_entry, last_date_data_entry = \
-            get_unique_dates(start, end, first_day, last_day, chunks)
+        unique_dates, first_date_data_entry, last_date_data_entry = get_unique_dates(
+            start, end, first_day, last_day, chunks
+        )
+        next_url, past_url = create_next_past_urls(
+            first_date_data_entry, last_date_data_entry, start=start, end=end
+        )
+        byte_streams = {
+            stream: [get_bytes_data_stream_match(chunks, date, stream) for date in unique_dates]
+                for stream in ALL_DATA_STREAMS
+        }
     else:
         last_date_data_entry = first_date_data_entry = None
-    # --------------- dates for  processed data streams -------------------
-    # all_data is a list of dicts [{"time_bin": , "stream": , "processed_data": }...]
-    processed_first_date_data_entry, processed_last_date_data_entry, all_data = parse_patient_processed_data(study_id, participant)
-    
-    # ------- decide the first date of data entry from processed AND bytes data as well as put the data together ------
-    # but only if there are both processed and bytes data
-    if chunks and all_data:
-        if (processed_first_date_data_entry - first_date_data_entry).days < 0:
-            first_date_data_entry = processed_first_date_data_entry
-        if (processed_last_date_data_entry - last_date_data_entry).days < 0:
-            last_date_data_entry = processed_last_date_data_entry
-    if all_data and not chunks:
-        first_date_data_entry = processed_first_date_data_entry
-        last_date_data_entry = processed_last_date_data_entry
-    
-    # ---------------------- get next/past urls and unique dates, as long as data has been entered -------------------
-    if chunks or all_data:
-        next_url, past_url = create_next_past_urls(first_date_data_entry, last_date_data_entry, start=start, end=end)
-        unique_dates, _, _ = get_unique_dates(start, end, first_date_data_entry, last_date_data_entry)
-    else:
-        next_url = past_url = unique_dates = None
-    
-    # --------------------- get all the data using the correct unique dates from both data sets ----------------------
-    # get the byte data for the dates that have data collected in that week
-    if all_data:
-        processed_byte_streams = OrderedDict(
-            (stream, [
-                get_bytes_patient_processed_match(all_data, date, stream) for date in unique_dates
-            ]) for stream in PROCESSED_DATA_STREAM_DICT
-        )
-    else:
-        processed_byte_streams = None
-    
-    if chunks:
-        byte_streams = OrderedDict(
-            (stream, [
-                get_bytes_data_stream_match(chunks, date, stream) for date in unique_dates
-            ]) for stream in ALL_DATA_STREAMS
-        )
-    else:
-        byte_streams = None
-    
-    if chunks and all_data:
-        byte_streams.update(processed_byte_streams)
-    elif all_data and not chunks:
-        byte_streams = OrderedDict(
-            (stream, [
-                None for date in unique_dates
-            ]) for stream in ALL_DATA_STREAMS
-        )
-        byte_streams.update(processed_byte_streams)
-    elif chunks and not all_data:
-        processed_byte_streams = OrderedDict(
-            (stream, [None for date in unique_dates]) for stream in PROCESSED_DATA_STREAM_DICT
-        )
-        byte_streams.update(processed_byte_streams)
-    # -------------------------  edge case if no data has been entered -----------------------------------
-    else:
         byte_streams = {}
         unique_dates = []
         next_url = ""
@@ -302,77 +222,6 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
             page_location='dashboard_patient',
         )
     )
-
-
-def parse_processed_data(study_id: int, participant_objects: ParticipantQuerySet, data_stream: str):
-    """ get a list of dicts (pipeline_chunks) of the patient's data and extract the data for the data
-    stream we want stream_data = OrderedDict(participant.patient_id: {"time_bin": _,
-    "processed_data": _}, ...) this structure is similar to the stream_data structure in
-    get_data_for_dashboard_data_stream_display since they perform similar functions. """
-    first = True
-    data_exists = False
-    first_day = None
-    last_day = None
-    stream_data = OrderedDict()
-    for participant in participant_objects:
-        pipeline_chunks = dashboard_pipelineregistry_query(study_id, participant.id)
-        list_of_dicts_data = []
-        if pipeline_chunks is not None:
-            for chunk in pipeline_chunks:
-                if data_stream in chunk and "day" in chunk and chunk[data_stream] != "NA":
-                    time_bin = datetime.strptime(chunk["day"], API_DATE_FORMAT).date()
-                    data_exists = True
-                    if first:
-                        first_day = time_bin
-                        last_day = time_bin
-                        first = False
-                    else:
-                        if (time_bin - first_day).days < 0:
-                            first_day = time_bin
-                        elif (time_bin - last_day).days > 0:
-                            last_day = time_bin
-                    # check to see if the data should be a float or an int
-                    if chunk[data_stream].find(".") == -1:
-                        processed_data = int(chunk[data_stream])
-                    else:
-                        processed_data = float(chunk[data_stream])
-                    list_of_dicts_data.append({"time_bin": time_bin, "processed_data": processed_data})
-        
-        stream_data[participant.patient_id] = None if not data_exists else list_of_dicts_data
-        data_exists = False  # you need to reset this
-    return first_day, last_day, stream_data
-
-
-def parse_patient_processed_data(study_id: int, participant: Participant):
-    """ Create a list of dicts of processed data for one patient.
-    [{"time_bin": , "processed_data": , "data_stream": ,}...]
-    if there is no data for a patient first_day and last_day will be None, all_data will be a [] """
-    first = True
-    first_day = None
-    last_day = None
-    pipeline_chunks = dashboard_pipelineregistry_query(study_id, participant.id)
-    all_data = []
-    if pipeline_chunks is not None:
-        for chunk in pipeline_chunks:
-            if "day" in chunk:
-                time_bin = datetime.strptime(chunk["day"], API_DATE_FORMAT).date()
-                if first:
-                    first_day = time_bin
-                    last_day = time_bin
-                    first = False
-                else:
-                    if (time_bin - first_day).days < 0:
-                        first_day = time_bin
-                    elif (time_bin - last_day).days > 0:
-                        last_day = time_bin
-                for stream_key in chunk:
-                    if stream_key in PROCESSED_DATA_STREAM_DICT and chunk[stream_key] != "NA":
-                        if chunk[stream_key].find(".") == -1:
-                            processed_data = int(chunk[stream_key])
-                        else:
-                            processed_data = float(chunk[stream_key])
-                        all_data.append({"time_bin": time_bin, "processed_data": processed_data, "data_stream": stream_key})
-    return first_day, last_day, all_data
 
 
 def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream: str):
@@ -437,7 +286,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
     return color_low_range, color_high_range, all_flags_list
 
 
-def get_unique_dates(start, end, first_day, last_day, chunks=None):
+def get_unique_dates(start: datetime, end: datetime, first_day: date, last_day: date, chunks=None):
     """ create a list of all the unique days in which data was recorded for this study """
     first_date_data_entry = last_date_data_entry = None
     if chunks:
@@ -544,30 +393,6 @@ def get_bytes_participant_match(stream_data: List[Dict[str, datetime]], a_date: 
         return None
 
 
-def get_bytes_processed_data_match(participant_data: List[Dict[str, datetime]], a_date: date):
-    # participant_data is a list of dicts which hold {time_bin: _, processed_data: _}
-    # there should only ever be one data_point corresponding to a specific date per patient
-    # if no data exists, return None -- if the participant_data object is none, there is no data for this data
-    # stream for this participant
-    if participant_data is not None:
-        for data_point in participant_data:
-            if(data_point["time_bin"]) == a_date:
-                return data_point["processed_data"]
-    return None
-
-
-def get_bytes_patient_processed_match(participant_data, a_date: date, stream: str):
-    # participant_data is a list of dicts which hold {time_bin: _, processed_data: _, stream:, _}
-    # there should only ever be one data_point corresponding to a specific date per patient
-    # if no data exists, return None -- if the participant_data object is none, there is no data for this data
-    # stream for this participant
-    if participant_data is not None:
-        for data_point in participant_data:
-            if (data_point["time_bin"]) == a_date and data_point["data_stream"] == stream:
-                return data_point["processed_data"]
-    return None
-
-
 def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
     """ gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error and makes
     the frontend annoying to use """
@@ -612,20 +437,6 @@ def dashboard_chunkregistry_query(
         select={'data_stream': 'data_type', 'bytes': 'file_size'}
     ).values("participant__patient_id", "bytes", "data_stream", "time_bin")
     return {d.pop("participant__patient_id"): d for d in chunks}
-
-
-def dashboard_pipelineregistry_query(study_id: int, participant_id: int):
-    """ Queries Pipeline based on the provided parameters and returns a list of dicts with
-    an id (which is ignored), a "day", and a bunch of strings which are data streams """
-    # pipeline_chunks looks like this: [{day: 3/4/4, "data_stream1": 36634, "data_stream2": 2525}, ... ]
-    pipeline_data = PipelineRegistry.objects.filter(study_id=study_id, participant__id=participant_id).order_by(
-        "uploaded_at").last()
-    if pipeline_data is not None:
-        pipeline_chunks = json.loads(json.dumps(pipeline_data.processed_data)) # I feel like this shouldn't work but idk
-        if pipeline_chunks:
-            return pipeline_chunks
-    
-    return None
 
 
 def extract_date_args_from_request(request: ResearcherRequest):
