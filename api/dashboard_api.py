@@ -1,9 +1,11 @@
 import json
 from collections import OrderedDict
-from datetime import date, datetime, timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, List
 
+import pytz
 from django.shortcuts import render
+from django.utils.timezone import make_aware
 
 from authentication.admin_authentication import authenticate_researcher_study_access
 from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT, PROCESSED_DATA_STREAM_DICT
@@ -562,15 +564,22 @@ def get_bytes_patient_processed_match(participant_data, date, stream):
 def dashboard_chunkregistry_date_query(study_id, data_stream=None):
     """ gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error and makes
     the frontend annoying to use """
+    unix_epoch_start_sorta = make_aware(datetime(1970, 1, 2), pytz.utc)
     kwargs = {"study_id": study_id}
     if data_stream:
         kwargs["data_type"] = data_stream
-    first = ChunkRegistry.objects.filter(**kwargs).exclude(time_bin__date=date(1970, 1, 1)).order_by("time_bin").values_list("time_bin", flat=True).first()
-    last = ChunkRegistry.objects.filter(**kwargs).order_by("time_bin").values_list("time_bin", flat=True).last()
-    if first is None or last is None:
+    
+    # this as queries with .first() and .last() is slow even as size of all_time_bins grows.
+    all_time_bins: List[datetime] = list(
+        ChunkRegistry.objects.filter(**kwargs).exclude(time_bin__lt=unix_epoch_start_sorta)
+        .order_by("time_bin").values_list("time_bin", flat=True)
+    )
+    
+    # default behavior for 1 or 0 time_bins
+    if len(all_time_bins) < 2:
         return None, None
-    else:
-        return first.date(), last.date()
+    
+    return all_time_bins[0].date(), all_time_bins[-1].date()
 
 
 def dashboard_chunkregistry_query(participant_id, data_stream=None, start=None, end=None):
