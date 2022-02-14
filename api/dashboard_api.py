@@ -55,7 +55,7 @@ def get_data_for_dashboard_datastream_display(
     data_exists, first_day, last_day, unique_dates, byte_streams = parse_data_streams(
         request, study_id, data_stream, participant_objects
     )
-
+    
     # ---------------------------------- base case if there is no data ------------------------------------------
     if first_day is None or (not data_exists and past_url == ""):
         # TODO: test that these default values are unnecessary and fall out of above logic
@@ -364,19 +364,16 @@ def create_next_past_urls(first_day: date, last_day: date, start: date, end: dat
     return next_url, past_url
 
 
-def get_bytes_data_stream_match(chunks, date, stream):
+def get_bytes_data_stream_match(chunks: List[Dict[str, datetime]], a_date: date, stream: str):
     """ returns byte value for correct chunk based on data stream and type comparisons"""
     all_bytes = None
     for chunk in chunks:
-        if (chunk["time_bin"]).date() == date and chunk["data_stream"] == stream:
+        if (chunk["time_bin"]).date() == a_date and chunk["data_stream"] == stream:
             if all_bytes is None:
                 all_bytes = chunk.get("bytes", 0) or 0
             else:
                 all_bytes += chunk.get("bytes", 0) or 0
-    if all_bytes is not None:
-        return all_bytes
-    else:
-        return None
+    return all_bytes
 
 
 def get_bytes_participant_match(stream_data: List[Dict[str, datetime]], a_date: date):
@@ -387,15 +384,12 @@ def get_bytes_participant_match(stream_data: List[Dict[str, datetime]], a_date: 
                 all_bytes = data_point.get("bytes", 0) or 0
             else:
                 all_bytes += data_point.get("bytes", 0) or 0
-    if all_bytes is not None:
-        return all_bytes
-    else:
-        return None
+    return all_bytes
 
 
 def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
-    """ gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error and makes
-    the frontend annoying to use """
+    """ Gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error
+    and makes the frontend annoying to use """
     unix_epoch_start_sorta = make_aware(datetime(1970, 1, 2), pytz.utc)
     kwargs = {"study_id": study_id}
     if data_stream:
@@ -463,7 +457,8 @@ def extract_range_args_from_request(request: ResearcherRequest):
 
 
 def extract_flag_args_from_request(request: ResearcherRequest):
-    """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None or empty """
+    """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None
+    or empty """
     all_flags_string = argument_grabber(request, "flags", "")
     all_flags_list = []
     # parse to create a dict of flags
