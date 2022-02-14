@@ -476,15 +476,5 @@ def extract_flag_args_from_request(request: ResearcherRequest):
     return all_flags_list
 
 
-def extract_data_stream_args_from_request(request: ResearcherRequest) -> str or None:
-    """ Gets data stream if it is provided as a request POST or GET parameter,
-    throws 400 errors on unknown data streams. """
-    data_stream = argument_grabber(request, "data_stream", None)
-    if data_stream:
-        if data_stream not in ALL_DATA_STREAMS:
-            return abort(400, "unrecognized data stream '%s'" % data_stream)
-    return data_stream
-
-
 def argument_grabber(request: ResearcherRequest, key: str, default: Any = None) -> str or None:
     return request.GET.get(key, request.POST.get(key, default))
