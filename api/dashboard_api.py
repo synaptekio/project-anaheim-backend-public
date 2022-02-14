@@ -90,6 +90,7 @@ def get_data_for_dashboard_datastream_display(
         )
     )
 
+
 def handle_filters(request: ResearcherRequest, study: Study, data_stream: str):
     color_settings: DashboardColorSetting
     
@@ -300,7 +301,7 @@ def get_unique_dates(start: datetime, end: datetime, first_day: date, last_day: 
         last_date_data_entry = all_dates[-1]
     
     # validate start date is before end date
-    if (start and end) and (end.date() - start.date()).days < 0:
+    if start and end and (end.date() - start.date()).days < 0:
         temp = start
         start = end
         end = temp
@@ -308,8 +309,9 @@ def get_unique_dates(start: datetime, end: datetime, first_day: date, last_day: 
     # unique_dates is all of the dates for the week we are showing
     if start is None:  # if start is none default to end
         end_num = min((last_day - first_day).days + 1, 7)
-        unique_dates = [(last_day - timedelta(days=end_num - 1)) + timedelta(days=date) for date in range(end_num)]
-        # unique_dates = [(first_day + timedelta(days=date)) for date in range(end_num)]
+        unique_dates = [
+            (last_day - timedelta(days=end_num - 1)) + timedelta(days=days) for days in range(end_num)
+        ]
     elif end is None:
         # if end is none default to 7 days
         end_num = min((last_day - start.date()).days + 1, 7)
@@ -335,37 +337,40 @@ def create_next_past_urls(first_day: date, last_day: date, start: datetime, end:
     # note: in the "if" cases, the dates are intentionally allowed outside the data collection date
     # range so that the duration stays the same if you page backwards instead of resetting
     # to the number currently shown
-    
     if start and end:
         duration = (end.date() - start.date()).days
+        start: date = start.date()
+        end: date = end.date()
     else:
         duration = 6
-        start = datetime.combine(last_day - timedelta(days=6), datetime.min.time())
-        end = datetime.combine(last_day, datetime.min.time())
-    
-    if 0 < (start.date() - first_day).days < duration:
-        past_url = "?start=" + (start.date() - timedelta(days=(duration + 1))).strftime(API_DATE_FORMAT) + \
-                   "&end=" + (start.date() - timedelta(days=1)).strftime(API_DATE_FORMAT)
-    
-    elif (start.date() - first_day).days <= 0:
+        start: date = datetime.combine(last_day - timedelta(days=6), datetime.min.time()).date()
+        end: date = datetime.combine(last_day, datetime.min.time()).date()
+    days_duration = timedelta(days=duration + 1)
+    one_day = timedelta(days=1)
+
+    if 0 < (start - first_day).days < duration:
+        past_url = "?start=" + (start - timedelta(days=(duration + 1))).strftime(API_DATE_FORMAT) + \
+                   "&end=" + (start - one_day).strftime(API_DATE_FORMAT)
+    elif (start - first_day).days <= 0:
         past_url = ""
     else:
-        past_url = "?start=" + (start.date() - timedelta(days=duration + 1)).strftime(API_DATE_FORMAT) + \
-                    "&end=" + (start.date() - timedelta(days=1)).strftime(API_DATE_FORMAT)
-    if (last_day - timedelta(days=duration + 1)) < end.date() < (last_day - timedelta(days=1)):
-        next_url = "?start=" + (end.date() + timedelta(days=1)).strftime(API_DATE_FORMAT) + "&end=" + \
-                   (end.date() + timedelta(days=(duration + 1))).strftime(API_DATE_FORMAT)
-    elif (last_day - end.date()).days <= 0:
+        past_url = "?start=" + (start - days_duration).strftime(API_DATE_FORMAT) + \
+                   "&end=" + (start - one_day).strftime(API_DATE_FORMAT)
+    
+    if (last_day - days_duration) < end < (last_day - one_day):
+        next_url = "?start=" + (end + one_day).strftime(API_DATE_FORMAT) + \
+                   "&end=" + (end + days_duration).strftime(API_DATE_FORMAT)
+    elif (last_day - end).days <= 0:
         next_url = ""
     else:
-        next_url = "?start=" + \
-                   (start.date() + timedelta(days=duration + 1)).strftime(API_DATE_FORMAT) + "&end=" + \
-                   (end.date() + timedelta(days=duration + 1)).strftime(API_DATE_FORMAT)
+        next_url = "?start=" + (start + days_duration).strftime(API_DATE_FORMAT) \
+                 + "&end=" + (end + days_duration).strftime(API_DATE_FORMAT)
+    
     return next_url, past_url
 
 
 def get_bytes_data_stream_match(chunks: List[Dict[str, datetime]], a_date: date, stream: str):
-    """ returns byte value for correct chunk based on data stream and type comparisons"""
+    """ Returns byte value for correct chunk based on data stream and type comparisons. """
     return sum(
         chunk.get("bytes", 0) for chunk in chunks
         if chunk["time_bin"].date() == a_date and chunk["data_stream"] == stream
@@ -373,6 +378,7 @@ def get_bytes_data_stream_match(chunks: List[Dict[str, datetime]], a_date: date,
 
 
 def get_bytes_date_match(stream_data: List[Dict[str, datetime]], a_date: date) -> int or None:
+    """ Returns byte value for correct stream based on ate. """
     return sum(
         data_point.get("bytes", 0) for data_point in stream_data
         if (data_point["time_bin"]).date() == a_date
@@ -387,12 +393,11 @@ def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
     if data_stream:
         kwargs["data_type"] = data_stream
     
-    # this as queries with .first() and .last() is slow even as size of all_time_bins grows.
+    # this process as queries with .first() and .last() is slow even as size of all_time_bins grows.
     all_time_bins: List[datetime] = list(
         ChunkRegistry.objects.filter(**kwargs).exclude(time_bin__lt=unix_epoch_start_sorta)
         .order_by("time_bin").values_list("time_bin", flat=True)
     )
-    
     # default behavior for 1 or 0 time_bins
     if len(all_time_bins) < 2:
         return None, None
@@ -434,7 +439,7 @@ def extract_date_args_from_request(request: ResearcherRequest):
             start = datetime.strptime(start, API_DATE_FORMAT)
         if end:
             end = datetime.strptime(end, API_DATE_FORMAT)
-    except ValueError as e:
+    except ValueError:
         return abort(400, DATETIME_FORMAT_ERROR)
     
     return start, end
@@ -442,24 +447,20 @@ def extract_date_args_from_request(request: ResearcherRequest):
 
 def extract_range_args_from_request(request: ResearcherRequest):
     """ Gets minimum and maximum arguments from GET/POST params """
-    color_low_range = argument_grabber(request, "color_low", None)
-    color_high_range = argument_grabber(request, "color_high", None)
-    show_color = argument_grabber(request, "show_color", True)
-    return color_low_range, color_high_range, show_color
+    return argument_grabber(request, "color_low", None), \
+           argument_grabber(request, "color_high", None), \
+           argument_grabber(request, "show_color", True)
 
 
 def extract_flag_args_from_request(request: ResearcherRequest):
-    """ Gets minimum and maximum arguments from GET/POST params, returns None if the object is None
-    or empty """
-    all_flags_string = argument_grabber(request, "flags", "")
+    """ Gets minimum and maximum arguments from GET/POST params as a list """
+    # parse the "all flags string" to create a dict of flags
+    flags_separated = argument_grabber(request, "flags", "").split('*')
     all_flags_list = []
-    # parse to create a dict of flags
-    flags_separated = all_flags_string.split('*')
     for flag in flags_separated:
         if flag != "":
             flag_apart = flag.split(',')
-            string = flag_apart[0]
-            all_flags_list.append([string, int(flag_apart[1])])
+            all_flags_list.append([flag_apart[0], int(flag_apart[1])])
     return all_flags_list
 
 
