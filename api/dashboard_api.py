@@ -1,7 +1,7 @@
 import json
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pytz
 from django.shortcuts import render
@@ -200,17 +200,11 @@ def if_data_stream_NOT_in_ALL_DATA_STREAMS(
 def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id):
     """ parses data to be displayed for the singular participant dashboard view """
     study = Study.get_or_404(pk=study_id)
-    participant = get_participant(patient_id, study_id)
+    participant = Participant.get_or_404(patient_id=patient_id, study_id=study_id)
     start, end = extract_date_args_from_request(request)
     # query is optimized for bulk participants, weird case handling
     chunk_data = dashboard_chunkregistry_query(participant)
     chunks = chunk_data[participant.patient_id] if participant.patient_id in chunk_data else {}
-    
-    patient_ids = list(
-        Participant.objects.filter(study=study_id)
-        .exclude(patient_id=patient_id)
-        .values_list("patient_id", flat=True)
-    )
     
     # ----------------- dates for bytes data streams -----------------------
     if chunks:
@@ -252,7 +246,6 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     else:
         processed_byte_streams = None
     
-    
     if chunks:
         byte_streams = OrderedDict(
             (stream, [
@@ -284,6 +277,11 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
         past_url = ""
         first_date_data_entry = ""
         last_date_data_entry = ""
+    
+    patient_ids = list(
+        Participant.objects.filter(study=study_id)
+            .exclude(patient_id=patient_id).values_list("patient_id", flat=True)
+    )
     
     return render(
         request,
@@ -392,7 +390,7 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
         bool_create_gradient = True
         color_low_range = int(json.loads(color_low_range))
         color_high_range = int(json.loads(color_high_range))
-
+    
     # try to get a DashboardColorSetting object and check if it exists
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
         # case: a default settings model already exists; delete the inflections associated with it
@@ -483,7 +481,7 @@ def get_unique_dates(start, end, first_day, last_day, chunks=None):
     return unique_dates, first_date_data_entry, last_date_data_entry
 
 
-def create_next_past_urls(first_day, last_day, start=None, end=None):
+def create_next_past_urls(first_day: date, last_day: date, start: date, end: date) -> Tuple[str, str]:
     """ set the URLs of the next/past pages for patient and data stream dashboard """
     # note: in the "if" cases, the dates are intentionally allowed outside the data collection date
     # range so that the duration stays the same if you page backwards instead of resetting
@@ -675,18 +673,6 @@ def extract_data_stream_args_from_request(request: ResearcherRequest) -> str or 
         if data_stream not in ALL_DATA_STREAMS:
             return abort(400, "unrecognized data stream '%s'" % data_stream)
     return data_stream
-
-
-def get_participant(patient_id: str, study_id: int) -> Participant:
-    """ Just factoring out a common abort operation. """
-    try:
-        return Participant.objects.get(study=study_id, patient_id=patient_id)
-    except Participant.DoesNotExist:
-        # 2 useful error messages
-        if not Participant.objects.get(patient_id=patient_id).exists():
-            return abort(400, "No such user exists.")
-        else:
-            return abort(400, "No such user exists in this study.")
 
 
 def argument_grabber(request: ResearcherRequest, key: str, default: Any = None) -> str or None:
