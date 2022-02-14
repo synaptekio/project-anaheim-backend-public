@@ -4,60 +4,8 @@ from constants.data_stream_constants import (ACCELEROMETER, AMBIENT_AUDIO, ANDRO
     VOICE_RECORDING, WIFI)
 
 
-# dictionary for printing PROCESSED data streams for frontend
-# necessary even with the complete data stream dict for parsing data from the backend
-PROCESSED_DATA_STREAM_DICT = {
-    "responsiveness": "Responsiveness",
-    "outgoing_calllengths": "Outgoing Call Lengths",
-    "call_indegree": "Call In Degree",
-    "incoming_calllengths": "Incoming Call Lengths",
-    "reciprocity": "Reciprocity",
-    "call_outdegree": "Call Out Degree",
-    "incoming_calls": "Incoming Calls",
-    "outgoing_calls": "Outgoing Calls",
-    "outgoing_textlengths": "Outgoing Text Lengths",
-    "text_indegree": "Text In Degree",
-    "incoming_textlengths": "Incoming Text Lengths",
-    "text_outdegree": "Text Out Degree",
-    "incoming_texts": "Incoming Texts",
-    "outgoing_texts": "Outgoing Texts",
-    "RoG_km": "RoG (km)",
-    "MaxDiam_km": "Maximum Diameter (km)",
-    "StdFlightDur_min": "Standard Flight Duration (min)",
-    "AvgFlightLen_km": "Average Flight Length (km)",
-    "Hometime_hrs": "Home Time (hours)",
-    "AvgFlightDur_min": "Average Flight Duration (min)",
-    "DistTravelled_km": "Distance Travelled (km)",
-    "StdFlightLen_km": "Standard Flight Length (km)",
-    "MaxHomeDist_km": "Maximum Home Distance (km)",
-}
-
-
 # dictionary for printing ALL data streams (processed and bytes)
 COMPLETE_DATA_STREAM_DICT = {
-    "responsiveness": "Responsiveness",
-    "outgoing_calllengths": "Outgoing Call Lengths",
-    "call_indegree": "Call In Degree",
-    "incoming_calllengths": "Incoming Call Lengths",
-    "reciprocity": "Reciprocity",
-    "call_outdegree": "Call Out Degree",
-    "incoming_calls": "Incoming Calls",
-    "outgoing_calls": "Outgoing Calls",
-    "outgoing_textlengths": "Outgoing Text Lengths",
-    "text_indegree": "Text In Degree",
-    "incoming_textlengths": "Incoming Text Lengths",
-    "text_outdegree": "Text Out Degree",
-    "incoming_texts": "Incoming Texts",
-    "outgoing_texts": "Outgoing Texts",
-    "RoG_km": "RoG (km)",
-    "MaxDiam_km": "Maximum Diameter (km)",
-    "StdFlightDur_min": "Standard Flight Duration (min)",
-    "AvgFlightLen_km": "Average Flight Length (km)",
-    "Hometime_hrs": "Home Time (hours)",
-    "AvgFlightDur_min": "Average Flight Duration (min)",
-    "DistTravelled_km": "Distance Travelled (km)",
-    "StdFlightLen_km": "Standard Flight Length (km)",
-    "MaxHomeDist_km": "Maximum Home Distance (km)",
     ACCELEROMETER: "Accelerometer (bytes)",
     AMBIENT_AUDIO: "Ambient Audio Recording (bytes)",
     ANDROID_LOG_FILE: "Android Log File (bytes)",
