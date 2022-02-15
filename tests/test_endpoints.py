@@ -1916,7 +1916,12 @@ class TestGetData(DataApiTest):
     @patch("libs.streaming_zip.ThreadPool")
     def test_basics(self, threadpool: MagicMock):
         threadpool.return_value = DummyThreadPool()
-        self._test_basics()
+        self._test_basics(as_site_admin=False)
+    
+    @patch("libs.streaming_zip.ThreadPool")
+    def test_basics_as_site_admin(self, threadpool: MagicMock):
+        threadpool.return_value = DummyThreadPool()
+        self._test_basics(as_site_admin=True)
     
     @patch("libs.streaming_zip.ThreadPool")
     def test_downloads_and_file_naming(self, threadpool: MagicMock):
@@ -1966,8 +1971,11 @@ class TestGetData(DataApiTest):
                      "threading via a ThreadPool or DummyThreadPool"
                 )
     
-    def _test_basics(self):
-        self.set_session_study_relation(ResearcherRole.researcher)
+    def _test_basics(self, as_site_admin: bool):
+        if as_site_admin:
+            self.session_researcher.update(site_admin=True)
+        else:
+            self.set_session_study_relation(ResearcherRole.researcher)
         resp: FileResponse = self.smart_post(study_pk=self.session_study.id, web_form="anything")
         self.assertEqual(resp.status_code, 200)
         for i, file_bytes in enumerate(resp.streaming_content, start=1):
