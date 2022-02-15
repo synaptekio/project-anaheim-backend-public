@@ -8,7 +8,6 @@ from django.http.response import HttpResponse, HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 from django.urls.base import resolve
-from urls import urlpatterns
 
 from constants.tableau_api_constants import X_ACCESS_KEY_ID, X_ACCESS_KEY_SECRET
 from constants.testing_constants import ALL_ROLE_PERMUTATIONS, REAL_ROLES, ResearcherRole
@@ -18,7 +17,8 @@ from database.user_models import Researcher, StudyRelation
 from libs import s3
 from libs.internal_types import StrOrBytes
 from libs.security import device_hash
-from tests.helpers import ReferenceObjectMixin
+from tests.helpers import ReferenceObjectMixin, render_test_html_file
+from urls import urlpatterns
 
 
 ALL_ENDPOINT_NAMES = set([pattern.name for pattern in urlpatterns])
@@ -26,6 +26,8 @@ ALL_ENDPOINT_NAMES = set([pattern.name for pattern in urlpatterns])
 # this makes print statements during debugging easier to read by bracketting the statement of which
 # test is running with some separater.
 VERBOSE_2_OR_3 = ("-v2" in argv or "-v3" in argv) and "-v1" not in argv
+VERBOSE_3 = "-v3" in argv and "-v2" not in argv and "-v1" not in argv
+
 
 # force disable potentially active s3 connections
 s3.S3_BUCKET = None  # must retain import stucture to function.
@@ -213,9 +215,14 @@ class SmartRequestsTestCase(BasicSessionTestCase):
         reverse_kwargs = reverse_kwargs or {}
         # print(f"*reverse_params: {reverse_params}\n**get_kwargs: {get_kwargs}\n**reverse_kwargs: {reverse_kwargs}\n")
         self._detect_obnoxious_type_error("smart_get", reverse_params, reverse_kwargs, get_kwargs)
-        return self.client.get(
-            reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs), **get_kwargs
-        )
+        url = reverse(self.ENDPOINT_NAME, args=reverse_params, kwargs=reverse_kwargs)
+        response = self.client.get(url, **get_kwargs)
+        
+        # if running in v3 mode we run the open-in-browser code
+        if VERBOSE_3 and 200 <= response.status_code < 300:
+            render_test_html_file(response, url)
+        
+        return response
     
     def smart_get_redirect(self, *reverse_params, get_kwargs=None, **reverse_kwargs) -> HttpResponse:
         """ As smart_get, but uses REDIRECT_ENDPOINT_NAME. """

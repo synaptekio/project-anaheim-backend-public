@@ -1,8 +1,12 @@
+import subprocess
 from datetime import date, datetime
 
+from django.http.response import HttpResponse
 from django.utils import timezone
 
+from config.django_settings import STATIC_ROOT
 from constants.celery_constants import ScheduleTypes
+from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.forest_constants import ForestTree
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
@@ -16,6 +20,10 @@ from database.user_models import Participant, Researcher, StudyRelation
 from libs.security import generate_easy_alphanumeric_string
 
 
+CURRENT_TEST_HTML_FILEPATH = BEIWE_PROJECT_ROOT + "private/current_test_page.html"
+ABS_STATIC_ROOT = (BEIWE_PROJECT_ROOT + STATIC_ROOT).encode()
+
+
 class ReferenceObjectMixin:
     """ This class implements DB object creation.  Some objects have convenience property wrappers
     because they are so common. """
@@ -24,7 +32,7 @@ class ReferenceObjectMixin:
     DEFAULT_RESEARCHER_PASSWORD = "abcABC123!@#"
     DEFAULT_STUDY_NAME = "session_study"
     DEFAULT_SURVEY_OBJECT_ID = 'u1Z3SH7l2xNsw72hN3LnYi96'
-    DEFAULT_PARTICIPANT_NAME = "particip"  # has to be 8 characters
+    DEFAULT_PARTICIPANT_NAME = "patient1"  # has to be 8 characters
     DEFAULT_PARTICIPANT_PASSWORD = "abcABC123"
     DEFAULT_PARTICIPANT_DEVICE_ID = "default_device_id"
     
@@ -264,7 +272,7 @@ class ReferenceObjectMixin:
         # there is an actual default ForestParams defined in a migration.
         self._default_forest_params = ForestParam.objects.get(default=True)
         return self._default_forest_params
-
+    
     def generate_forest_task(
         self,
         participant: Participant = None,
@@ -284,8 +292,8 @@ class ReferenceObjectMixin:
         )
         task.save()
         return task
-
-
+    
+    
     #
     ## ChunkRegistry
     #
@@ -372,3 +380,13 @@ class DummyThreadPool():
     # @staticmethod
     def close(self):
         pass
+
+
+def render_test_html_file(response: HttpResponse, url: str):
+    print("\nwriting url:", url)
+    
+    with open(CURRENT_TEST_HTML_FILEPATH, "wb") as f:
+        f.write(response.content.replace(b"/static/", ABS_STATIC_ROOT))
+    
+    subprocess.check_call(["google-chrome", CURRENT_TEST_HTML_FILEPATH])
+    input(f"opening {url} rendered html, press enter to continue test(s)")
