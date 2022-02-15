@@ -58,7 +58,6 @@ def get_data_for_dashboard_datastream_display(
     
     # ---------------------------------- base case if there is no data ------------------------------------------
     if first_day is None or (not data_exists and past_url == ""):
-        # TODO: test that these default values are unnecessary and fall out of above logic
         next_url, past_url = "", ""
     else:
         start, end = extract_date_args_from_request(request)
@@ -194,10 +193,7 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
         last_date_data_entry = first_date_data_entry = None
         byte_streams = {}
         unique_dates = []
-        next_url = ""
-        past_url = ""
-        first_date_data_entry = ""
-        last_date_data_entry = ""
+        next_url = past_url = first_date_data_entry = last_date_data_entry = ""
     
     patient_ids = list(
         Participant.objects.filter(study=study_id)
@@ -244,6 +240,8 @@ def set_default_settings_post_request(request: ResearcherRequest, study: Study, 
     # try to get a DashboardColorSetting object and check if it exists
     if DashboardColorSetting.objects.filter(data_type=data_stream, study=study).exists():
         # case: a default settings model already exists; delete the inflections associated with it
+        gradient: DashboardGradient
+        inflection: DashboardInflection
         settings: DashboardColorSetting = DashboardColorSetting.objects.get(data_type=data_stream, study=study)
         settings.inflections.all().delete()
         if settings.gradient_exists():
@@ -347,7 +345,7 @@ def create_next_past_urls(first_day: date, last_day: date, start: datetime, end:
         end: date = datetime.combine(last_day, datetime.min.time()).date()
     days_duration = timedelta(days=duration + 1)
     one_day = timedelta(days=1)
-
+    
     if 0 < (start - first_day).days < duration:
         past_url = "?start=" + (start - timedelta(days=(duration + 1))).strftime(API_DATE_FORMAT) + \
                    "&end=" + (start - one_day).strftime(API_DATE_FORMAT)
