@@ -1,12 +1,15 @@
 import json
+from django.http import FileResponse
 
 from django.http.response import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
 from authentication.data_access_authentication import (api_credential_check,
     api_study_credential_check)
 from database.user_models import StudyRelation
 from libs.internal_types import ApiResearcherRequest, ApiStudyResearcherRequest
+from libs.intervention_export import intervention_survey_data
 
 
 @require_POST
@@ -35,3 +38,9 @@ def get_users_in_study(request: ApiStudyResearcherRequest):
     return HttpResponse(
         json.dumps(list(request.api_study.participants.values_list('patient_id', flat=True)))
     )
+
+
+@require_POST
+@api_study_credential_check()
+def download_study_interventions(request: ApiStudyResearcherRequest):
+    return HttpResponse(json.dumps(intervention_survey_data(request.api_study)))        
