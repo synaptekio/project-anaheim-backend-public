@@ -290,6 +290,7 @@ def edit_study(request, study_id=None):
             listed_researchers=listed_researchers,
             redirect_url=f'/edit_study/{study_id}',
             timezones=ALL_TIMEZONES_DROPDOWN,
+            page_location="edit_study"
         )
     )
 

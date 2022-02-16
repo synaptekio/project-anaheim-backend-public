@@ -215,7 +215,7 @@ class Researcher(AbstractPasswordUser):
     access_key_id = models.CharField(max_length=64, validators=[STANDARD_BASE_64_VALIDATOR], unique=True, null=True, blank=True)
     access_key_secret = models.CharField(max_length=44, validators=[URL_SAFE_BASE_64_VALIDATOR], blank=True)
     access_key_secret_salt = models.CharField(max_length=24, validators=[URL_SAFE_BASE_64_VALIDATOR], blank=True)
-
+    
     @classmethod
     def create_with_password(cls, username, password, **kwargs) -> Researcher:
         """
@@ -256,16 +256,16 @@ class Researcher(AbstractPasswordUser):
                 .order_by('username_lower')
                 .filter(*args, **kwargs)
         )
-
+    
     def get_administered_researchers(self) -> QuerySet[Researcher]:
         studies = self.study_relations.filter(
             relationship=ResearcherRole.study_admin).values_list("study_id", flat=True)
         researchers = StudyRelation.objects.filter(
             study_id__in=studies).values_list("researcher_id", flat=True).distinct()
         return Researcher.objects.filter(id__in=researchers)
-
+    
     def get_administered_researchers_by_username(self) -> Researcher:
-
+        
         return (
             self.get_administered_researchers()
                 .annotate(username_lower=Func(F('username'), function='LOWER'))
@@ -295,7 +295,7 @@ class Researcher(AbstractPasswordUser):
             self.access_key_secret_salt.encode(),
             self.access_key_secret.encode(),
         )
-
+    
     def reset_access_credentials(self) -> Tuple[str, str]:
         access_key = generate_random_string()[:64]
         secret_key = generate_random_string()[:64]
@@ -329,11 +329,14 @@ class Researcher(AbstractPasswordUser):
     def is_an_admin(self) -> bool:
         return self.site_admin or self.is_study_admin()
     
-    def check_study_admin(self, study_id):
+    def check_study_admin(self, study_id: int) -> bool:
         return self.study_relations.filter(
             relationship=ResearcherRole.study_admin,
             study_id=study_id,
         ).exists()
+    
+    def is_site_admin_or_study_admin(self, study_id: int) -> bool:
+        return self.site_admin or self.check_study_admin(study_id)
     
     def __str__(self):
         if self.site_admin:

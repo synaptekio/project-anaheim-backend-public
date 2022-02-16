@@ -85,7 +85,7 @@ def view_study(request: ResearcherRequest, study_id=None):
             # these need to be lists because they will be converted to json.
             study_fields=list(study.fields.all().values_list('field_name', flat=True)),
             interventions=list(study.interventions.all().values_list("name", flat=True)),
-            page_location='study_landing',
+            page_location='view_study',
             study_id=study_id,
             is_study_admin=is_study_admin,
             push_notifications_enabled=check_firebase_instance(require_android=True) or
