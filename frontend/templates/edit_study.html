@@ -108,7 +108,7 @@
   </div>
 
   <br><br><br>
-    <div class="row">
+    <div class="col-xs-6 row pull-left">
     <h2>Toggle Forest</h2>
     <p>Forest is currently {% if study.forest_enabled %}enabled{% else %}disabled{% endif %}.</p>
     <form action="/toggle_study_forest_enabled/{{ study.id }}" method="post">
@@ -122,6 +122,16 @@
         </div>
       {% endif %}
     </form>
+  </div>
+  <div class="col-xs-6 row pull-right">
+    <h2>Download Intervention Data</h2>
+    <p>Download a JSON representation of interventions for all users on this study.</p>
+    <form action="{{ easy_url("study_api.download_study_interventions", study_id=study.id) }}" method="post">
+      <div class="col-md-2">
+          <button class="btn btn-success" type="submit">Download Interventions</button>
+        </div>
+    </form>
+  </div>
   </div>
 
   <br><br><br>
