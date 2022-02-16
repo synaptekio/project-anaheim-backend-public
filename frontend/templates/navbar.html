@@ -1,92 +1,92 @@
 <script>navBarStudies = {{ allowed_studies|tojson }}</script>
 <script src="/static/javascript/app/survey-builder/controllers/nav-bar-study-controller.js"></script>
 <nav class="navbar navbar-default">
-    <div class="container-fluid">
+  <div class="container-fluid">
 
-        {# This "Open the navbar menu" toggle appears on narrow (mobile) screens when the rest of the navbar is hidden #}
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar-menu" aria-expanded="false">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-        </div>
-
-        <div id="main-navbar-menu" ng-controller="NavBarStudyController" class="collapse navbar-collapse">
-            <ul class="nav navbar-nav navbar-left">
-                {# If the current admin is authorized to view more than one study, give them a drop-down menu to switch studies #}
-                <li ng-if="navBarStudies.length > 1" class="dropdown" role="presentation">
-                  {% if page_location %}
-                    <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                      {{ study.name }}
-                    <span class="caret"></span>
-                    </a>
-                  {% else %}
-                    <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                      View Study
-                    <span class="caret"></span>
-                    </a>
-                  {% endif %}
-                    {# The dropdown menu is an AngularJS app that's searchable/filterable #}
-                    <ul id="searchableStudyList" class="dropdown-menu dropdown-menu-left" aria-labelledby="dropdownMenu1">
-                        {# Search/filter input field #}
-                        <li class="dropdown_search_field">
-                            <div class="form-group">
-                                <input type="search" class="form-control" placeholder="Filter by study name" ng-model="searchText" ng-click="$event.stopPropagation()" autofocus>
-                            </div>
-                        </li>
-                        {# Filtered list of studies #}
-                        <li ng-repeat="study in navBarStudies | filter:{name: searchText}">
-                            <a href="/view_study/{% raw %}{{ study.id }}{% endraw %}">{% raw %}{{ study.name }}{% endraw %}</a></li>
-                    </ul>
-                </li>
-                {# If the current admin is authorized to view only one study, give them a "Home" button to view that study #}
-                <li ng-if="navBarStudies.length <= 1" role="presentation"><a href="/choose_study">Home</a></li>
-
-                {% if page_location in ['study_landing', 'dashboard_landing', 'dashboard_patient', 'dashboard_data'] %}
-                  <li {% if page_location == 'study_landing' %}class="active"{% endif %} role="presentation">
-                    <a href="{{ url('admin_pages.view_study', args=[study_id]) }}">View Study</a>
-                  </li>
-                  <li {% if page_location == 'dashboard_landing' %}class="active"{% endif %} role="presentation">
-                    <a href="{{ url('dashboard_api.dashboard_page', args=[study_id]) }}">Dashboard</a>
-                  </li>
-                  {% if page_location == 'dashboard_patient' %}
-                    <li class="active" role="presentation"><a href="">{{ patient_id }}</a></li>
-                  {% elif page_location == 'dashboard_data' %}
-                    <li class="active" role="presentation"><a href="">{{ data_stream }}</a></li>
-                  {% endif %}
-                {% endif %}
-                {% if study and study.forest_enabled %}
-                  <li role="presentation">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                      Forest <span class="caret"></span>
-                    </a>
-                    <ul class="dropdown-menu">
-                      <li><a href="{{ easy_url('forest_pages.create_tasks', study_id=study.id) }}">Create Forest Tasks</a></li>
-                      <li><a href="{{ easy_url('forest_pages.task_log', study_id=study.id) }}">View Forest Task Log</a></li>
-                      <li><a href="{{ easy_url('forest_pages.analysis_progress', study_id=study.id) }}">View Forest Analysis Progress</a></li>
-                      {% if site_admin %}
-                        <li><a class="" href="{{ url('forest_pages.download_task_log') }}">
-                          <i>Download Forest Task Log (all studies)</i>
-                        </a></li>
-                      {% endif %}
-                    </ul>
-                  </li>
-                {% endif %}
-            </ul>
-
-            <ul class="nav navbar-nav navbar-right">
-                {# Give the System Admin an extra link here to manage researchers #}
-                {% if is_admin %}
-                    <li role="presentation"><a href="/manage_researchers">Manage Researchers</a></li>
-                    <li role="presentation"><a href="/manage_studies">Manage Studies</a></li>
-                    <li role="presentation"><a href="/manage_firebase_credentials">Firebase Credentials</a></li>
-                {% endif %}
-                <li role="presentation"><a href="/data_access_web_form">Download Data</a></li>
-                <li role="presentation"><a href="/manage_credentials">Manage Credentials</a></li>
-                <li role="presentation"><a href="/logout">Log Out</a></li>
-            </ul>
-        </div>
+    {# This "Open the navbar menu" toggle appears on narrow (mobile) screens when the rest of the navbar is hidden #}
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar-menu" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
     </div>
+
+    <div id="main-navbar-menu" ng-controller="NavBarStudyController" class="collapse navbar-collapse">
+      <ul class="nav navbar-nav navbar-left">
+        {# If the current admin is authorized to view more than one study, give them a drop-down menu to switch studies #}
+        <li ng-if="navBarStudies.length > 1" class="dropdown" role="presentation">
+          {% if page_location %}
+          <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            {{ study.name }}
+          <span class="caret"></span>
+          </a>
+          {% else %}
+          <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            View Study
+          <span class="caret"></span>
+          </a>
+          {% endif %}
+          {# The dropdown menu is an AngularJS app that's searchable/filterable #}
+          <ul id="searchableStudyList" class="dropdown-menu dropdown-menu-left" aria-labelledby="dropdownMenu1">
+            {# Search/filter input field #}
+            <li class="dropdown_search_field">
+              <div class="form-group">
+                <input type="search" class="form-control" placeholder="Filter by study name" ng-model="searchText" ng-click="$event.stopPropagation()" autofocus>
+              </div>
+            </li>
+            {# Filtered list of studies #}
+            <li ng-repeat="study in navBarStudies | filter:{name: searchText}">
+              <a href="/view_study/{% raw %}{{ study.id }}{% endraw %}">{% raw %}{{ study.name }}{% endraw %}</a></li>
+          </ul>
+        </li>
+        {# If the current admin is authorized to view only one study, give them a "Home" button to view that study #}
+        <li ng-if="navBarStudies.length <= 1" role="presentation"><a href="/choose_study">Home</a></li>
+
+        {% if page_location in ['study_landing', 'dashboard_landing', 'dashboard_patient', 'dashboard_data'] %}
+          <li {% if page_location == 'study_landing' %}class="active"{% endif %} role="presentation">
+          <a href="{{ url('admin_pages.view_study', args=[study_id]) }}">View Study</a>
+          </li>
+          <li {% if page_location == 'dashboard_landing' %}class="active"{% endif %} role="presentation">
+          <a href="{{ url('dashboard_api.dashboard_page', args=[study_id]) }}">Dashboard</a>
+          </li>
+          {% if page_location == 'dashboard_patient' %}
+          <li class="active" role="presentation"><a href="">{{ patient_id }}</a></li>
+          {% elif page_location == 'dashboard_data' %}
+          <li class="active" role="presentation"><a href="">{{ data_stream }}</a></li>
+          {% endif %}
+        {% endif %}
+        {% if study and study.forest_enabled %}
+          <li role="presentation">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+            Forest <span class="caret"></span>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="{{ easy_url('forest_pages.create_tasks', study_id=study.id) }}">Create Forest Tasks</a></li>
+            <li><a href="{{ easy_url('forest_pages.task_log', study_id=study.id) }}">View Forest Task Log</a></li>
+            <li><a href="{{ easy_url('forest_pages.analysis_progress', study_id=study.id) }}">View Forest Analysis Progress</a></li>
+            {% if site_admin %}
+            <li><a class="" href="{{ url('forest_pages.download_task_log') }}">
+              <i>Download Forest Task Log (all studies)</i>
+            </a></li>
+            {% endif %}
+          </ul>
+          </li>
+        {% endif %}
+      </ul>
+
+      <ul class="nav navbar-nav navbar-right">
+        {# Give the System Admin an extra link here to manage researchers #}
+        {% if is_admin %}
+          <li role="presentation"><a href="/manage_researchers">Manage Researchers</a></li>
+          <li role="presentation"><a href="/manage_studies">Manage Studies</a></li>
+          <li role="presentation"><a href="/manage_firebase_credentials">Firebase Credentials</a></li>
+        {% endif %}
+        <li role="presentation"><a href="/data_access_web_form">Download Data</a></li>
+        <li role="presentation"><a href="/manage_credentials">Manage Credentials</a></li>
+        <li role="presentation"><a href="/logout">Log Out</a></li>
+      </ul>
+    </div>
+  </div>
 </nav>

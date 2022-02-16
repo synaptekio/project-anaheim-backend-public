@@ -263,7 +263,6 @@ def manage_studies(request: ResearcherRequest):
     )
 
 
-
 @require_GET
 @authenticate_admin
 def edit_study(request, study_id=None):
