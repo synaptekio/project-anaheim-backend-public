@@ -12,7 +12,7 @@ from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
 from database.data_access_models import ChunkRegistry, FileToProcess
-from database.schedule_models import ArchivedEvent, Intervention, InterventionDate
+from database.schedule_models import AbsoluteSchedule, ArchivedEvent, Intervention, InterventionDate, RelativeSchedule, WeeklySchedule
 from database.study_models import DeviceSettings, Study, StudyField
 from database.survey_models import Survey
 from database.tableau_api_models import ForestParam, ForestTask
@@ -35,6 +35,9 @@ class ReferenceObjectMixin:
     DEFAULT_PARTICIPANT_NAME = "patient1"  # has to be 8 characters
     DEFAULT_PARTICIPANT_PASSWORD = "abcABC123"
     DEFAULT_PARTICIPANT_DEVICE_ID = "default_device_id"
+    DEFAULT_INTERVENTION_NAME = "default_intervention_name"
+    # this should be okay even though it changes.
+    DEFAULT_DATE = timezone.now().today().date()
     
     # For all defaults make sure to maintain the pattern that includes the use of the save function,
     # this codebase implements a special save function that validates before passing through.
@@ -174,6 +177,10 @@ class ReferenceObjectMixin:
         """ Providing the comment about using the save() pattern is observed, this cannot fail. """
         return self.session_study.device_settings
     
+    @property
+    def default_intervention(self) -> Intervention:
+        return self.generate_intervention(self.session_study, self.DEFAULT_INTERVENTION_NAME)
+    
     def generate_intervention(self, study: Study, name: str) -> Intervention:
         intervention = Intervention(study=study, name=name)
         intervention.save()
@@ -211,11 +218,15 @@ class ReferenceObjectMixin:
         participant.set_password(self.DEFAULT_PARTICIPANT_PASSWORD)  # saves
         return participant
     
+    @property
+    def default_populated_intervention_date(self) -> InterventionDate:
+        return self.generate_intervention_date(self.default_participant, self.default_intervention)
+    
     def generate_intervention_date(
         self, participant: Participant, intervention: Intervention, date: date = None
     ) -> InterventionDate:
         intervention_date = InterventionDate(
-            participant=participant, intervention=intervention, date=date or timezone.now().today()
+            participant=participant, intervention=intervention, date=date or self.DEFAULT_DATE
         )
         intervention_date.save()
         return intervention_date
@@ -241,6 +252,9 @@ class ReferenceObjectMixin:
     #         scheduled_time
     #     )
     
+    #
+    # schedule and schedule-adjacent objects
+    #
     def generate_archived_event(
         self, survey: Survey, participant: Participant, schedule_type: str = None,
         scheduled_time: datetime = None, response_time: datetime = None, status: str = None
@@ -255,6 +269,47 @@ class ReferenceObjectMixin:
         )
         archived_event.save()
         return archived_event
+    
+    def generate_weekly_schedule(
+        self, survey: Survey = None, day_of_week: int = 0, hour: int = 0, minute: int = 0
+    ) -> WeeklySchedule:
+        weekly = WeeklySchedule(
+            survey=survey or self.default_survey,
+            day_of_week=day_of_week,
+            hour=hour,
+        )
+        weekly.save()
+        return weekly
+    
+    @property
+    def default_relative_schedule(self) -> RelativeSchedule:
+        return self.generate_relative_schedule(self.default_survey, self.default_intervention)
+    
+    def generate_relative_schedule(
+        self, survey: Survey, intervention: Intervention, days_after: int = 0,
+        hour: int = 0, minute :int = 0,
+    ) -> RelativeSchedule:
+        relative = RelativeSchedule(
+            survey=survey or self.default_survey,
+            intervention=intervention or self.default_intervention,
+            days_after=days_after,
+            hour=hour,
+            minute=minute,
+        )
+        relative.save()
+        return relative
+    
+    def generate_absolute_schedule(
+        self, a_date: date, survey: Survey = None, hour: int = 0, minute: int = 0,
+    ) -> RelativeSchedule:
+        absolute = AbsoluteSchedule(
+            survey=survey or self.default_survey,
+            date=a_date,
+            hour=hour,
+            minute=minute,
+        )
+        absolute.save()
+        return absolute
     
     #
     ## Forest objects

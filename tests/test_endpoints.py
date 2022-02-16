@@ -1811,9 +1811,6 @@ class TestGetUsersInStudy(DataApiTest):
     ENDPOINT_NAME = "other_researcher_apis.get_users_in_study"
     
     def test_no_participants(self):
-        self.smart_post_status_code(200)
-    
-    def test_no_participants(self):
         self.set_session_study_relation(ResearcherRole.researcher)
         resp = self.smart_post_status_code(200, study_id=self.session_study.object_id)
         self.assertEqual(resp.content, b"[]")
@@ -1836,6 +1833,26 @@ class TestGetUsersInStudy(DataApiTest):
             self.assertEqual(resp.content, match.encode())
         except AssertionError:
             self.assertEqual(resp.content, match2.encode())
+
+
+class TestDownloadStudyInterventions(DataApiTest):
+    ENDPOINT_NAME = "other_researcher_apis.download_study_interventions"
+    
+    def test_no_interventions(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self.smart_post_status_code(200, study_id=self.session_study.object_id)
+        self.assertEqual(resp.content, b"{}")
+    
+    def test_survey_with_one_intervention(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        self.default_populated_intervention_date
+        self.default_relative_schedule
+        resp = self.smart_post_status_code(200, study_id=self.session_study.object_id)
+        json_unpacked = json.loads(resp.content)
+        correct_output = {self.DEFAULT_PARTICIPANT_NAME:
+                            {self.DEFAULT_SURVEY_OBJECT_ID:
+                                {self.DEFAULT_INTERVENTION_NAME: self.DEFAULT_DATE.isoformat()}}}
+        self.assertDictEqual(json_unpacked, correct_output)
 
 
 class TestGetData(DataApiTest):
