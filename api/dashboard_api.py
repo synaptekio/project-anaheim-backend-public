@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
@@ -50,13 +51,11 @@ def get_data_for_dashboard_datastream_display(
     we don't want all of the get request running. """
     study = get_object_or_404(Study, pk=study_id)
     
-    # -----------------------------------  general data fetching --------------------------------------------
+    # general data fetching
     participant_objects = Participant.objects.filter(study=study_id).order_by("patient_id")
     data_exists, first_day, last_day, unique_dates, byte_streams = parse_data_streams(
         request, study_id, data_stream, participant_objects
     )
-    
-    # ---------------------------------- base case if there is no data ------------------------------------------
     if first_day is None or (not data_exists and past_url == ""):
         next_url, past_url = "", ""
     else:
@@ -396,8 +395,9 @@ def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
         ChunkRegistry.objects.filter(**kwargs).exclude(time_bin__lt=unix_epoch_start_sorta)
         .order_by("time_bin").values_list("time_bin", flat=True)
     )
+    
     # default behavior for 1 or 0 time_bins
-    if len(all_time_bins) < 2:
+    if len(all_time_bins) < 1:
         return None, None
     
     return all_time_bins[0].date(), all_time_bins[-1].date()
@@ -425,7 +425,10 @@ def dashboard_chunkregistry_query(
     chunks = ChunkRegistry.objects.filter(**kwargs).extra(
         select={'data_stream': 'data_type', 'bytes': 'file_size'}
     ).values("participant__patient_id", "bytes", "data_stream", "time_bin")
-    return {d.pop("participant__patient_id"): d for d in chunks}
+    patient_id_to_datapoints = defaultdict(list)
+    for chunk in chunks:
+        patient_id_to_datapoints[chunk.pop("participant__patient_id")].append(chunk)
+    return dict(patient_id_to_datapoints)
 
 
 def extract_date_args_from_request(request: ResearcherRequest):

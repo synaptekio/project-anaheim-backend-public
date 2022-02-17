@@ -323,6 +323,7 @@ class TestDashboard(ResearcherSessionTest):
         resp = self.smart_get_status_code(200, str(self.session_study.id))
         self.assert_present("Choose a participant or data stream to view", resp.content)
         self.assert_present(self.DEFAULT_PARTICIPANT_NAME, resp.content)
+        
         for data_stream_text in COMPLETE_DATA_STREAM_DICT.values():
             self.assert_present(data_stream_text, resp.content)
 
@@ -333,14 +334,58 @@ class TestDashboardStream(ResearcherSessionTest):
     
     # this  url doesn't fit any helpers I've built yet
     # dashboard_api.get_data_for_dashboard_datastream_display
-    def test_data_streams(self):
-        # test is currently limited to rendering the page for each data stream but with no data in it
-        self.default_participant
+    
+    def test_no_participant(self):
+        self.do_data_stream_test(create_chunkregistries=False, number_participants=0)
+    
+    def test_one_participant_no_data(self):
+        self.do_data_stream_test(create_chunkregistries=False, number_participants=1)
+    
+    def test_one_participant_no_data(self):
+        self.do_data_stream_test(create_chunkregistries=False, number_participants=5)
+    
+    def test_five_participants_with_data(self):
+        self.do_data_stream_test(create_chunkregistries=True, number_participants=5)
+    
+    def do_data_stream_test(self, create_chunkregistries=False, number_participants=1):
+        # self.default_participant  < -- breaks, collision with default name.
         self.set_session_study_relation()
-        for data_stream in ALL_DATA_STREAMS:
-            resp = self.smart_get_status_code(200, self.session_study.id, data_stream)
-            self.assert_present(COMPLETE_DATA_STREAM_DICT[data_stream], resp.content)
+        participants: List[Participant] = [
+            self.generate_participant(self.session_study, patient_id=f"patient{i+1}")
+            for i in range(number_participants)
+        ]
 
+        # create all the participnats we need
+        if create_chunkregistries:
+            for i, participant in enumerate(participants, start=0):
+                self.generate_chunkregistry(
+                    self.session_study,
+                    participant,
+                    "junk",  # data_stream
+                    file_size=123456+i,
+                    time_bin=timezone.localtime().replace(hour=i, minute=0, second=0, microsecond=0),
+                )
+        
+        for data_stream in ALL_DATA_STREAMS:
+            if create_chunkregistries:  # force correct data type
+                ChunkRegistry.objects.all().update(data_type=data_stream)
+            
+            resp = self.smart_get_status_code(200, self.session_study.id, data_stream)
+            html = resp.content  # renders each time?
+            title = COMPLETE_DATA_STREAM_DICT[data_stream]
+            self.assert_present(title, html)
+            
+            for i, participant in enumerate(participants, start=0):
+                comma_separated = str(123456 + i)[:-3] + "," + str(123456 + i)[3:]
+                if create_chunkregistries:
+                    self.assert_present(participant.patient_id, html)
+                    self.assert_present(comma_separated, html)
+                else:
+                    self.assert_not_present(participant.patient_id, html)
+                    self.assert_not_present(comma_separated, html)  # this shouldn't be possible
+            
+            if not participants or not create_chunkregistries:
+                self.assert_present(f"There is no data currently available for {title}", html)
 
 # FIXME: this page renders with almost no data
 class TestPatientDisplay(ResearcherSessionTest):
@@ -2248,7 +2293,7 @@ class TestGetData(DataApiTest):
         if query_time_bin_end:
             post_kwargs['time_end'] = query_time_bin_end
         
-        self.generate_chunk_registry(
+        self.generate_chunkregistry(
             self.session_study, self.default_participant, data_type, **generate_kwargs
         )
         resp: FileResponse = self.smart_post(**post_kwargs)

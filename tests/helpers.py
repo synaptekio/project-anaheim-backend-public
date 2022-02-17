@@ -351,7 +351,25 @@ class ReferenceObjectMixin:
     #
     ## ChunkRegistry
     #
-    def generate_chunk_registry(
+    @property
+    def default_chunkregistry(self) -> ChunkRegistry:
+        try:
+            return self._default_chunkregistry
+        except AttributeError:
+            raise AttributeError("default_chunkregistry was not populated!")
+    
+    
+    def populate_default_chunkregistry(self, data_type, **kwargs) -> ChunkRegistry:
+        if hasattr(self, "_default_chunkregistry"):
+            raise Exception("default_chunkregistry already populated!")
+        print("data_type:", data_type
+        )
+        self._default_chunkregistry = self.generate_chunkregistry(
+            self.session_study, self.default_participant, data_type, **kwargs
+        )
+        return self._default_chunkregistry
+    
+    def generate_chunkregistry(
         self,
         study: Study,
         participant: Participant,
@@ -443,4 +461,6 @@ def render_test_html_file(response: HttpResponse, url: str):
         f.write(response.content.replace(b"/static/", ABS_STATIC_ROOT))
     
     subprocess.check_call(["google-chrome", CURRENT_TEST_HTML_FILEPATH])
-    input(f"opening {url} rendered html, press enter to continue test(s)")
+    x = input(f"opening {url} rendered html, press enter to continue test(s) or anything else to exit.")
+    if x:
+        exit()
