@@ -8,10 +8,19 @@
 
 {% block content %}
 
-    <h1 class="h2"> {{ study.name }} Study Dashboard </h1>
-    <h5 class="h5">Number of Participants: {{ participants|length }}</h5>
-    <br>
-    <p> Choose a participant or data stream to view the Dashboard. </p>
+  <ol class="breadcrumb">
+    <li>
+      <a href="/view_study/{{ study.id }}">{{ study.name }}</a>
+    </li>
+    <li class="active">
+      Dashboard
+    </li>
+  </ol>
+
+  <h1 class="h2"> {{ study.name }} Study Dashboard </h1>
+  <h5 class="h5">Number of Participants: {{ participants|length }}</h5>
+  <br>
+  <p> Choose a participant or data stream to view the Dashboard. </p>
 
   <div class="dashboard-options">
     <ul class="list-group list-group-flush">

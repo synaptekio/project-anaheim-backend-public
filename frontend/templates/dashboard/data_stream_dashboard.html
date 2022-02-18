@@ -35,6 +35,20 @@
 {% endblock %}
 
 {% block content %}
+  <ol class="breadcrumb">
+    <li>
+      <a href="/view_study/{{ study.id }}">{{ study.name }}</a>
+    </li>
+    <li class="active">
+      <a href="{{ easy_url("dashboard_api.dashboard_page", study_id=study.id) }}">
+        Dashboard
+      </a>
+    </li>
+    <li>
+      {{ data_stream }}
+    </li>
+  </ol>
+
   {#  ################## TOP OF PAGE CONTENT ################# #}
   <div class="title">
     <h1 class="h3"> {{ data_stream }} Data for {{ study.name }} Study
