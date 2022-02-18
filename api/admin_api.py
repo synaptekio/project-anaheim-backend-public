@@ -1,12 +1,12 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http.request import HttpRequest
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
 
 from authentication.admin_authentication import (assert_admin, assert_researcher_under_admin,
     authenticate_admin, authenticate_researcher_login)
-from config.settings import DOMAIN_NAME, DOWNLOADABLE_APK_URL
+from config.settings import DOWNLOADABLE_APK_URL
 from constants.researcher_constants import ResearcherRole
 from database.study_models import Study
 from database.user_models import Researcher, StudyRelation
@@ -115,15 +115,6 @@ def rename_study(request: ResearcherRequest, study_id=None):
 
 
 """##### Methods responsible for distributing APK file of Android app. #####"""
-
-
-@authenticate_researcher_login
-def download_page(request: ResearcherRequest):
-    return render(
-        request,
-        "download_landing_page.html",
-        context=dict(domain_name=DOMAIN_NAME)
-    )
 
 
 def download_current(request: ResearcherRequest):

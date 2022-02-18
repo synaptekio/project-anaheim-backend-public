@@ -176,10 +176,6 @@ urlpatterns = [
         admin_api.rename_study,
         name="admin_api.rename_study"),
     path(
-        "downloads",
-        admin_api.download_page,
-        name="admin_api.download_page"),
-    path(
         "download",
         admin_api.download_current,
         name="admin_api.download_current"),
