@@ -11,7 +11,7 @@
 {% block content %}
 
   <div class="row">
-    <h3>All Researchers</h3>
+    <h2>All Researchers</h2>
   </div>
 
   <br>
@@ -37,7 +37,7 @@
           </td>
           <td>
             <span ng-if="researcher_data[1].length == 0">
-              <i>This user is not authorized to view/edit any studies</i>
+              <i>This user is not authorized on any studies</i>
             </span>
             <span ng-if="researcher_data[1].length > 0">
               <span ng-repeat="study_name in researcher_data[1]">
@@ -45,7 +45,7 @@
               </span>
             </span>
           </td>
-          <td>
+          <td class="col-xs-2 text-center">
             <a href="/edit_researcher/{% raw %}{{ researcher_data[0].id }}{% endraw %}">edit researcher</a>
           </td>
         </tr>
