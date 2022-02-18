@@ -97,6 +97,16 @@ table>tbody>tr>td.viewParticipantTable {
     margin-inline-end: -4em;
 }
 
+.h2-margins-vertical {
+    margin-block-start: 1.5em;
+    margin-block-end: 1em;
+}
+
+.h3-margins-vertical {
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+}
+
 .survey-button-margins {
     margin-block-start: 1em;
     margin-block-end: 1em;
