@@ -1153,14 +1153,6 @@ class TestRenameStudy(RedirectSessionApiTest):
         self.assertEqual(self.session_study.name, "hello!")
 
 
-class TestDownloadPage(ResearcherSessionTest):
-    ENDPOINT_NAME = "admin_api.download_page"
-    
-    def test(self):
-        # just test that it loads without breaking
-        self.smart_get()
-
-
 class TestPrivacyPolicy(ResearcherSessionTest):
     ENDPOINT_NAME = "admin_api.download_privacy_policy"
     
