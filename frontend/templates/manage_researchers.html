@@ -1,62 +1,62 @@
 {% extends "base.html" %}
 
 {% block head %}
-    {{ super() }}
-    <script>filterableObjects = {{ admins|tojson }}</script>
-    <script src="/static/javascript/app/survey-builder/controllers/filterable-list-controller.js"></script>
+  {{ super() }}
+  <script>filterableObjects = {{ admins|tojson }}</script>
+  <script src="/static/javascript/app/survey-builder/controllers/filterable-list-controller.js"></script>
 {% endblock %}
 
 {% block title %}Manage Researchers{% endblock %}
 
 {% block content %}
 
-    <div class="row">
-        <h3>All Researchers</h3>
+  <div class="row">
+    <h3>All Researchers</h3>
+  </div>
+
+  <br>
+
+  <div id="filterableList" ng-controller="FilterableListController" class="row">
+    {# Search/filter input field #}
+    <div class="form-group col-sm-4">
+      <input type="search" class="form-control" placeholder="Filter by username" ng-model="researcherFilterText" autofocus>
     </div>
+    
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th><h4>Username</h4></th>
+          <th><h4>Authorized Studies</h4></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="researcher_data in filterableObjects | filter:{username: researcherFilterText}">
+          <td>
+            <b>{% raw %}{{ researcher_data[0].username }}{% endraw %}</b>
+          </td>
+          <td>
+            <span ng-if="researcher_data[1].length == 0">
+              <i>This user is not authorized to view/edit any studies</i>
+            </span>
+            <span ng-if="researcher_data[1].length > 0">
+              <span ng-repeat="study_name in researcher_data[1]">
+                {% raw %}{{ study_name }}{% endraw %} &nbsp; &nbsp;
+              </span>
+            </span>
+          </td>
+          <td>
+            <a href="/edit_researcher/{% raw %}{{ researcher_data[0].id }}{% endraw %}">edit researcher</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-    <br>
+  <br><br>
 
-    <div id="filterableList" ng-controller="FilterableListController" class="row">
-        {# Search/filter input field #}
-        <div class="form-group col-sm-4">
-            <input type="search" class="form-control" placeholder="Filter by username" ng-model="researcherFilterText" autofocus>
-        </div>
-        
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th><h4>Username</h4></th>
-                    <th><h4>Authorized Studies</h4></th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="researcher_data in filterableObjects | filter:{username: researcherFilterText}">
-                    <td>
-                        <b>{% raw %}{{ researcher_data[0].username }}{% endraw %}</b>
-                    </td>
-                    <td>
-                        <span ng-if="researcher_data[1].length == 0">
-                            <i>This user is not authorized to view/edit any studies</i>
-                        </span>
-                        <span ng-if="researcher_data[1].length > 0">
-                            <span ng-repeat="study_name in researcher_data[1]">
-                                {% raw %}{{ study_name }}{% endraw %} &nbsp; &nbsp;
-                            </span>
-                        </span>
-                    </td>
-                    <td>
-                        <a href="/edit_researcher/{% raw %}{{ researcher_data[0].id }}{% endraw %}">edit researcher</a>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <br><br>
-
-    <div class="row">
-        <a href="/create_new_researcher" class="btn btn-success">Add new researcher</a>
-    </div>
+  <div class="row">
+    <a href="/create_new_researcher" class="btn btn-success">Add new researcher</a>
+  </div>
 
 {% endblock %}
