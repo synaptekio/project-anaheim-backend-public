@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import pytz
 from django.shortcuts import get_object_or_404, render
@@ -405,7 +405,8 @@ def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
 
 # Fixme: start and end dates are never used
 def dashboard_chunkregistry_query(
-    participants: ParticipantQuerySet, data_stream: str = None, start: date = None, end: date = None
+    participants: Union[ParticipantQuerySet, Participant], data_stream: str = None,
+    start: date = None, end: date = None
 ):
     """ Queries ChunkRegistry based on the provided parameters and returns a list of dictionaries
     with 3 keys: bytes, data_stream, and time_bin. """
@@ -428,6 +429,12 @@ def dashboard_chunkregistry_query(
     patient_id_to_datapoints = defaultdict(list)
     for chunk in chunks:
         patient_id_to_datapoints[chunk.pop("participant__patient_id")].append(chunk)
+    
+    # populate participants with no data, values don't need to be present.
+    if not isinstance(participants, Participant):
+        for participant in participants:
+            patient_id_to_datapoints[participant.patient_id]
+    
     return dict(patient_id_to_datapoints)
 
 
