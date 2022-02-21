@@ -251,11 +251,11 @@ def register_user(request: ParticipantRequest, OS_API=""):
         # KG: 405 is good for IOS and Android, no need to check OS_API
         return abort(405)
     
-    if participant.os_type and participant.os_type != OS_API:
-        # CASE: this patient has registered, but the user was previously registered with a
-        # different device type. To keep the CSV munging code sane and data consistent (don't
-        # cross the iOS and Android data streams!) we disallow it.
-        return abort(400)
+    # if participant.os_type and participant.os_type != OS_API:
+    #     # CASE: this patient has registered, but the user was previously registered with a
+    #     # different device type. To keep the CSV munging code sane and data consistent (don't
+    #     # cross the iOS and Android data streams!) we disallow it.
+    #     return abort(400)
     
     # At this point the device has been checked for validity and will be registered successfully.
     # Any errors after this point will be server errors and return 500 codes. the final return
