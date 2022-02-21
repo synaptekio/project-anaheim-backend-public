@@ -314,24 +314,40 @@ class TestDisableTableauApiKey(RedirectSessionApiTest):
 class TestDashboard(ResearcherSessionTest):
     ENDPOINT_NAME = "dashboard_api.dashboard_page"
     
-    def test_dashboard(self):
+    def assert_data_streams_present(self, resp: HttpResponse):
+        for data_stream_text in COMPLETE_DATA_STREAM_DICT.values():
+            self.assert_present(data_stream_text, resp.content)
+    
+    def test_dashboard_no_participants(self):
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self.smart_get_status_code(200, str(self.session_study.id))
+        self.assert_present("Choose a participant or data stream to view", resp.content)
+        self.assert_not_present(self.DEFAULT_PARTICIPANT_NAME, resp.content)
+        self.assert_data_streams_present(resp)
+    
+    def test_dashboard_one_participant(self):
         self.default_participant
         # default user and default study already instantiated
         self.set_session_study_relation(ResearcherRole.researcher)
         resp = self.smart_get_status_code(200, str(self.session_study.id))
         self.assert_present("Choose a participant or data stream to view", resp.content)
         self.assert_present(self.DEFAULT_PARTICIPANT_NAME, resp.content)
-        
-        for data_stream_text in COMPLETE_DATA_STREAM_DICT.values():
-            self.assert_present(data_stream_text, resp.content)
+        self.assert_data_streams_present(resp)
+    
+    def test_dashboard_many_participant(self):
+        particpiants = self.generate_10_default_participants
+        # default user and default study already instantiated
+        self.set_session_study_relation(ResearcherRole.researcher)
+        resp = self.smart_get_status_code(200, str(self.session_study.id))
+        self.assert_present("Choose a participant or data stream to view", resp.content)
+        for p in particpiants:
+            self.assert_present(p.patient_id, resp.content)
+        self.assert_data_streams_present(resp)
 
 
 # FIXME: dashboard is going to require a fixture to populate data.
 class TestDashboardStream(ResearcherSessionTest):
     ENDPOINT_NAME = "dashboard_api.get_data_for_dashboard_datastream_display"
-    
-    # this  url doesn't fit any helpers I've built yet
-    # dashboard_api.get_data_for_dashboard_datastream_display
     
     def test_no_participant(self):
         self.do_data_stream_test(create_chunkregistries=False, number_participants=0)
@@ -352,7 +368,7 @@ class TestDashboardStream(ResearcherSessionTest):
             self.generate_participant(self.session_study, patient_id=f"patient{i+1}")
             for i in range(number_participants)
         ]
-
+        
         # create all the participnats we need
         if create_chunkregistries:
             for i, participant in enumerate(participants, start=0):
@@ -657,8 +673,8 @@ class TestEditStudy(ResearcherSessionTest):
         self.set_session_study_relation(ResearcherRole.study_admin)
         self.session_study.update(is_test=True, forest_enabled=False)
         resp1 = self.smart_get_status_code(200, self.session_study.id)
-        self.assert_present("Forest is currently disabled.", resp1.content)
-        self.assert_not_present("data in this study is restricted", resp1.content)
+        self.assert_present("Enable Forest", resp1.content)
+        self.assert_not_present("Disable Forest", resp1.content)
         self.assert_present(self.session_researcher.username, resp1.content)
         
         self.session_study.update(is_test=False, forest_enabled=True)
