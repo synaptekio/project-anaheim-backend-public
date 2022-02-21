@@ -222,8 +222,8 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
 
 def set_default_settings_post_request(request: ResearcherRequest, study: Study, data_stream: str):
     all_flags_list = argument_grabber(request, "all_flags_list", "[]")
-    color_high_range = argument_grabber(request, "color_high_range", 0)
-    color_low_range = argument_grabber(request, "color_low_range", 0)
+    color_high_range = argument_grabber(request, "color_high_range", "0")
+    color_low_range = argument_grabber(request, "color_low_range", "0")
     
     # convert parameters from unicode to correct types
     # if they didn't save a gradient we don't want to save garbage

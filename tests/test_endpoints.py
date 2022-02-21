@@ -356,10 +356,10 @@ class TestDashboardStream(ResearcherSessionTest):
         self.do_data_stream_test(create_chunkregistries=False, number_participants=1)
     
     def test_one_participant_no_data(self):
-        self.do_data_stream_test(create_chunkregistries=False, number_participants=5)
+        self.do_data_stream_test(create_chunkregistries=False, number_participants=3)
     
     def test_five_participants_with_data(self):
-        self.do_data_stream_test(create_chunkregistries=True, number_participants=5)
+        self.do_data_stream_test(create_chunkregistries=True, number_participants=3)
     
     def do_data_stream_test(self, create_chunkregistries=False, number_participants=1):
         # self.default_participant  < -- breaks, collision with default name.
@@ -384,22 +384,28 @@ class TestDashboardStream(ResearcherSessionTest):
             if create_chunkregistries:  # force correct data type
                 ChunkRegistry.objects.all().update(data_type=data_stream)
             
-            resp = self.smart_get_status_code(200, self.session_study.id, data_stream)
-            html = resp.content  # renders each time?
+            html1 = self.smart_get_status_code(200, self.session_study.id, data_stream).content
+            html2 = self.smart_post_status_code(200, self.session_study.id, data_stream).content
             title = COMPLETE_DATA_STREAM_DICT[data_stream]
-            self.assert_present(title, html)
+            self.assert_present(title, html1)
+            self.assert_present(title, html2)
             
             for i, participant in enumerate(participants, start=0):
                 comma_separated = str(123456 + i)[:-3] + "," + str(123456 + i)[3:]
                 if create_chunkregistries:
-                    self.assert_present(participant.patient_id, html)
-                    self.assert_present(comma_separated, html)
+                    self.assert_present(participant.patient_id, html1)
+                    self.assert_present(participant.patient_id, html2)
+                    self.assert_present(comma_separated, html1)
+                    self.assert_present(comma_separated, html2)
                 else:
-                    self.assert_not_present(participant.patient_id, html)
-                    self.assert_not_present(comma_separated, html)  # this shouldn't be possible
+                    self.assert_not_present(participant.patient_id, html1)
+                    self.assert_not_present(participant.patient_id, html2)
+                    self.assert_not_present(comma_separated, html1)
+                    self.assert_not_present(comma_separated, html2)
             
             if not participants or not create_chunkregistries:
-                self.assert_present(f"There is no data currently available for {title}", html)
+                self.assert_present(f"There is no data currently available for {title}", html1)
+                self.assert_present(f"There is no data currently available for {title}", html2)
 
 # FIXME: this page renders with almost no data
 class TestPatientDisplay(ResearcherSessionTest):
