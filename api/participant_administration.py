@@ -1,4 +1,4 @@
-import bleach 
+import bleach
 
 from csv import writer
 from re import sub
@@ -148,13 +148,15 @@ def create_many_patients(request: ResearcherRequest, study_id=None):
     filename = sub(r'[^a-zA-Z0-9_\.=]', '', filename_spaces_to_underscores)
     if not filename.endswith('.csv'):
         filename += ".csv"
-        
-    return FileResponse(
+    
+    f = FileResponse(
         participant_csv_generator(study_id, number_of_new_patients),
         content_type="text/csv",
         as_attachment=True,
         filename=filename,
     )
+    f.set_headers(None)
+    return f
 
 
 def participant_csv_generator(study_id, number_of_new_patients):

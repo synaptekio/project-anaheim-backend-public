@@ -30,12 +30,14 @@ def export_study_settings_file(request: ResearcherRequest, study_id):
     """ Endpoint that returns a json representation of a study. """
     study = Study.objects.get(pk=study_id)
     filename = study.name.replace(' ', '_') + "_surveys_and_settings.json"
-    return FileResponse(
+    f = FileResponse(
         BytesIO(format_study(study).encode()),  # this is particularly stupid.
         content_type="application/json",
         as_attachment=True,
         filename=filename,
     )
+    f.set_headers(None)
+    return f
 
 
 @require_POST

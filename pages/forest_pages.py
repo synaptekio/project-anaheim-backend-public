@@ -181,12 +181,14 @@ def download_task_data(request: ResearcherRequest, study_id, forest_task_externa
         return abort(404)
     
     chunks = ChunkRegistry.objects.filter(participant=tracker.participant).values(*CHUNK_FIELDS)
-    return FileResponse(
+    f = FileResponse(
         zip_generator(chunks),
         content_type="zip",
         as_attachment=True,
         filename=f"{tracker.get_slug()}.zip",
     )
+    f.set_headers(None)
+    return f
 
 
 def stream_forest_task_log_csv(forest_tasks):
