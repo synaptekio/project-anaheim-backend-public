@@ -19,7 +19,7 @@ from libs.s3 import s3_retrieve
 class PrepareDataForeUpload:
     """ This class is consumes binified data and  """
     
-    def __init__(self, binified_data: List, error_handler: ErrorHandler, survey_id_dict: Dict):
+    def __init__(self, binified_data: Dict, error_handler: ErrorHandler, survey_id_dict: Dict):
         self.failed_ftps = set()
         self.ftps_to_retire = set()
         
