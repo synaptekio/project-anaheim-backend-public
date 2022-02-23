@@ -1,8 +1,10 @@
-import datetime
-from typing import List
+from datetime import date, datetime, timedelta
+from typing import List, Union
 
 
-def daterange(start, stop, step=datetime.timedelta(days=1), inclusive=False):
+def daterange(
+    start: datetime, stop: datetime, step: timedelta = timedelta(days=1), inclusive: bool = False
+):
     # source: https://stackoverflow.com/a/1060376/1940450
     if step.days > 0:
         while start < stop:
@@ -19,17 +21,15 @@ def daterange(start, stop, step=datetime.timedelta(days=1), inclusive=False):
         yield start
 
 
-def datetime_to_list(datetime_object: datetime.date) -> List[int]:
-    """
-    Takes in a `datetime.date` or `datetime.datetime` and returns a list of datetime components.
-    """
-    datetime_component_list = [datetime_object.year, datetime_object.month, datetime_object.day]
-    if isinstance(datetime_object, datetime.datetime):
+def datetime_to_list(datetime_obj: Union[date, datetime]) -> List[int]:
+    """ Takes in a date or datetime, returns a list of datetime components. """
+    datetime_component_list = [datetime_obj.year, datetime_obj.month, datetime_obj.day]
+    if isinstance(datetime_obj, datetime):
         datetime_component_list.extend([
-            datetime_object.hour,
-            datetime_object.minute,
-            datetime_object.second,
-            datetime_object.microsecond,
+            datetime_obj.hour,
+            datetime_obj.minute,
+            datetime_obj.second,
+            datetime_obj.microsecond,
         ])
     else:
         datetime_component_list.extend([0, 0, 0, 0])

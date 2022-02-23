@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Generator, List
+from typing import Generator, List, Tuple
 
 from constants.datetime_constants import API_TIME_FORMAT
 from libs.file_processing.exceptions import BadTimecodeError
 
 
-def insert_timestamp_single_row_csv(header: bytes, rows_list: list, time_stamp: bytes) -> bytes:
+def insert_timestamp_single_row_csv(header: bytes, rows_list: List[list], time_stamp: bytes) -> bytes:
     """ Inserts the timestamp field into the header of a csv, inserts the timestamp
         value provided into the first column.  Returns the new header string."""
     header_list = header.split(b",")
@@ -14,7 +14,7 @@ def insert_timestamp_single_row_csv(header: bytes, rows_list: list, time_stamp: 
     return b",".join(header_list)
 
 
-def csv_to_list(file_contents) -> (bytes, Generator):
+def csv_to_list(file_contents: bytes) -> Tuple[bytes, Generator[bytes]]:
     """ Grab a list elements from of every line in the csv, strips off trailing whitespace. dumps
     them into a new list (of lists), and returns the header line along with the list of rows. """
     
@@ -33,12 +33,8 @@ def csv_to_list(file_contents) -> (bytes, Generator):
     return header, line_iterator
 
 
-def isplit(source: bytes):
-    """
-    generator version of str.split()/bytes.split()
-    :returns:
-        generator yielding elements of string.
-    """
+def isplit(source: bytes) -> Generator[bytes]:
+    """ Generator version of str.split()/bytes.split() """
     # version using str.find(), less overhead than re.finditer()
     start = 0
     while True:
