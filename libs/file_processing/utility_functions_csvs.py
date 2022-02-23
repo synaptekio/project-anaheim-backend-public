@@ -14,7 +14,7 @@ def insert_timestamp_single_row_csv(header: bytes, rows_list: List[list], time_s
     return b",".join(header_list)
 
 
-def csv_to_list(file_contents: bytes) -> Tuple[bytes, Generator[bytes]]:
+def csv_to_list(file_contents: bytes) -> Tuple[bytes, Generator[bytes, None, None]]:
     """ Grab a list elements from of every line in the csv, strips off trailing whitespace. dumps
     them into a new list (of lists), and returns the header line along with the list of rows. """
     
@@ -33,7 +33,7 @@ def csv_to_list(file_contents: bytes) -> Tuple[bytes, Generator[bytes]]:
     return header, line_iterator
 
 
-def isplit(source: bytes) -> Generator[bytes]:
+def isplit(source: bytes) -> Generator[bytes, None, None]:
     """ Generator version of str.split()/bytes.split() """
     # version using str.find(), less overhead than re.finditer()
     start = 0

@@ -268,26 +268,6 @@ def upload_binified_data(binified_data, error_handler, survey_id_dict):
     return uploads.get_retirees()
 
 
-"""################################ S3 Stuff ################################"""
-
-
-def construct_s3_chunk_path(study_id: bytes, user_id: bytes, data_type: bytes, time_bin: int) -> str:
-    """ S3 file paths for chunks are of this form:
-        CHUNKED_DATA/study_id/user_id/data_type/time_bin.csv """
-    
-    study_id = study_id.decode() if isinstance(study_id, bytes) else study_id
-    user_id = user_id.decode() if isinstance(user_id, bytes) else user_id
-    data_type = data_type.decode() if isinstance(data_type, bytes) else data_type
-    
-    return "%s/%s/%s/%s/%s.csv" % (
-        CHUNKS_FOLDER,
-        study_id,
-        user_id,
-        data_type,
-        unix_time_to_string(time_bin*CHUNK_TIMESLICE_QUANTUM).decode()
-    )
-
-
 """############################## Standard CSVs #############################"""
 
 def binify_csv_rows(rows_list: list, study_id: str, user_id: str, data_type: str, header: bytes) -> DefaultDict[tuple, list]:

@@ -2,6 +2,7 @@ from typing import Dict, List, Set, Tuple
 
 from botocore.exceptions import ReadTimeoutError
 from cronutils import ErrorHandler
+from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM, CHUNKS_FOLDER
 
 from constants.data_stream_constants import SURVEY_DATA_FILES
 from database.data_access_models import ChunkRegistry
@@ -9,8 +10,7 @@ from database.study_models import Study
 from database.survey_models import Survey
 from database.user_models import Participant
 from libs.file_processing.exceptions import ChunkFailedToExist, HeaderMismatchException
-from libs.file_processing.file_processing_core import construct_s3_chunk_path
-from libs.file_processing.utility_functions_csvs import construct_csv_string, csv_to_list
+from libs.file_processing.utility_functions_csvs import construct_csv_string, csv_to_list, unix_time_to_string
 from libs.file_processing.utility_functions_simple import (compress,
     convert_unix_to_human_readable_timestamps, ensure_sorted_by_timestamp)
 from libs.s3 import s3_retrieve
@@ -154,3 +154,19 @@ class PrepareDataForeUpload:
         new_contents = construct_csv_string(updated_header, old_rows)
         
         self.upload_these.append((chunk, chunk_path, compress(new_contents), study_object_id))
+
+
+def construct_s3_chunk_path(
+    study_id: bytes, user_id: bytes, data_type: bytes, time_bin: int
+) -> str:
+    """ S3 file paths for chunks are of this form:
+        CHUNKED_DATA/study_id/user_id/data_type/time_bin.csv """
+    
+    study_id = study_id.decode() if isinstance(study_id, bytes) else study_id
+    user_id = user_id.decode() if isinstance(user_id, bytes) else user_id
+    data_type = data_type.decode() if isinstance(data_type, bytes) else data_type
+    
+    return "%s/%s/%s/%s/%s.csv" % (
+        CHUNKS_FOLDER, study_id, user_id, data_type,
+        unix_time_to_string(time_bin * CHUNK_TIMESLICE_QUANTUM).decode()
+    )
