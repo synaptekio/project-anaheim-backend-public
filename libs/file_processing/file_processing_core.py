@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
-from typing import DefaultDict
+from typing import DefaultDict, List, Set, Tuple
 
 from botocore.exceptions import ReadTimeoutError
 from cronutils.error_handler import ErrorHandler
@@ -245,7 +245,10 @@ class Uploader:
     def __init__(self, binified_data, error_handler, survey_id_dict):
         self.failed_ftps = set([])
         self.ftps_to_retire = set([])
-        self.upload_these = []
+        
+        self.upload_these: List[Tuple[ChunkRegistry, str, bytes, str]] = []
+        # chunk, something?, file contents, study object id
+        
         # Track the earliest and latest time bins, to return them at the end of the function
         self.earliest_time_bin = None
         self.latest_time_bin = None
@@ -254,8 +257,10 @@ class Uploader:
         self.error_handler = error_handler
         self.survey_id_dict = survey_id_dict
     
-    def get_retirees(self):
-        self.ftps_to_retire.difference(self. failed_ftps), \
+    def get_retirees(self) -> Tuple[Set[int], int, int, int]:
+        """ returns the ftp pks that have succeeded, the number of ftps that have failed, 
+        and the earliest and the latest time bins """
+        return self.ftps_to_retire.difference(self. failed_ftps), \
             len(self.failed_ftps), self.earliest_time_bin, self.latest_time_bin
     
     def iterate(self):
@@ -280,8 +285,10 @@ class Uploader:
             if ChunkRegistry.objects.filter(chunk_path=chunk_path).exists():
                 self.chunk_exists_case(chunk_path, study_object_id, updated_header, data_rows_list)
             else:
-                self.chunk_exists_case(chunk_path, study_object_id, updated_header, user_id,
-                                       data_type, original_header, time_bin, data_rows_list)
+                self.chunk_not_exists_case(
+                    chunk_path, study_object_id, updated_header, user_id, data_type,
+                    original_header, time_bin, data_rows_list
+                )
         
         except Exception as e:
             # Here we catch any exceptions that may have arisen, as well as the ones that we raised
