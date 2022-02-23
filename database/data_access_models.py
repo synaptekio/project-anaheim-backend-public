@@ -1,4 +1,6 @@
+from collections import Counter
 from datetime import datetime, timedelta
+from typing import Dict
 
 from django.db import models
 from django.utils import timezone
@@ -252,6 +254,14 @@ class FileToProcess(TimestampedModel):
             else:
                 print(f"Adding {fp} as a file to reprocess.")
                 cls.append_file_for_processing(fp, study_obj_id, participant=participant)
+    
+    @classmethod
+    def report(cls, *args, **kwargs) -> Dict[str, int]:
+        return dict(
+            reversed(
+                Counter(FileToProcess.objects.values_list("participant__patient_id", flat=True)).most_common()
+            )
+        )
 
 
 # Everything below this line should [only] be deleting by reverting the correct commit.
