@@ -14,21 +14,6 @@ def insert_timestamp_single_row_csv(header: bytes, rows_list: list, time_stamp: 
     return b",".join(header_list)
 
 
-# def csv_to_list(csv_string: bytes) -> (bytes, Generator):
-#     """ Grab a list elements from of every line in the csv, strips off trailing whitespace. dumps
-#     them into a new list (of lists), and returns the header line along with the list of rows. """
-#     # This code is more memory efficient than fast by using a generator
-#     # Note that almost all of the time is spent in the per-row for-loop
-#     def split_yielder(l):
-#         for row in l:
-#             yield row.split(b",")
-#     header = csv_string[:csv_string.find(b"\n")]
-#     lines = csv_string.splitlines()
-#     # Remove the header
-#     lines.pop(0)  # This line is annoyingly slow, but its fine...
-#     del csv_string  # To clear up memory
-#     return header, split_yielder(lines)
-
 def csv_to_list(file_contents) -> (bytes, Generator):
     """ Grab a list elements from of every line in the csv, strips off trailing whitespace. dumps
     them into a new list (of lists), and returns the header line along with the list of rows. """
