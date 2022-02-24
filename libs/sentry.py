@@ -8,7 +8,7 @@ from raven.transport import HTTPTransport
 
 from config.settings import (SENTRY_DATA_PROCESSING_DSN, SENTRY_ELASTIC_BEANSTALK_DSN,
     SENTRY_JAVASCRIPT_DSN)
-from constants.common_constants import RUNNING_IN_A_SHELL
+from constants.common_constants import RUNNING_TEST_OR_IN_A_SHELL
 
 
 # when running in a shell we force sentry off and force the use of the null_error_handler
@@ -56,7 +56,7 @@ def make_error_sentry(sentry_type:str, tags:dict=None):
     If the applicable sentry DSN is missing will return an ErrorSentry,
     but if null truthy a NullErrorHandler will be returned instead. """
     
-    if RUNNING_IN_A_SHELL:
+    if RUNNING_TEST_OR_IN_A_SHELL:
         return null_error_handler
     
     tags = tags or {}

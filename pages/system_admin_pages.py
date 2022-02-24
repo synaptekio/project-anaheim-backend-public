@@ -2,7 +2,6 @@ import json
 import plistlib
 from collections import defaultdict
 from typing import List
-import bleach
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -14,6 +13,7 @@ from authentication.admin_authentication import (abort, assert_admin, assert_res
     authenticate_admin, authenticate_researcher_study_access)
 from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FIREBASE_CREDENTIALS,
     IOS_FIREBASE_CREDENTIALS)
+from constants.common_constants import RUNNING_TEST_OR_IN_A_SHELL
 from constants.html_constants import CHECKBOX_TOGGLES, TIMER_VALUES
 from constants.message_strings import (ALERT_ANDROID_DELETED_TEXT, ALERT_ANDROID_SUCCESS_TEXT,
     ALERT_ANDROID_VALIDATION_FAILED_TEXT, ALERT_DECODE_ERROR_TEXT, ALERT_EMPTY_TEXT,
@@ -26,13 +26,13 @@ from database.study_models import Study
 from database.survey_models import Survey
 from database.system_models import FileAsText
 from database.user_models import Researcher, StudyRelation
-from libs import sentry
 from libs.copy_study import copy_study_from_json, format_study, unpack_json_study
 from libs.firebase_config import get_firebase_credential_errors, update_firebase_instance
 from libs.http_utils import checkbox_to_boolean, string_to_int
 from libs.internal_types import ResearcherRequest
 from libs.sentry import make_error_sentry, SentryTypes
 from libs.timezone_dropdown import ALL_TIMEZONES_DROPDOWN
+
 
 ####################################################################################################
 ###################################### Helpers #####################################################
@@ -191,7 +191,7 @@ def elevate_researcher(request: ResearcherRequest):
         int(researcher_pk)
     except ValueError:
         return abort(400)
-
+    
     study_pk = request.POST.get("study_id", None)
     assert_admin(request, study_pk)
     edit_researcher = Researcher.get_or_404(pk=researcher_pk)
@@ -201,7 +201,7 @@ def elevate_researcher(request: ResearcherRequest):
         return abort(403)
     StudyRelation.objects.filter(researcher=edit_researcher, study=study) \
         .update(relationship=ResearcherRole.study_admin)
-
+    
     return redirect(
         request.POST.get("redirect_url", None) or f'/edit_researcher/{researcher_pk}'
     )
@@ -314,13 +314,13 @@ def create_study(request: ResearcherRequest):
     forest_enabled = request.POST.get('forest_enabled', "").lower() == 'true'
     
     if len(name) > 5000:
-        if not sentry.FORCE_SENTRY_OFF:  # raising this
+        if not RUNNING_TEST_OR_IN_A_SHELL:
             with make_error_sentry(SentryTypes.elastic_beanstalk):
                 raise Exception("Someone tried to create a study with a suspiciously long name.")
         return abort(400)
     
     if escape(name) != name:
-        if not sentry.FORCE_SENTRY_OFF:
+        if not RUNNING_TEST_OR_IN_A_SHELL:
             with make_error_sentry(SentryTypes.elastic_beanstalk):
                 raise Exception("Someone tried to create a study with unsafe characters in its name.")
         return abort(400)
