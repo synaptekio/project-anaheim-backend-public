@@ -52,7 +52,7 @@ serverurl = http://127.0.0.1:50001
 [program:celery_processing]
 # the queue and app names are declared in constants.py.
 directory = /home/ubuntu/beiwe-backend/
-command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_data_processing worker -Q data_processing --loglevel=info -Ofair --hostname=%%h_processing
+command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_data_processing worker -Q data_processing --loglevel=info -Ofair --hostname=%%h_processing --autoscale=10,2
 stdout_logfile = /home/ubuntu/celery_processing.log
 stderr_logfile = /home/ubuntu/celery_processing.log
 autostart = true
@@ -65,7 +65,7 @@ startsecs = 5
 [program:celery_forest]
 # the queue and app names are declared in constants.py.
 directory = /home/ubuntu/beiwe-backend/
-command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_forest worker -Q forest_queue --loglevel=info -Ofair --hostname=%%h_forest
+command = /home/ubuntu/.pyenv/versions/beiwe/bin/python -m celery -A services.celery_forest worker -Q forest_queue --loglevel=info -Ofair --hostname=%%h_forest --autoscale=10,2
 stdout_logfile = /home/ubuntu/celery_forest.log
 stderr_logfile = /home/ubuntu/celery_forest.log
 autostart = true

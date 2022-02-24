@@ -64,7 +64,7 @@ CONCURRENT_NETWORK_OPS = getenv("CONCURRENT_NETWORK_OPS") or cpu_count() * 2
 # therefore S3 costs), but will use more memory. Individual file size ranges from bytes to tens of
 # megabytes, so memory usage can be spikey and difficult to predict.
 #   Expects an integer number.
-FILE_PROCESS_PAGE_SIZE = getenv("FILE_PROCESS_PAGE_SIZE", 250)
+FILE_PROCESS_PAGE_SIZE = getenv("FILE_PROCESS_PAGE_SIZE", 100)
 
 #
 # Push Notification directives
