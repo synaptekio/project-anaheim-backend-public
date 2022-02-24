@@ -8,7 +8,6 @@ from kombu.exceptions import OperationalError
 
 from constants.celery_constants import (CELERY_CONFIG_LOCATION, DATA_PROCESSING_CELERY_SERVICE,
     FOREST_SERVICE, PUSH_NOTIFICATION_SEND_SERVICE)
-from constants.common_constants import RUNNING_TEST_OR_IN_A_SHELL
 
 
 def safe_apply_async(a_task_for_a_celery_queue, *args, **kwargs):
@@ -25,7 +24,7 @@ def safe_apply_async(a_task_for_a_celery_queue, *args, **kwargs):
             return a_task_for_a_celery_queue.apply_async(*args, **kwargs)
         except OperationalError:
             # after 4+ years in production this strategy works perfectly.  Cool.
-            if i >= 3:  
+            if i >= 3:
                 raise
 
 
@@ -69,11 +68,19 @@ class FalseCeleryApp:
 # Connections to Celery (or FalseCeleryApps if Celery is not present)
 #
 
-def instantiate_celery_app_connection(service_name: str) -> Celery or FalseCeleryApp:
-    # the location of the manager_ip credentials file is in the folder above the project folder.
-    if RUNNING_TEST_OR_IN_A_SHELL:
-        return FalseCeleryApp
+FORCE_CELERY_OFF = False
 
+
+def instantiate_celery_app_connection(service_name: str) -> Celery or FalseCeleryApp:
+    # this isn't viable because it breaks watch_processing (etc), because the celery.task.inspect
+    # call will time out if no Celery object has been instantiated with credentials.
+    # if RUNNING_TEST_OR_IN_A_SHELL:
+    # return FalseCeleryApp
+    
+    if FORCE_CELERY_OFF:
+        return FalseCeleryApp
+    
+    # the location of the manager_ip credentials file is in the folder above the project folder.
     try:
         with open(CELERY_CONFIG_LOCATION, 'r') as f:
             manager_ip, password = f.read().splitlines()
@@ -104,9 +111,8 @@ forest_celery_app = instantiate_celery_app_connection(FOREST_SERVICE)
 def inspect():
     """ Inspect is annoyingly unreliable and has a default 1 second timeout.
         Will error if executed while a FalseCeleryApp is in use. """
-    if RUNNING_TEST_OR_IN_A_SHELL:
-        return []
-
+    
+    # this function intentionally breaks if you every instantiated a false celery app
     if (
         isinstance(processing_celery_app, FalseCeleryApp)
         or isinstance(push_send_celery_app, FalseCeleryApp)
@@ -186,9 +192,6 @@ def _get_job_ids(celery_query_dict, celery_app_suffix):
           'redelivered': False},
          'worker_pid': 27292}]}
     """
-    
-    if RUNNING_TEST_OR_IN_A_SHELL:
-        return []
     
     # for when celery isn't running
     if celery_query_dict is None:
