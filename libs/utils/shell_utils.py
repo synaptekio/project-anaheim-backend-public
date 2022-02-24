@@ -1,4 +1,4 @@
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timedelta
 from pprint import pprint
 from time import sleep
@@ -57,28 +57,6 @@ def status():
         sorted(Counter(FileToProcess.objects.values_list("participant__patient_id", flat=True))
                .most_common(), key=lambda x: x[1])
     )
-
-
-def remove_duplicate_ftps():
-    # removes any duplicate files to process
-    path_counter = defaultdict(list)
-    
-    for p in Participant.objects.all():
-        for path, pk in p.files_to_process.values_list("s3_file_path", "pk").order_by("pk"):
-            path_counter[path].append(pk)
-    
-    pks_to_delete = []
-    for path, pks in dict(path_counter).items():
-        if len(pks) in (1,0):
-            continue
-        
-        pks.pop(0)
-        pks_to_delete.extend(pks)
-    
-    y_n = input(f"delete {len(pks_to_delete)} duplicate uploads? y/n: ")
-    if y_n == "y":
-        ret = FileToProcess.objects.filter(pk__in=pks_to_delete).delete()
-        pprint(ret)
 
 
 def watch_processing():
