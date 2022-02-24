@@ -18,7 +18,7 @@ from database.tableau_api_models import ForestTask
 from database.user_models import Participant
 from forms.django_forms import CreateTasksForm
 from libs.http_utils import easy_url
-from libs.internal_types import ResearcherRequest
+from libs.internal_types import ParticipantQuerySet, ResearcherRequest
 from libs.streaming_zip import zip_generator
 from libs.utils.date_utils import daterange
 from middleware.abort_middleware import abort
@@ -29,8 +29,8 @@ from serializers.forest_serializers import ForestTaskCsvSerializer, ForestTaskSe
 @authenticate_researcher_study_access
 @forest_enabled
 def analysis_progress(request: ResearcherRequest, study_id=None):
-    study = Study.objects.get(pk=study_id)
-    participants = Participant.objects.filter(study=study_id)
+    study: Study = Study.objects.get(pk=study_id)
+    participants: ParticipantQuerySet = Participant.objects.filter(study=study_id)
     
     # generate chart of study analysis progress logs
     trackers = ForestTask.objects.filter(participant__in=participants).order_by("created_on")
@@ -42,28 +42,28 @@ def analysis_progress(request: ResearcherRequest, study_id=None):
     # by participant and tree, and tracks the metadata
     params = dict()
     results = defaultdict(lambda: "--")
+    tracker: ForestTask
     for tracker in trackers:
         for date in daterange(tracker.data_date_start, tracker.data_date_end, inclusive=True):
             results[(tracker.participant_id, tracker.forest_tree, date)] = tracker.status
-            if tracker.status == tracker.Status.success:
+            if tracker.status == tracker.status.success:
                 params[(tracker.participant_id, tracker.forest_tree, date)] = tracker.forest_param_id
             else:
                 params[(tracker.participant_id, tracker.forest_tree, date)] = None
     
     # generate the date range for charting
     dates = list(daterange(start_date, end_date, inclusive=True))
-    chart_columns = ["participant", "tree"] + dates
-    chart = []
     
+    chart = []
     for participant in participants:
         for tree in ForestTree.values():
             row = [participant.patient_id, tree] + \
                 [results[(participant.id, tree, date)] for date in dates]
             chart.append(row)
     
-    params_conflict = False
     # ensure that within each tree, only a single set of param values are used (only the most recent runs
     # are considered, and unsuccessful runs are assumed to invalidate old runs, clearing params)
+    params_conflict = False
     for tree in set([k[1] for k in params.keys()]):
         if len(set([m for k, m in params.items() if m is not None and k[1] == tree])) > 1:
             params_conflict = True
@@ -74,7 +74,7 @@ def analysis_progress(request: ResearcherRequest, study_id=None):
         'forest/analysis_progress.html',
         context=dict(
             study=study,
-            chart_columns=chart_columns,
+            chart_columns=["participant", "tree"] + dates,
             status_choices=ForestTaskStatus,
             params_conflict=params_conflict,
             start_date=start_date,
