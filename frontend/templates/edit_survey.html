@@ -67,7 +67,7 @@
     </div>
     
     <div class="row well well-sm col-xs-12">
-      <div class="col-xs-12">
+      <div class="col-xs-12 margin-bottom-1">
         {% if not survey.name %}
           <h3 style="color: gray"> Unnamed Survey </h3>
         {% else %}
@@ -83,6 +83,9 @@
           <button class="btn btn-warning" type="submit">Update Survey Name</button>
         </div>
       </form>
+      <div class="text-center">
+        <i> The survey name is not visible to the study participant.</i>
+      </div>
     </div>
  
     <hr>
