@@ -8,7 +8,7 @@ $(document).ready(function(){
             // Format the second column (index 1) to be a link to the View Participant page
             {"targets": 1, "render": function(data, type, row, meta) {
                 if(type === 'display') {
-                    data = '<b><a href="/view_study/' + studyId + '/participant/' + data + '">' + data + '</a></b>'
+                    data = '<b><a class="link-fill" href="/view_study/' + studyId + '/participant/' + data + '">' + data + '</a></b>'
                 }
                 return data;
             }},

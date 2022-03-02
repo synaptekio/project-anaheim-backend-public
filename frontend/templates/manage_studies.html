@@ -38,12 +38,12 @@
       <tbody>
         <tr ng-repeat="study in filterableObjects | filter:{name: studyFilterText}">
           <td>
-            <a class="bold text-blackish" href="/view_study/{% raw %}{{ study.id }}{% endraw %}">
+            <a class="bold text-blackish link-fill" href="/view_study/{% raw %}{{ study.id }}{% endraw %}" >
                {% raw %}{{ study.name }}{% endraw %}
             </a>
           </td>
-          <td><a href="/edit_study/{% raw %}{{ study.id }}{% endraw %}">Edit study</a></td>
-          <td><a href="/dashboard/{% raw %}{{ study.id }}{% endraw %}">Dashboard</a></td>
+          <td><a class="link-fill" href="/edit_study/{% raw %}{{ study.id }}{% endraw %}">Edit study</a></td>
+          <td><a class="link-fill" href="/dashboard/{% raw %}{{ study.id }}{% endraw %}">Dashboard</a></td>
         </tr>
       </tbody>
     </table>

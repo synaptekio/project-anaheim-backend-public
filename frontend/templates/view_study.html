@@ -123,19 +123,29 @@
             <div class="col-xs-12">
               <a href="/edit_survey/{{study_id}}/{{info["id"] }}" class="list-group-item survey-button-margins row">  
                 {% if info["name"] != "" %}
-                  <span class="col-xs-9 row"> {{info["name"]}} </span>
+                  <span class="col-xs-9 row">
+                    {{info["name"]}} 
+                  </span>
                 {% else %}
-                  <span class="col-xs-9 row" style="color:gray;"> (Unnamed Survey) </span>
+                  <span class="col-xs-9 row" style="color:gray;">
+                    (Unnamed Survey)
+                  </span>
                 {% endif %}
                 
                 {# stick these metadata into a small table so we can stack them #}
-                <table class="pull-right survey-inline-table survey-micro-label">
-                  <tr> <td>
-                    <span> Survey ID #{{info["object_id"]}} </span>
-                  </td> </tr>
-                  <tr> <td>
-                    <span> Updated: {{info["last_updated"]}} </span>
-                  </td></tr>
+                <table class="survey-inline-table pull-right">
+                  <div class="col-xs-3">
+                    <tr>
+                      <td>
+                        <span class="survey-micro-label"> Survey ID #{{info["object_id"]}} </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span class="survey-micro-label"> Updated: {{info["last_updated"]}} </span>
+                      </td>
+                    </tr>
+                  </div>
                 </table>
                 </a>
             </div>
