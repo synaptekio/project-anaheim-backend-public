@@ -7,7 +7,7 @@ from django.db.models.fields import BooleanField
 from django.db.models.functions.text import Lower
 from django.db.models.query import Prefetch
 from django.db.models.query_utils import Q
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -43,7 +43,7 @@ def study_participants_api(request: ResearcherRequest, study_id: int):
         "recordsFiltered": filtered_participants_count,
         "data": data
     }
-    return HttpResponse(json.dumps(table_data), status=200)
+    return JsonResponse(table_data, status=200)
 
 
 @require_http_methods(['GET', 'POST'])

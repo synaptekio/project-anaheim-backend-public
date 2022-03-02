@@ -62,58 +62,85 @@
   </ol>
 
   <div class="container">
-    <div class="span12">
-      <div class="row">
-        <h2>Edit Survey</h2>
-        <p>ID: {{ survey.object_id }}</p>
-        <p>Your changes will not be saved until you click "Save and Deploy."</p>
-        <button type="submit" class="btn btn-success btn-lg save_and_deploy_button" onclick="end('{{ domain_name }}'); return false;">
-          <span class="glyphicon glyphicon-upload"></span> Save & Deploy
-        </button>
+    <div class="row">
+      <h2>Edit Survey</h2>
+    </div>
+    
+    <div class="row well well-sm col-xs-12">
+      <div class="col-xs-12">
+        {% if not survey.name %}
+          <h3 style="color: gray"> Unnamed Survey </h3>
+        {% else %}
+          <h3> {{ survey.name }} </h3>
+        {% endif %}
       </div>
 
-      <hr>
-      {% include 'survey_schedule.html' %}
+      <form action="/rename_survey/{{ study.id }}/{{ survey.id }}" method="post">
+        <div class="col-xs-10">
+          <input type="text" name="survey_name" value="{{ survey.name }}" class="form-control">
+        </div>
+        <div class="col-xs-2">
+          <button class="btn btn-warning" type="submit">Update Survey Name</button>
+        </div>
+      </form>
+    </div>
+ 
+    <hr>
+    {% include 'survey_schedule.html' %}
+    <div id="surveySchedule"></div>
+    <hr>
 
-      <div id="surveySchedule"></div>
+    {% if survey.survey_type == "tracking_survey" %}
+      <div class="row">
 
-      <hr>
-
-      {% if survey.survey_type == "tracking_survey" %}
-        <div class="row">
+        <div class="col-xs-2 margin-bottom-2">
           <h3>Questions</h3>
-          <question-summary></question-summary>
-          <br>
-          <button type="button" class="btn btn-info btn-lg" ng-click="surveyBuilder.resetQuestionModal();">
-            <span class="glyphicon glyphicon-plus"></span> Add Question
-          </button>
-          <br>
-          <br>
-          <div class="checkbox">
-            <label>
-              <input type="checkbox" name="randomize" id="randomize" ng-model="surveyBuilder.randomize">
-              <b>Randomize</b> which questions are displayed each time the participant takes a survey. This also randomizes the order in which the questions are displayed. It also causes the survey to ignore all question display logic so that all questions have an equal chance of appearing.
-            </label>
+        </div>
+          <div class="col-xs-8 h3-margins text-right margin-top-2">
+            Your changes will not be saved until you click "Save and Deploy."
           </div>
-          <div ng-if="surveyBuilder.randomize">
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" name="randomize_with_memory" id="randomize_with_memory"
-                       ng-model="surveyBuilder.randomizeWithMemory">
-                <b>Randomize without replacement</b>, i.e., on each survey, only display questions that haven't appeared
-                yet on a previous survey, until all questions have appeared in a survey, and then start over
-              </label>
-            </div>
-            <div class="form-group form-inline">
-              <input type="number" name="number_of_random_questions" id="number_of_random_questions" class="form-control" ng-model="surveyBuilder.numberOfRandomQuestions">
-              <b>How many questions</b> are displayed in each survey, out of the <b>{% raw %}{{ surveyBuilder.questions.length }}{% endraw %} questions currently</b> in the question bank for this survey
-            </div>
+          <div class="col-xs-2 margin-left-3 margin-top-1">
+            <button type="submit" class="btn btn-success btn-lg" onclick="end('{{ domain_name }}'); return false;">
+              <span class="glyphicon glyphicon-upload"></span> Save & Deploy
+            </button>
           </div>
         </div>
-        {#   add ability to make the tracking surveys always accessible    #}
-        <input type="checkbox" name="always_available" id="always_available"
-            {% if survey.settings['always_available'] %} checked {% endif %}>
-        <label for="always_available"><b> Make tracking survey always available</b> </label> if checked, the survey will be available to the participants at all times regardless of schedule <br>
+
+        <question-summary></question-summary>
+        <br>
+        <button type="button" class="btn btn-info btn-lg" ng-click="surveyBuilder.resetQuestionModal();">
+          <span class="glyphicon glyphicon-plus"></span> Add Question
+        </button>
+        <br>
+        <br>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" name="randomize" id="randomize" ng-model="surveyBuilder.randomize">
+            <b>Randomize</b> which questions are displayed each time the participant takes a survey. This also randomizes the order in which the questions are displayed. It also causes the survey to ignore all question display logic so that all questions have an equal chance of appearing.
+          </label>
+        </div>
+
+        <div ng-if="surveyBuilder.randomize">
+          <div class="checkbox">
+            <label>
+              <input type="checkbox" name="randomize_with_memory" id="randomize_with_memory"
+                     ng-model="surveyBuilder.randomizeWithMemory">
+              <b>Randomize without replacement</b>, i.e., on each survey, only display questions that haven't appeared
+                yet on a previous survey, until all questions have appeared in a survey, and then start over
+            </label>
+          </div>
+          <div class="form-group form-inline">
+            <input type="number" name="number_of_random_questions" id="number_of_random_questions" class="form-control" ng-model="surveyBuilder.numberOfRandomQuestions">
+            <b>How many questions</b> are displayed in each survey, out of the <b>{% raw %}{{ surveyBuilder.questions.length }}{% endraw %} questions currently</b> in the question bank for this survey
+          </div>
+        </div>
+      </div>
+      {#   add ability to make the tracking surveys always accessible    #}
+      <input {% if survey.settings['always_available'] %} checked {% endif %}
+             type="checkbox" name="always_available" id="always_available">
+        <label for="always_available"><b> Make tracking survey always available</b></label>
+        if checked, the survey will be available to the participants at all times regardless of schedule
+        <br>
       {% elif survey.survey_type == "audio_survey" %}
         <div class="row">
           <h3>Voice Recording Prompt</h3>
@@ -166,7 +193,7 @@
       <hr><br>
 
       <div class="row">
-        <button type="submit" class="btn btn-success btn-lg save_and_deploy_button" onclick="end('{{ domain_name }}'); return false;">
+        <button type="submit" class="btn btn-success btn-lg" onclick="end('{{ domain_name }}'); return false;">
           <span class="glyphicon glyphicon-upload"></span> Save & Deploy
         </button>
         <a class="btn btn-lg btn-danger pull-right" href="/delete_survey/{{ study.id }}/{{ survey.id }}" onclick="return confirm('Are you sure you want to delete this survey? The survey questions will be lost forever, and if you want them back, you will have to re-create the survey from scratch. Also, people in the study will no longer get notifications for this survey or be able to answer it.')">

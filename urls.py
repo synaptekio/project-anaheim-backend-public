@@ -267,7 +267,11 @@ urlpatterns = [
         'update_survey/<str:study_id>/<str:survey_id>',
         survey_api.update_survey,
         name="survey_api.update_survey"),
-    
+    path(
+        'rename_survey/<str:study_id>/<str:survey_id>',
+        survey_api.rename_survey,
+        name="survey_api.rename_survey"),
+
     # survey designer
     path(
         'edit_survey/<str:study_id>/<str:survey_id>',

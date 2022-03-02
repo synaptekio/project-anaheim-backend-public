@@ -3,10 +3,11 @@ import json
 from django.contrib import messages
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from authentication.admin_authentication import authenticate_researcher_study_access
 from database.schedule_models import AbsoluteSchedule, RelativeSchedule, WeeklySchedule
+from database.study_models import Study
 from database.survey_models import Survey
 from libs.internal_types import ResearcherRequest
 from libs.json_logic import do_validate_survey
@@ -42,6 +43,16 @@ def delete_survey(request: ResearcherRequest, study_id=None, survey_id=None):
 ################################################################################
 ############################# Setters and Editors ##############################
 ################################################################################
+
+
+@require_http_methods(['GET', 'POST'])
+@authenticate_researcher_study_access
+def rename_survey(request: ResearcherRequest, study_id: int = None, survey_id: int = None):
+    study = get_object_or_404(Study, id=study_id)
+    survey = get_object_or_404(Survey, study=study, id=survey_id)
+    survey_name = request.POST.get("survey_name", "")
+    survey.update(name=survey_name)  # django escapes content shoved into a string
+    return redirect(f'/edit_survey/{study_id}/{survey_id}')
 
 
 @require_POST
