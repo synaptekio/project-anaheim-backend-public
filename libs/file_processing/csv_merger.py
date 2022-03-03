@@ -16,7 +16,7 @@ from libs.file_processing.utility_functions_simple import (compress,
 from libs.s3 import s3_retrieve
 
 
-class PrepareDataForeUpload:
+class CsvMerger:
     """ This class is consumes binified data and  """
     
     def __init__(self, binified_data: Dict, error_handler: ErrorHandler, survey_id_dict: Dict):
