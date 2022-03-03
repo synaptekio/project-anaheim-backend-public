@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import Tuple
+
 from django.core.validators import MinLengthValidator
 from django.db import models
 from django.db.models import F, Func
 from django.db.models.query import QuerySet
 
+from constants.participant_constants import OS_TYPE_CHOICES
 from constants.researcher_constants import ResearcherRole
 from database.common_models import UtilityModel
 from database.models import TimestampedModel
@@ -31,16 +33,12 @@ class AbstractPasswordUser(TimestampedModel):
     
     # This stub function declaration is present because it is used in the set_password funcion below
     def generate_hash_and_salt(self, password):
-        """
-        Generate a password hash and random salt from a given password. This is different
-        for different types of APUs, depending on whether they use mobile or web.
-        """
+        """ Generate a password hash and random salt from a given password. This is different
+        for different types of APUs, depending on whether they use mobile or web. """
         raise NotImplementedError
     
     def set_password(self, password: str):
-        """
-        Sets the instance's password hash to match the hash of the provided string.
-        """
+        """ Sets the instance's password hash to match the hash of the provided string. """
         password_hash, salt = self.generate_hash_and_salt(password.encode())
         # march 2020: this started failing when running postgres in a local environment.  There
         # appears to be some extra type conversion going on, characters are getting expanded when
@@ -52,17 +50,13 @@ class AbstractPasswordUser(TimestampedModel):
         self.save()
     
     def reset_password(self):
-        """
-        Resets the patient's password to match an sha256 hash of a randomly generated string.
-        """
+        """ Resets the patient's password to match an sha256 hash of a randomly generated string. """
         password = generate_easy_alphanumeric_string()
         self.set_password(password)
         return password
     
     def validate_password(self, compare_me):
-        """
-        Checks if the input matches the instance's password hash.
-        """
+        """ Checks if the input matches the instance's password hash. """
         return compare_password(compare_me.encode(), self.salt.encode(), self.password.encode())
     
     def as_unpacked_native_python(self, remove_timestamps=True):
@@ -79,21 +73,9 @@ class AbstractPasswordUser(TimestampedModel):
 
 
 class Participant(AbstractPasswordUser):
-    """
-    The Participant database object contains the password hashes and unique usernames of any
+    """ The Participant database object contains the password hashes and unique usernames of any
     participants in the study, as well as information about the device the participant is using.
-    A Participant uses mobile, so their passwords are hashed accordingly.
-    """
-    
-    IOS_API = "IOS"
-    ANDROID_API = "ANDROID"
-    NULL_OS = ''
-    
-    OS_TYPE_CHOICES = (
-        (IOS_API, IOS_API),
-        (ANDROID_API, ANDROID_API),
-        (NULL_OS, NULL_OS),
-    )
+    A Participant uses mobile, so their passwords are hashed accordingly. """
     
     patient_id = models.CharField(
         max_length=8, unique=True, validators=[ID_VALIDATOR],

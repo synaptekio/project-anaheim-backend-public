@@ -9,6 +9,7 @@ from config.django_settings import STATIC_ROOT
 from constants.celery_constants import ScheduleTypes
 from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.forest_constants import ForestTree
+from constants.participant_constants import ANDROID_API, IOS_API
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
@@ -217,7 +218,7 @@ class ReferenceObjectMixin:
     def generate_participant(self, study: Study, patient_id: str = None, ios=False, device_id=None):
         participant = Participant(
             patient_id=patient_id or generate_easy_alphanumeric_string(),
-            os_type=Participant.IOS_API if ios else Participant.ANDROID_API,
+            os_type=IOS_API if ios else ANDROID_API,
             study=study,
             device_id=device_id or self.DEFAULT_PARTICIPANT_DEVICE_ID,
         )

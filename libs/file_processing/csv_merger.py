@@ -42,6 +42,8 @@ class CsvMerger:
             len(self.failed_ftps), self.earliest_time_bin, self.latest_time_bin
     
     def iterate(self):
+        # this function is the core loop. we iterate over all binified data and merge data into new
+        # chunks, then handle ChunkRegistry parameter setup for the next stage of processing.
         for data_bin, (data_rows_list, ftp_list) in self.binified_data.items():
             with self.error_handler:
                 self.inner_iterate(data_bin, data_rows_list, ftp_list)

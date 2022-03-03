@@ -9,17 +9,18 @@ from django.core.exceptions import ValidationError
 from config.settings import CONCURRENT_NETWORK_OPS, FILE_PROCESS_PAGE_SIZE
 from constants.data_stream_constants import (ACCELEROMETER, ANDROID_LOG_FILE, CALL_LOG, IDENTIFIERS,
     SURVEY_DATA_FILES, SURVEY_TIMINGS, WIFI)
+from constants.participant_constants import ANDROID_API
 from database.data_access_models import ChunkRegistry, FileToProcess
 from database.system_models import FileProcessLock
 from database.user_models import Participant
 from libs.file_processing.batched_network_operations import batch_upload
+from libs.file_processing.csv_merger import CsvMerger
 from libs.file_processing.data_fixes import (fix_app_log_file, fix_call_log_csv, fix_identifier_csv,
     fix_survey_timings, fix_wifi_csv)
 from libs.file_processing.data_qty_stats import calculate_data_quantity_stats
 from libs.file_processing.exceptions import BadTimecodeError, ProcessingOverlapError
 from libs.file_processing.file_for_processing import FileForProcessing
-from libs.file_processing.csv_merger import CsvMerger
-from libs.file_processing.utility_functions_csvs import (clean_java_timecode, csv_to_list)
+from libs.file_processing.utility_functions_csvs import clean_java_timecode, csv_to_list
 from libs.file_processing.utility_functions_simple import (binify_from_timecode,
     resolve_survey_id_from_file_name)
 
@@ -300,7 +301,7 @@ def process_csv_data(file_for_processing: FileForProcessing):
         catches csv files with known problems and runs the correct logic.
         Returns None If the csv has no data in it. """
     
-    if file_for_processing.file_to_process.participant.os_type == Participant.ANDROID_API:
+    if file_for_processing.file_to_process.participant.os_type == ANDROID_API:
         # Do fixes for Android
         if file_for_processing.data_type == ANDROID_LOG_FILE:
             file_for_processing.file_contents = fix_app_log_file(

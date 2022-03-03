@@ -10,10 +10,10 @@ from constants.data_processing_constants import CHUNK_TIMESLICE_QUANTUM, CHUNKS_
 from constants.data_stream_constants import (CHUNKABLE_FILES, IDENTIFIERS,
     REVERSE_UPLOAD_FILE_TYPE_MAPPING)
 from constants.datetime_constants import API_TIME_FORMAT
+from constants.participant_constants import OS_TYPE_CHOICES
 from database.models import TimestampedModel
 from database.study_models import Study
 from database.user_models import Participant
-from database.validators import LengthValidator
 from libs.s3 import s3_list_files, s3_retrieve
 from libs.security import chunk_hash
 
@@ -22,30 +22,9 @@ class UnchunkableDataTypeError(Exception): pass
 class ChunkableDataTypeError(Exception): pass
 
 
-class PipelineRegistry(TimestampedModel):
-    study = models.ForeignKey(
-        'Study', on_delete=models.PROTECT, related_name='pipeline_registries', db_index=True
-    )
-    participant = models.ForeignKey(
-        'Participant', on_delete=models.PROTECT, related_name='pipeline_registries', db_index=True
-    )
-    data_type = models.CharField(max_length=256, db_index=True)
-    processed_data = JSONField(null=True, blank=True)
-    uploaded_at = models.DateTimeField(db_index=True)
-    
-    @classmethod
-    def register_pipeline_data(cls, study, participant_id, data, data_type):
-        cls.objects.create(
-            study=study,
-            participant_id=participant_id,
-            processed_data=data,
-            data_type=data_type,
-            uploaded_at=datetime.utcnow(),
-        )
-
-
 class ChunkRegistry(TimestampedModel):
     # this is declared in the abstract model but needs to be indexed for pipeline queries.
+    # TODO: remove this db_index? it doesn't harm anything...
     last_updated = models.DateTimeField(auto_now=True, db_index=True)
     is_chunkable = models.BooleanField()
     chunk_path = models.CharField(max_length=256, db_index=True, unique=True)
@@ -158,6 +137,7 @@ class FileToProcess(TimestampedModel):
     s3_file_path = models.CharField(max_length=256, blank=False, unique=True)
     study = models.ForeignKey('Study', on_delete=models.PROTECT, related_name='files_to_process')
     participant = models.ForeignKey('Participant', on_delete=models.PROTECT, related_name='files_to_process')
+    os_type = models.CharField(max_length=16, choices=OS_TYPE_CHOICES, blank=False, null=False)
     deleted = models.BooleanField(default=False)
     
     @staticmethod

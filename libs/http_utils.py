@@ -3,7 +3,7 @@ import functools
 from django.http.request import HttpRequest
 from django.urls.base import reverse
 
-from database.user_models import Participant
+from constants.participant_constants import ANDROID_API, IOS_API
 from libs.internal_types import ParticipantRequest
 
 
@@ -49,9 +49,9 @@ def determine_os_api(some_function):
         # naive, could be improved, but sufficient
         url_end = request.path[-4:].lower()
         if "ios" in url_end:
-            kwargs["OS_API"] = Participant.IOS_API
+            kwargs["OS_API"] = IOS_API
         else:
-            kwargs["OS_API"] = Participant.ANDROID_API
+            kwargs["OS_API"] = ANDROID_API
         return some_function(*args, **kwargs)
     
     return provide_os_determination_and_call

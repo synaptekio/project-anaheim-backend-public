@@ -16,10 +16,10 @@ from constants.celery_constants import ANDROID_FIREBASE_CREDENTIALS, IOS_FIREBAS
 from constants.message_strings import (DECRYPTION_KEY_ADDITIONAL_MESSAGE,
     DECRYPTION_KEY_ERROR_MESSAGE, DEVICE_IDENTIFIERS_HEADER, INVALID_EXTENSION_ERROR, NO_FILE_ERROR,
     S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR, UNKNOWN_ERROR)
+from constants.participant_constants import IOS_API
 from database.data_access_models import FileToProcess
 from database.profiling_models import DecryptionKeyError, UploadTracking
 from database.system_models import FileAsText
-from database.user_models import Participant
 from libs.encryption import decrypt_device_file, DecryptionKeyInvalidError, HandledError
 from libs.http_utils import determine_os_api
 from libs.internal_types import ParticipantRequest
@@ -113,7 +113,7 @@ def upload(request: ParticipantRequest, OS_API=""):
             sentry_client = make_sentry_client(SentryTypes.elastic_beanstalk, tags)
             sentry_client.captureMessage(DECRYPTION_KEY_ERROR_MESSAGE)
         
-        if OS_API == Participant.IOS_API:
+        if OS_API == IOS_API:
             # this is an experiment, unlike Android, IOS will reencrypt data with a different key.
             # In an attempt to get ios data of better quality we will reject as 500 error all
             # bad decryption keys sourced from ios.

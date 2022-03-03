@@ -45,7 +45,6 @@ ADMIN_PAGES = {
     '/logout': {'method': 'pass'},
     '/admin': {'method': 'get'},
     '/': {'method': 'get'},
-    '/data-pipeline/<string:study_id>': {'method': 'get_param'},
     '/view_study/<string:study_id>': {'method': 'get_param'},
     '/static/<path:filename>': {'method': 'pass'},
 }

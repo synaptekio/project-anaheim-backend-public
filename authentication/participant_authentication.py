@@ -3,6 +3,7 @@ import functools
 from django.http import UnreadablePostError
 from django.http.request import HttpRequest
 
+from constants.participant_constants import IOS_API
 from database.user_models import Participant
 from libs.internal_types import ParticipantRequest
 from middleware.abort_middleware import abort
@@ -72,7 +73,7 @@ def minimal_validation(some_function) -> callable:
             return some_function(*args, **kwargs)
         
         # ios requires different http codes
-        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
+        is_ios = kwargs.get("OS_API", None) == IOS_API
         return abort(401 if is_ios else 403)
     return authenticate_and_call
 
@@ -94,7 +95,7 @@ def authenticate_participant(some_function) -> callable:
         
         if validate_post(request, require_password=True, validate_device_id=True):
             return some_function(*args, **kwargs)
-        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
+        is_ios = kwargs.get("OS_API", None) == IOS_API
         return abort(401 if is_ios else 403)
     return authenticate_and_call
 
@@ -117,7 +118,7 @@ def authenticate_participant_registration(some_function) -> callable:
         if validate_post(request, require_password=True, validate_device_id=False):
             return some_function(*args, **kwargs)
         
-        is_ios = kwargs.get("OS_API", None) == Participant.IOS_API
+        is_ios = kwargs.get("OS_API", None) == IOS_API
         return abort(401 if is_ios else 403)
     return authenticate_and_call
 

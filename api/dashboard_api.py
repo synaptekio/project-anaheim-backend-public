@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 import pytz
 from django.shortcuts import get_object_or_404, render
-from django.utils.timezone import make_aware
 
 from authentication.admin_authentication import authenticate_researcher_study_access
 from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT
@@ -17,7 +16,7 @@ from database.study_models import Study
 from database.user_models import Participant
 from libs.internal_types import ParticipantQuerySet, ResearcherRequest
 from middleware.abort_middleware import abort
-from libs.utils.dev_utils import p
+
 
 DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be formatted like this: " \
                         f"2010-11-22 ({API_DATE_FORMAT})"
