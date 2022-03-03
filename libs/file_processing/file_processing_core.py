@@ -301,7 +301,7 @@ def process_csv_data(file_for_processing: FileForProcessing):
         catches csv files with known problems and runs the correct logic.
         Returns None If the csv has no data in it. """
     
-    if file_for_processing.file_to_process.participant.os_type == ANDROID_API:
+    if file_for_processing.file_to_process.os_type == ANDROID_API:
         # Do fixes for Android
         if file_for_processing.data_type == ANDROID_LOG_FILE:
             file_for_processing.file_contents = fix_app_log_file(
