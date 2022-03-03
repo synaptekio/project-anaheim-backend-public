@@ -133,7 +133,7 @@ def upload(request: ParticipantRequest, OS_API=""):
                 s3_file_location,
                 participant.study.object_id,
                 participant=participant,
-                os_type=participant.os_type,
+                os_type=OS_API,
             )
         except IntegrityError as e:
             # (This was a ValidationError for ages.) Only handle the unique constraint condition.
@@ -276,7 +276,7 @@ def register_user(request: ParticipantRequest, OS_API=""):
     
     s3_upload(file_name, file_contents, participant.study.object_id)
     FileToProcess.append_file_for_processing(
-        file_name, participant.study.object_id, participant=participant, os_type=participant.os_type
+        file_name, participant.study.object_id, participant=participant, os_type=OS_API
     )
     
     # set up device.
