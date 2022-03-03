@@ -236,8 +236,6 @@ def process_unchunkable_file(file_for_processing: FileForProcessing, ftps_to_rem
             raise
 
 
-
-
 def upload_binified_data(binified_data, error_handler, survey_id_dict):
     """ Takes in binified csv data and handles uploading/downloading+updating
         older data to/from S3 for each chunk.

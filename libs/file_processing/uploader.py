@@ -96,15 +96,16 @@ class PrepareDataForeUpload:
     
     def chunk_not_exists_case(
         self, chunk_path: str, study_object_id: str, updated_header: str, user_id: str,
-        data_type: str, original_header: bytes, time_bin: int, rows
+        data_type: str, original_header: bytes, time_bin: int, rows: List[bytes]
     ):
         ensure_sorted_by_timestamp(rows)
         new_contents = construct_csv_string(updated_header, rows)
         if data_type in SURVEY_DATA_FILES:
             # We need to keep a mapping of files to survey ids, that is handled here.
             survey_id_hash = study_object_id, user_id, data_type, original_header
-            survey_id = Survey.objects.filter(object_id=self.survey_id_dict[survey_id_hash]
-                                             ).values_list("pk", flat=True).get()
+            survey_id = Survey.objects.filter(
+                object_id=self.survey_id_dict[survey_id_hash]
+            ).values_list("pk", flat=True).get()
         else:
             survey_id = None
         
@@ -150,9 +151,7 @@ class PrepareDataForeUpload:
             # happens AND ONE of the files DOES NOT have a header mismatch this may (
             # will?) cause data duplication in the chunked file whenever the file
             # processing occurs run.
-            raise HeaderMismatchException(
-                '%s\nvs.\n%s\nin\n%s' % (old_header, updated_header, chunk_path)
-            )
+            raise HeaderMismatchException(f'{old_header}\nvs.\n{updated_header}\nin\n{chunk_path}')
         
         old_rows = list(old_rows)
         old_rows.extend(rows)
