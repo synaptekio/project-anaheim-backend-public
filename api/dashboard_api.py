@@ -17,7 +17,7 @@ from database.study_models import Study
 from database.user_models import Participant
 from libs.internal_types import ParticipantQuerySet, ResearcherRequest
 from middleware.abort_middleware import abort
-
+from libs.utils.dev_utils import p
 
 DATETIME_FORMAT_ERROR = f"Dates and times provided to this endpoint must be formatted like this: " \
                         f"2010-11-22 ({API_DATE_FORMAT})"
@@ -169,15 +169,13 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
     """ Parses data to be displayed for the singular participant dashboard view """
     study = get_object_or_404(Study, pk=study_id)
     participant = get_object_or_404(Participant, patient_id=patient_id, study_id=study_id)
-    
     # query is optimized for bulk participants, so this is a little weird
     chunk_data = dashboard_chunkregistry_query(participant)
     chunks = chunk_data[participant.patient_id] if participant.patient_id in chunk_data else {}
-    
     # ----------------- dates for bytes data streams -----------------------
     if chunks:
         start, end = extract_date_args_from_request(request)
-        first_day, last_day = dashboard_chunkregistry_date_query(study_id)
+        first_day, last_day = dashboard_chunkregistry_date_query(study_id, participant=participant)
         unique_dates, first_date_data_entry, last_date_data_entry = get_unique_dates(
             start, end, first_day, last_day, chunks
         )
@@ -198,7 +196,6 @@ def dashboard_participant_page(request: ResearcherRequest, study_id, patient_id)
         Participant.objects.filter(study=study_id)
             .exclude(patient_id=patient_id).values_list("patient_id", flat=True)
     )
-    
     return render(
         request,
         'dashboard/participant_dashboard.html',
@@ -369,7 +366,7 @@ def create_next_past_urls(first_day: date, last_day: date, start: datetime, end:
 def get_bytes_data_stream_match(chunks: List[Dict[str, datetime]], a_date: date, stream: str):
     """ Returns byte value for correct chunk based on data stream and type comparisons. """
     return sum(
-        chunk.get("bytes", 0) for chunk in chunks
+        chunk.get("bytes", 0) or 0 for chunk in chunks
         if chunk["time_bin"].date() == a_date and chunk["data_stream"] == stream
     )
 
@@ -382,20 +379,26 @@ def get_bytes_date_match(stream_data: List[Dict[str, datetime]], a_date: date) -
     )
 
 
-def dashboard_chunkregistry_date_query(study_id: int, data_stream: str = None):
+def dashboard_chunkregistry_date_query(
+    study_id: int, data_stream: str = None, participant: Participant = None
+):
     """ Gets the first and last days in the study excluding 1/1/1970 bc that is obviously an error
     and makes the frontend annoying to use """
-    unix_epoch_start_sorta = make_aware(datetime(1970, 1, 2), pytz.utc)
+    earlist_possible_data = datetime(year=2014, month=8, day=1, tzinfo=pytz.utc)  # beiwe launch date
     kwargs = {"study_id": study_id}
     if data_stream:
         kwargs["data_type"] = data_stream
+    if participant:
+        kwargs["participant"] = participant
     
     # this process as queries with .first() and .last() is slow even as size of all_time_bins grows.
     all_time_bins: List[datetime] = list(
-        ChunkRegistry.objects.filter(**kwargs).exclude(time_bin__lt=unix_epoch_start_sorta)
-        .order_by("time_bin").values_list("time_bin", flat=True)
+        ChunkRegistry.objects.filter(**kwargs)
+        .exclude(time_bin__lt=earlist_possible_data)
+        .order_by("time_bin")
+        .values_list("time_bin", flat=True)
     )
-    
+
     # default behavior for 1 or 0 time_bins
     if len(all_time_bins) < 1:
         return None, None
