@@ -137,7 +137,7 @@ class FileToProcess(TimestampedModel):
     s3_file_path = models.CharField(max_length=256, blank=False, unique=True)
     study = models.ForeignKey('Study', on_delete=models.PROTECT, related_name='files_to_process')
     participant = models.ForeignKey('Participant', on_delete=models.PROTECT, related_name='files_to_process')
-    os_type = models.CharField(max_length=16, choices=OS_TYPE_CHOICES, blank=False, null=False)
+    os_type = models.CharField(max_length=16, choices=OS_TYPE_CHOICES, blank=True, null=False, default="")
     deleted = models.BooleanField(default=False)
     
     @staticmethod

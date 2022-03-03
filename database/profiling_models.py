@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Dict, List
 
 from django.db import models
 from django.utils import timezone
@@ -29,7 +30,7 @@ class LineEncryptionError(TimestampedModel):
     MALFORMED_CONFIG = "MALFORMED_CONFIG"
     MP4_PADDING = "MP4_PADDING"
     PADDING_ERROR = "PADDING_ERROR"
-
+    
     ERROR_TYPE_CHOICES = (
         (AES_KEY_BAD_LENGTH, AES_KEY_BAD_LENGTH),
         (EMPTY_KEY, EMPTY_KEY),
@@ -42,7 +43,7 @@ class LineEncryptionError(TimestampedModel):
         (MALFORMED_CONFIG, MALFORMED_CONFIG),
         (PADDING_ERROR, PADDING_ERROR),
     )
-
+    
     type = models.CharField(max_length=32, choices=ERROR_TYPE_CHOICES)
     line = models.TextField(blank=True)
     base64_decryption_key = models.TextField()
@@ -56,7 +57,7 @@ class DecryptionKeyError(TimestampedModel):
     contents = models.TextField()
     traceback = models.TextField(null=True)
     participant = models.ForeignKey('Participant', on_delete=models.PROTECT, related_name='decryption_key_errors')
-
+    
     def decode(self):
         return decode_base64(self.contents)
     
@@ -90,12 +91,14 @@ class UploadTracking(TimestampedModel):
     def re_add_files_to_process(cls, number=100):
         """ Re-adds the most recent [number] files that have been uploaded recently to FiletToProcess.
             (this is fairly optimized because it is part of debugging file processing) """
+        
         from database.data_access_models import FileToProcess
         uploads = cls.objects.order_by("-created_on").values_list(
             "file_path", "participant__study_id", "participant_id"
         )[:number]
-        new_ftps = []
-        participant_cache = {}  # uhg need to cache participants...
+        new_ftps: List[FileToProcess] = []
+        participant: Participant
+        participant_cache: Dict[Participant] = {}  # uhg need to cache participants...
         for i, (file_path, study_id, participant_id) in enumerate(uploads):
             if participant_id in participant_cache:
                 participant = participant_cache[participant_id]
@@ -113,7 +116,8 @@ class UploadTracking(TimestampedModel):
             new_ftps.append(FileToProcess(
                 s3_file_path=file_path,
                 study_id=study_id,
-                participant=participant
+                participant=participant,
+                os_type=participant.os_type,
             ))
         FileToProcess.objects.bulk_create(
             new_ftps
@@ -180,7 +184,7 @@ class UploadTracking(TimestampedModel):
             data = {filetype: {"megabytes": 0., "count": 0, "users": set()} for filetype in ALL_FILETYPES}
         else:
             data = {filetype: {"megabytes": 0., "count": 0} for filetype in ALL_FILETYPES}
-
+        
         data["totals"] = {}
         data["totals"]["total_megabytes"] = 0
         data["totals"]["total_count"] = 0
@@ -190,31 +194,31 @@ class UploadTracking(TimestampedModel):
         query = UploadTracking.objects.filter(timestamp__gte=days_delta).values(
                 "file_path", "file_size", "participant"
         ).iterator()
-
+        
         for i, upload in enumerate(query):
             # global stats
             data["totals"]["total_count"] += 1
             data["totals"]["total_megabytes"] += upload["file_size"]/ 1024. / 1024.
             data["totals"]["users"].add(upload["participant"])
-
+            
             # get data stream type from file_path (woops, ios log broke this code, fixed)
             path_extraction = upload["file_path"].split("/", 2)[1]
             if path_extraction == "ios":
                 path_extraction = "ios_log"
-
+            
             file_type = UPLOAD_FILE_TYPE_MAPPING[path_extraction]
             # update per-data-stream information
             data[file_type]["megabytes"] += upload["file_size"]/ 1024. / 1024.
             data[file_type]["count"] += 1
-
+            
             if get_usernames:
                 data[file_type]["users"].add(upload["participant"])
             if i % 10000 == 0:
                 print("processed %s uploads..." % i)
-
+        
         data["totals"]["user_count"] = len(data["totals"]["users"])
-
+        
         if not get_usernames:  # purge usernames if we don't need them.
             del data["totals"]["users"]
-
+        
         return data
