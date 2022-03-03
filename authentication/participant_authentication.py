@@ -1,7 +1,6 @@
 import functools
 
 from django.http.request import HttpRequest
-from django.utils.datastructures import MultiValueDict
 
 from database.user_models import Participant
 from libs.internal_types import ParticipantRequest
