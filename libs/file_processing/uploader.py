@@ -77,10 +77,16 @@ class PrepareDataForeUpload:
             # exception was raised gets added to the set of failed FTPs.
             self.failed_ftps.update(ftp_list)
             print(e)
-            print(
-                "FAILED TO UPDATE: study_id:%s, user_id:%s, data_type:%s, time_bin:%s, header:%s " %
-                (study_object_id, user_id, data_type, time_bin, updated_header)
-            )
+            try:
+                print(
+                    f"FAILED TO UPDATE: study_id:{study_object_id}, user_id:{user_id}, "
+                    f"data_type:{data_type}, time_bin:{time_bin}, header:{updated_header}"
+                )
+            except UnboundLocalError:
+                # print something different if a variable is not defined yet
+                for k in ("study_object_id", "user_id", "data_type", "time_bin", "updated_header"):
+                    if k not in locals():
+                        print(f"variable {k} was not defined")
             raise
         
         else:
