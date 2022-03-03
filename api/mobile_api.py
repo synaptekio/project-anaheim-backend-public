@@ -130,7 +130,10 @@ def upload(request: ParticipantRequest, OS_API=""):
         # error so it skips the file, the followup attempt receives 200 code and deletes the file.
         try:
             FileToProcess.append_file_for_processing(
-                s3_file_location, participant.study.object_id, participant=participant
+                s3_file_location,
+                participant.study.object_id,
+                participant=participant,
+                os_type=participant.os_type,
             )
         except IntegrityError as e:
             # (This was a ValidationError for ages.) Only handle the unique constraint condition.
@@ -272,7 +275,9 @@ def register_user(request: ParticipantRequest, OS_API=""):
                       beiwe_version)).encode()
     
     s3_upload(file_name, file_contents, participant.study.object_id)
-    FileToProcess.append_file_for_processing(file_name, participant.study.object_id, participant=participant)
+    FileToProcess.append_file_for_processing(
+        file_name, participant.study.object_id, participant=participant, os_type=participant.os_type
+    )
     
     # set up device.
     participant.device_id = device_id

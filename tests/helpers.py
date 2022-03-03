@@ -9,7 +9,7 @@ from config.django_settings import STATIC_ROOT
 from constants.celery_constants import ScheduleTypes
 from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.forest_constants import ForestTree
-from constants.participant_constants import ANDROID_API, IOS_API
+from constants.participant_constants import ANDROID_API, IOS_API, NULL_OS
 from constants.researcher_constants import ResearcherRole
 from constants.testing_constants import REAL_ROLES, ResearcherRole
 from database.common_models import generate_objectid_string
@@ -239,13 +239,15 @@ class ReferenceObjectMixin:
         return intervention_date
     
     def generate_file_to_process(
-        self, path: str, study: Study = None, participant: Participant = None, deleted: bool = False
+        self, path: str, study: Study = None, participant: Participant = None,
+         deleted: bool = False, os_type: str = NULL_OS,
     ):
         ftp = FileToProcess(
             s3_file_path=path,
             study=study or self._default_study,
             participant=participant or self.default_participant,
             deleted=deleted,
+            os_type=os_type,
         )
         ftp.save()
         return ftp

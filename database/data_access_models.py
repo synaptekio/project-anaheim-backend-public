@@ -233,7 +233,9 @@ class FileToProcess(TimestampedModel):
                 continue
             else:
                 print(f"Adding {fp} as a file to reprocess.")
-                cls.append_file_for_processing(fp, study_obj_id, participant=participant)
+                cls.append_file_for_processing(
+                    fp, study_obj_id, participant=participant, os_type=participant.os_type
+                )
     
     @classmethod
     def report(cls, *args, **kwargs) -> Dict[str, int]:
