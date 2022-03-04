@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 from config.settings import FILE_PROCESS_PAGE_SIZE
 from constants.celery_constants import DATA_PROCESSING_CELERY_QUEUE
 from database.user_models import Participant
-from libs.celery_control import (get_processing_active_job_ids, processing_celery_app,
-    safe_apply_async)
+from libs.celery_control import (FalseCeleryApp, get_processing_active_job_ids,
+    processing_celery_app, safe_apply_async)
 from libs.file_processing.file_processing_core import do_process_user_file_chunks
 from libs.sentry import make_error_sentry, SentryTypes
 
@@ -74,13 +74,13 @@ def celery_process_file_chunks(participant_id):
         error_sentry = make_error_sentry(
             sentry_type=SentryTypes.data_processing, tags={'user_id': participant.patient_id}
         )
-        print("processing files for %s" % participant.patient_id)
+        print("processing files for {participant.patient_id}")
         
         while True:
             previous_number_bad_files = number_bad_files
             starting_length = participant.files_to_process.exclude(deleted=True).count()
             
-            print("%s processing %s, %s files remaining" % (datetime.now(), participant.patient_id, starting_length))
+            print(f"{datetime.now()} processing {participant.patient_id}, {starting_length} files remaining")
             number_bad_files += do_process_user_file_chunks(
                     page_size=FILE_PROCESS_PAGE_SIZE,
                     error_handler=error_sentry,
@@ -101,13 +101,18 @@ def celery_process_file_chunks(participant_id):
             if (time_start - datetime.now()).total_seconds() > 60*60*3:
                 break
     except Exception as e:
+        # raise the exception if not running in celery.
+        if processing_celery_app is FalseCeleryApp:
+            raise
         print(f"Error running data processing: {e}")
     finally:
-        print(
-            "Data processing task completed. Exiting to clean up memory. You can safely ignore the "
-            "immediately following \"Worker exited prematurely: exitcode 0\" error message."
-        )
-        exit(0)
+        if processing_celery_app is not FalseCeleryApp:
+            # exit if running inside celery.
+            print(
+                "Data processing task completed. Exiting to clean up memory. You can safely ignore "
+                "the immediately following \"Worker exited prematurely: exitcode 0\" error message."
+            )
+            exit(0)
 
 
 # and mark it to not retry!

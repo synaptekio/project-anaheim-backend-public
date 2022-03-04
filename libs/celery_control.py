@@ -114,9 +114,9 @@ def inspect():
     
     # this function intentionally breaks if you every instantiated a false celery app
     if (
-        isinstance(processing_celery_app, FalseCeleryApp)
-        or isinstance(push_send_celery_app, FalseCeleryApp)
-        or isinstance(forest_celery_app, FalseCeleryApp)
+        processing_celery_app is FalseCeleryApp
+        or push_send_celery_app is FalseCeleryApp
+        or forest_celery_app is FalseCeleryApp
     ):
         raise CeleryNotRunningException("FalseCeleryApp is in use, this session is not connected to celery.")
     
@@ -139,18 +139,36 @@ def inspect():
 # TODO: where are these string parameters from? Need to instantiate one for Forest. (Probably)
 
 def get_notification_scheduled_job_ids() -> List[int] or None:
+    if push_send_celery_app is FalseCeleryApp:
+        print("call to get_notification_scheduled_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().scheduled(), "notifications")
 def get_notification_reserved_job_ids() -> List[int] or None:
+    if push_send_celery_app is FalseCeleryApp:
+        print("call to get_notification_reserved_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().reserved(), "notifications")
 def get_notification_active_job_ids() -> List[int] or None:
+    if push_send_celery_app is FalseCeleryApp:
+        print("call to get_notification_active_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().active(), "notifications")
 
 # Processing
 def get_processing_scheduled_job_ids() -> List[int] or None:
+    if processing_celery_app is FalseCeleryApp:
+        print("call to get_processing_scheduled_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().scheduled(), "processing")
 def get_processing_reserved_job_ids() -> List[int] or None:
+    if processing_celery_app is FalseCeleryApp:
+        print("call to get_processing_reserved_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().reserved(), "processing")
 def get_processing_active_job_ids() -> List[int] or None:
+    if processing_celery_app is FalseCeleryApp:
+        print("call to get_processing_active_job_ids in FalseCeleryApp, returning []")
+        return []
     return _get_job_ids(inspect().active(), "processing")
 
 
