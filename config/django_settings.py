@@ -170,7 +170,7 @@ if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
                 'sentry':
                     {
                         'level':
-                            'ERROR',  # To capture more than ERROR, change to WARNING, INFO, etc.
+                            'WARNING',  # To capture more than ERROR, change to WARNING, INFO, etc.
                         'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
                         # 'tags': {
                         #     'custom-tag': 'x'
