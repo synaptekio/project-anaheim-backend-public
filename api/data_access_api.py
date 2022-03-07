@@ -167,7 +167,7 @@ def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict =
     chunks = ChunkRegistry.get_chunks_time_range(study_id, **query_dict)
     
     if not registry_dict:
-        return chunks.values(*CHUNK_FIELDS)
+        return chunks.values(*CHUNK_FIELDS).iterator()
     
     # If there is a registry, we need to filter on the chunks
     else:
@@ -184,4 +184,4 @@ def handle_database_query(study_id: int, query_dict: dict, registry_dict: dict =
         ]
         
         # add the exclude and return the queryset
-        return chunks.exclude(pk__in=registered_chunk_pks).values(*CHUNK_FIELDS)
+        return chunks.exclude(pk__in=registered_chunk_pks).values(*CHUNK_FIELDS).iterator()
