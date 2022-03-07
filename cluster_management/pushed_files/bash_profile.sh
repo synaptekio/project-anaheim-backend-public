@@ -89,12 +89,10 @@ alias processing-stop="killall supervisord"
 alias processing-restart="pkill -HUP supervisord"
 
 #Logs
-alias loga='tail -f /var/log/apache2/error.log | cut -d " " -f 4,10-' #tail follow apache log
-alias logao='nano +1000000000 /var/log/apache2/error.log' #open log, go to end
-alias logc='tail -f /home/ubuntu/celery*.log'
-alias logco='nano +1000000000 /home/ubuntu/celery*.log'
+alias log='tail -f /home/ubuntu/celery*.log'
+alias logs='tail -f /home/ubuntu/celery*.log'
+alias logapache='tail -f /var/log/apache2/error.log | cut -d " " -f 4,10-' #tail follow apache log
 alias logd='tail -f /home/ubuntu/supervisor.log'
-alias logdo='nano +1000000000 /home/ubuntu/supervisor.log'
 
 #Configuration files
 alias conf='sudo nano $HOME/beiwe-backend/config/settings.py'

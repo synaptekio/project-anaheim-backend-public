@@ -18,15 +18,20 @@ cd /var/app/current
 alias db='cd /var/app/current; python /var/app/current/manage.py shell_plus'
 alias restart='sudo killall -s 1 supervisord; htop -u apache'
 
-alias log='tail -f /var/log/httpd/* /var/log/cfn-* /var/log/eb-*'
-alias logs='tail -f /var/log/httpd/* /var/log/cfn-* /var/log/eb-*'
+alias log='sudo tail -f /var/log/httpd/access_log /var/log/httpd/error_log /var/log/cfn-* /var/log/eb-* /var/log/messages'
+alias logs='log'
 alias logeb="/var/log/cfn-* /var/log/eb-*"
-alias logc="/var/log/cfn-* /var/log/eb-*"
-alias loghtpd='tail -f /var/log/httpd/*'
+alias loghttpd='tail -f /var/log/httpd/*'
+alias logdjango='sudo tail -f  /var/log/web.stdout.log'
+alias logd='logdjango'
+alias loggunicorn='sudo tail -f /var/log/messages'
+alias logg='loggunicorn'
 
 alias sudo="sudo "
 alias n="nano "
+alias no="nano -Iwn "
 alias sn="sudo nano "
+alias sno="sudo nano -Iwn "
 
 alias pyc='find . -type f -name "*.pyc" -delete -print'
 alias htop="htop -d 5"
@@ -36,6 +41,7 @@ alias uu="cd ../.."
 alias uuu="cd ../../.."
 
 alias ls='ls --color=auto'
+alias l='ls'
 alias la='ls -A'
 alias ll='ls -Alh'
 alias lh='ls -lhX --color=auto'
