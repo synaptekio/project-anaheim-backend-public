@@ -196,12 +196,12 @@ if not DEBUG and SENTRY_ELASTIC_BEANSTALK_DSN:
                         'propagate': True,
                     },
                 'raven': {
-                    'level': 'DEBUG',
+                    'level': 'WARNING',
                     'handlers': ['console'],
                     'propagate': True,
                 },
                 'sentry.errors': {
-                    'level': 'DEBUG',
+                    'level': 'WARNING',
                     'handlers': ['console'],
                     'propagate': True,
                 },
