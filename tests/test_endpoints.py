@@ -18,7 +18,7 @@ from constants.celery_constants import (ANDROID_FIREBASE_CREDENTIALS, BACKEND_FI
     IOS_FIREBASE_CREDENTIALS)
 from constants.common_constants import BEIWE_PROJECT_ROOT
 from constants.dashboard_constants import COMPLETE_DATA_STREAM_DICT
-from constants.data_stream_constants import ALL_DATA_STREAMS, SURVEY_TIMINGS
+from constants.data_stream_constants import ACCELEROMETER, ALL_DATA_STREAMS, SURVEY_TIMINGS
 from constants.datetime_constants import API_DATE_FORMAT
 from constants.message_strings import (NEW_PASSWORD_8_LONG, NEW_PASSWORD_MISMATCH,
     NEW_PASSWORD_RULES_FAIL, PASSWORD_RESET_SUCCESS, TABLEAU_API_KEY_IS_DISABLED,
@@ -408,12 +408,44 @@ class TestDashboardStream(ResearcherSessionTest):
                 self.assert_present(f"There is no data currently available for {title}", html2)
 
 # FIXME: this page renders with almost no data
-class TestPatientDisplay(ResearcherSessionTest):
+class TestDashboardPatientDisplay(ResearcherSessionTest):
     ENDPOINT_NAME = "dashboard_api.dashboard_participant_page"
     
-    def test_patient_display(self):
+    def test_patient_display_no_data(self):
         self.set_session_study_relation()
-        self.smart_get_status_code(200, self.session_study.id, self.default_participant.patient_id)
+        resp = self.smart_get_status_code(200, self.session_study.id, self.default_participant.patient_id)
+        self.assert_present("There is no data currently available for patient1 of Study", resp.content)
+    
+    def test_five_participants_with_data(self):
+        self.set_session_study_relation()
+
+        for i in range(10):
+            self.generate_chunkregistry(
+                self.session_study,
+                self.default_participant,
+                ACCELEROMETER,  # data_stream
+                file_size=123456,
+                time_bin=timezone.localtime().replace(hour=i, minute=0, second=0, microsecond=0),
+            )
+
+        # need to be post and get requests, it was just built that way
+        html1 = self.smart_get_status_code(
+            200, self.session_study.id, self.default_participant.patient_id).content
+        html2 = self.smart_post_status_code(
+            200, self.session_study.id, self.default_participant.patient_id).content
+        title = COMPLETE_DATA_STREAM_DICT[ACCELEROMETER]
+        self.assert_present(title, html1)
+        self.assert_present(title, html2)
+        # test for value of 10x for 1 day of 10 hours of data
+        comma_separated = "1,234,560"
+        for title in COMPLETE_DATA_STREAM_DICT.values():
+            self.assert_present(title, html1)
+            self.assert_present(title, html2)
+        
+        self.assert_present(self.default_participant.patient_id, html1)
+        self.assert_present(self.default_participant.patient_id, html2)
+        self.assert_present(comma_separated, html1)
+        self.assert_present(comma_separated, html2)
 
 
 # system_admin_pages.manage_researchers
