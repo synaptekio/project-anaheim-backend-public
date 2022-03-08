@@ -23,7 +23,7 @@ class ChunkableDataTypeError(Exception): pass
 
 
 class ChunkRegistry(TimestampedModel):
-    # this is declared in the abstract model but needs to be indexed for pipeline queries.
+    # the last_updated field's index legacy, removing it is slow to deploy on large servers.
     # TODO: remove this db_index? it doesn't harm anything...
     last_updated = models.DateTimeField(auto_now=True, db_index=True)
     is_chunkable = models.BooleanField()
