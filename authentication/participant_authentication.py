@@ -1,5 +1,6 @@
 import functools
 
+from django.http import UnreadablePostError
 from django.http.request import HttpRequest
 
 from database.user_models import Participant
@@ -18,7 +19,12 @@ def log(*args, **kwargs):
 def validate_post(request: HttpRequest, require_password: bool, validate_device_id: bool) -> bool:
     """Check if user exists, check if the provided passwords match, and if the device id matches."""
     # even if the password won't be checked we want the key to be present.
-    rp = request.POST
+    try:
+        rp = request.POST
+    except UnreadablePostError:
+        log("request probably had network failure.")
+        return abort(500)
+        
     if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
         log("missing parameters entirely.")
         log("patient_id:", "patient_id" in rp)
