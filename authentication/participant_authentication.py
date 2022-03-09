@@ -23,7 +23,7 @@ def validate_post(request: HttpRequest, require_password: bool, validate_device_
         rp = request.POST
     except UnreadablePostError:
         log("request probably had network failure.")
-        return abort(500)
+        return abort(400)
         
     if "patient_id" not in rp or "password" not in rp or "device_id" not in rp:
         log("missing parameters entirely.")
