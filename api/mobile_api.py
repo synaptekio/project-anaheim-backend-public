@@ -117,7 +117,7 @@ def upload(request: ParticipantRequest, OS_API=""):
             # this is an experiment, unlike Android, IOS will reencrypt data with a different key.
             # In an attempt to get ios data of better quality we will reject as 500 error all
             # bad decryption keys sourced from ios.
-            return abort(500)
+            return abort(400)
         
         return HttpResponse(status=200)
     
