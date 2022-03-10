@@ -1,10 +1,12 @@
 import boto3
+from botocore.client import BaseClient
 from Cryptodome.PublicKey import RSA
 
 from config.settings import (BEIWE_SERVER_AWS_ACCESS_KEY_ID, BEIWE_SERVER_AWS_SECRET_ACCESS_KEY,
     S3_BUCKET, S3_REGION_NAME)
 from libs.encryption import (decrypt_server, encrypt_for_server, generate_key_pairing,
     get_RSA_cipher, prepare_X509_key_for_java)
+
 
 """
 Research on getting a stream into the decryption code of pycryptodome
@@ -26,7 +28,7 @@ class S3VersionException(Exception): pass
 class NoSuchKeyException(Exception): pass
 
 
-conn = boto3.client(
+conn: BaseClient = boto3.client(
     's3',
     aws_access_key_id=BEIWE_SERVER_AWS_ACCESS_KEY_ID,
     aws_secret_access_key=BEIWE_SERVER_AWS_SECRET_ACCESS_KEY,

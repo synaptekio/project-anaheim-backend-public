@@ -18,107 +18,103 @@
 {% endblock %}
 
 {% block content %}
+<div class="container">
+  <br><br>
 
-    <div class="container">
-      <br><br>
+  <div class="row well">
+    <form action="/get-data/v1" method="POST" id="data_download_parameters_form">
 
-      <div class="row well">
-        <form action="/get-data/v1" method="POST" id="data_download_parameters_form">
-
-          {# Access Key #}
-          <div class="form-group">
-            <label for="access_key">Access Key</label>
-            <input type="text" name="access_key" id="access_key" class="form-control" placeholder="Paste your unique Access Key here" required>
-          </div>
-
-          {# Secret Key #}
-          <div class="form-group">
-            <label for="secret_key">Secret Key</label>
-            <input type="text" name="secret_key" id="secret_key" class="form-control" placeholder="Paste your unique Secret Key here" required>
-          </div>
-
-          <br>
-
-          {# Data Selectors #}
-          <div ng-controller="DataAccessWebFormController" class="row">
-
-            {# Study ID #}
-            <div class="col-sm-4">
-              <div class="form-group">
-                <label for="study_selector">Study</label>
-                  {# TODO: it would be nice if this selected the first option by default #}
-                  <select class="form-control" name="study_pk" ng-model="selectedStudyId">
-                      <option value="" disabled>--- Select Study ---</option>
-                    <option ng-repeat="study in allowedStudies | filter: {is_test: true}" value="{%raw%}{{ study.id }}{%endraw%}">{%raw%}{{ study.name }}{%endraw%}</option>
-                  </select>
-              </div>
-            </div>
-
-            {# Patient Selector #}
-            <div class="col-sm-4">
-              <div class="form-group">
-                <label for="patient_selector">Patients</label>
-                <select id="patient_selector" ng-model="selectedPatient" ng-options="participant for participant in participantsByStudy[selectedStudyId] track by participant" name="user_ids" class="form-control" size=12 multiple></select>
-              </div>
-            </div>
-
-            {# Data Stream Selector #}
-            <div class="col-sm-4">
-              <div class="form-group">
-                <label for="data_stream_selector">Data Types</label>
-                <select class="form-control" name="data_streams" id="data_stream_selector" size=12 multiple>
-                  {% for data_stream in ALL_DATA_STREAMS | sort %}
-                    <option>{{ data_stream }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-            <br>
-            {# Time Range #}
-            {# Start Datetime #}
-            <div class="col-sm-4">
-              <div class="form-group">
-                <label for="start_datetime">Start Date and Time</label>
-                <div class="input-group date" id="start_datetimepicker">
-                  <input type="text" class="form-control" name="time_start" id="start_datetime" />
-                  <span class="input-group-addon">
-                    <span class="glyphicon glyphicon-calendar"></span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {# End Datetime #}
-            <div class="col-sm-4">
-              <div class="form-group">
-                <label for="end_datetime">End Date and Time</label>
-                <div class="input-group date" id="end_datetimepicker">
-                  <input type="text" class="form-control" name="time_end" id="end_datetime" />
-                  <span class="input-group-addon">
-                    <span class="glyphicon glyphicon-calendar"></span>
-                  </span>
-                </div>
-              </div>
-            </div>
-            </div>
-          <br><br>
-
-          {# Hidden Input to tell Data Download API that this request came from the web form (not from the command-line) #}
-          <input type="hidden" name="web_form" value="true">
-
-          <div class="row">
-            <div class="col-sm-2">
-              <input type="submit" class="btn btn-success" value="Download Data" id="download_submit_button" ng-disabled="!selectedStudyId" />
-            </div>
-            <div class="col-sm-10">
-              <p id="explanation_paragraph" hidden><b>It may take several minutes to compile your data and download it as a .zip file. Do not click "Reload" or "Back" until your data finishes downloading. Once your data file downloads, you must reload this page before you can download another datafile.</b></p>
-            </div>
-          </div>
-          </div>
-        </form>
+      {# Access Key #}
+      <div class="form-group">
+        <label for="access_key">Access Key</label>
+        <input type="text" name="access_key" id="access_key" class="form-control" placeholder="Paste your unique Access Key here" required>
       </div>
 
-    </div>
+      {# Secret Key #}
+      <div class="form-group">
+        <label for="secret_key">Secret Key</label>
+        <input type="text" name="secret_key" id="secret_key" class="form-control" placeholder="Paste your unique Secret Key here" required>
+      </div>
 
+      <br>
 
+      {# Data Selectors #}
+      <div ng-controller="DataAccessWebFormController" class="row">
+
+        {# Study ID #}
+        <div class="col-sm-4">
+          <div class="form-group">
+            <label for="study_selector">Study</label>
+              {# TODO: it would be nice if this selected the first option by default #}
+              <select class="form-control" name="study_pk" ng-model="selectedStudyId">
+                <option value="" disabled>--- Select Study ---</option>
+                <option ng-repeat="study in allowedStudies | filter: {is_test: true}" value="{%raw%}{{ study.id }}{%endraw%}">{%raw%}{{ study.name }}{%endraw%}</option>
+              </select>
+          </div>
+        </div>
+
+        {# Patient Selector #}
+        <div class="col-sm-4">
+          <div class="form-group">
+            <label for="patient_selector">Patients</label>
+            <select id="patient_selector" ng-model="selectedPatient" ng-options="participant for participant in participantsByStudy[selectedStudyId] track by participant" name="user_ids" class="form-control" size=12 multiple></select>
+          </div>
+        </div>
+
+        {# Data Stream Selector #}
+        <div class="col-sm-4">
+          <div class="form-group">
+            <label for="data_stream_selector">Data Types</label>
+            <select class="form-control" name="data_streams" id="data_stream_selector" size=12 multiple>
+              {% for data_stream in ALL_DATA_STREAMS | sort %}
+                <option>{{ data_stream }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        
+        <br>
+
+        {# Time Range #}
+        {# Start Datetime #}
+        <div class="col-sm-6">
+          <div class="form-group">
+            <label for="start_datetime">Start Date and Time</label>
+            <div class="input-group date" id="start_datetimepicker">
+              <input type="text" class="form-control" name="time_start" id="start_datetime" />
+              <span class="input-group-addon">
+                <span class="glyphicon glyphicon-calendar"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {# End Datetime #}
+        <div class="col-sm-6">
+          <div class="form-group">
+            <label for="end_datetime">End Date and Time</label>
+            <div class="input-group date" id="end_datetimepicker">
+              <input type="text" class="form-control" name="time_end" id="end_datetime" />
+              <span class="input-group-addon">
+                <span class="glyphicon glyphicon-calendar"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {# Hidden Input to tell Data Download API that this request came from the web form (not from the command-line) #}
+        <input type="hidden" name="web_form" value="true">
+        <div class="col-xs-2">
+          <input type="submit" class="btn btn-success" value="Download Data" id="download_submit_button" ng-disabled="!selectedStudyId" />
+        </div>
+        <div class="col-sm-10">
+          <p id="explanation_paragraph" hidden><b>
+            It may take several minutes to compile your data and download it as a .zip file. Do not click "Reload" or "Back" until your data finishes downloading. Once your data file downloads, you must reload this page before you can download another datafile.
+          </b></p>
+        </div>
+      
+      </div>  {# ng-controller #}
+    </form>
+  </div>
+</div>
 {% endblock %}
