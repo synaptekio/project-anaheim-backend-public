@@ -3,6 +3,7 @@ import json
 import plistlib
 import time
 
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.db import IntegrityError
@@ -15,7 +16,7 @@ from config.settings import REPORT_DECRYPTION_KEY_ERRORS
 from constants.celery_constants import ANDROID_FIREBASE_CREDENTIALS, IOS_FIREBASE_CREDENTIALS
 from constants.message_strings import (DECRYPTION_KEY_ADDITIONAL_MESSAGE,
     DECRYPTION_KEY_ERROR_MESSAGE, DEVICE_IDENTIFIERS_HEADER, INVALID_EXTENSION_ERROR, NO_FILE_ERROR,
-    S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR, UNKNOWN_ERROR)
+    S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR_1, S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR_2, UNKNOWN_ERROR)
 from constants.participant_constants import IOS_API
 from database.data_access_models import FileToProcess
 from database.profiling_models import DecryptionKeyError, UploadTracking
@@ -135,11 +136,14 @@ def upload(request: ParticipantRequest, OS_API=""):
                 participant=participant,
                 os_type=OS_API,
             )
-        except IntegrityError as e:
-            # (This was a ValidationError for ages.) Only handle the unique constraint condition.
-            if S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR not in str(e):
-                raise
-            return abort(400)
+        except (IntegrityError, ValidationError) as e:
+            # there are two error cases that can occur here (race condition with 2 concurrent uploads)
+            if (
+                S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR_1 in str(e)
+                or S3_FILE_PATH_UNIQUE_CONSTRAINT_ERROR_2 in str(e)
+            ):
+                # don't abort 500, we want to limit 500 errors on the ELB in production (uhg)
+                return abort(400)
         
         UploadTracking.objects.create(
             file_path=s3_file_location,
