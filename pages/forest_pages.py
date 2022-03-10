@@ -46,7 +46,7 @@ def analysis_progress(request: ResearcherRequest, study_id=None):
     for tracker in trackers:
         for date in daterange(tracker.data_date_start, tracker.data_date_end, inclusive=True):
             results[(tracker.participant_id, tracker.forest_tree, date)] = tracker.status
-            if tracker.status == tracker.status.success:
+            if tracker.status == ForestTaskStatus.success:
                 params[(tracker.participant_id, tracker.forest_tree, date)] = tracker.forest_param_id
             else:
                 params[(tracker.participant_id, tracker.forest_tree, date)] = None
@@ -152,7 +152,7 @@ def download_task_log(request: ResearcherRequest):
 def cancel_task(request: ResearcherRequest, study_id, forest_task_external_id):
     if not request.session_researcher.site_admin:
         return abort(403)
-        
+    
     number_updated = \
         ForestTask.objects.filter(
             external_id=forest_task_external_id, status=ForestTaskStatus.queued
