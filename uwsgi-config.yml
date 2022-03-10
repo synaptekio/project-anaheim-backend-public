@@ -1,0 +1,24 @@
+uwsgi:
+  http: :8000
+  wsgi-file: wsgi.py 
+  master: true 
+  
+  # %k automatically detects the number of cpu cores
+  processes: %k
+
+  # may want to increase threads, while uwsgi respects this setting and uses additional threads, it
+  # doesn't seem to have any effect on server performance.
+  threads: 10 
+
+  # It is possible to hit connection count limit issues on heavily loaded servers with more than 2
+  # cpu cores. uwsgi logs a message like "uWSGI listen queue of socket ... (fd: 3) full !!!" when
+  # this occurs. The default value is 100, values greater than 128 requires we run the command
+  # sysctl -w net.core.somaxconn=1024 in our deployment commands
+  listen: 1024
+  
+  # enabled as an attempt to improve 502 timeouts, unclear if there is any effect.
+  http-keepalive: true
+
+  # wsgi logging is only useful for specific debugging scenarios, we already have request logging
+  # from apache and print statements from python.
+  disable-logging: true

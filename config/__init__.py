@@ -23,7 +23,6 @@ if SENTRY_DISABLED:
     SENTRY_ELASTIC_BEANSTALK_DSN = None
     SENTRY_JAVASCRIPT_DSN = None
 
-
 # these variables are strictly required.
 MANDATORY_VARS = {
     'DOMAIN_NAME',
@@ -32,17 +31,13 @@ MANDATORY_VARS = {
     'SYSADMIN_EMAILS',
 }
 
-# server modes - aws linux 2 has a different file structure, we currently test for both.
-MODE_EB_SERVER = file_exists(ELASTIC_BEANSTALK_ENV_FILE) or file_exists(ELASTIC_BEANSTALK_2_VENV_FILE)
-MODE_CELERY_SERVER = file_exists(CELERY_SERVER_ENV_FILE)
-
 # Evaluate the config.remote_db_env file if it exists.  This file is auto generated during the
-# deploy process and populates the environment variables.
-if MODE_CELERY_SERVER:
+# deploy process and populates the environment variables on the data processing servers
+if file_exists(CELERY_SERVER_ENV_FILE):
     import config.remote_db_env
 
-# determine database
-if MODE_CELERY_SERVER or MODE_EB_SERVER:
+# determine database mode, based on the presence of the RDS_HOSTNAME variable
+if "RDS_HOSTNAME" in os.environ:
     DB_MODE = DB_MODE_POSTGRES
     # If you are running with a remote database (e.g. on a server in a beiwe cluster) you need
     # some extra environment variables to be set.
@@ -50,8 +45,7 @@ if MODE_CELERY_SERVER or MODE_EB_SERVER:
         if env_var not in os.environ:
             ERRORS.append(f"Environment variable '{env_var}' was not found.")
 else:
-    # if you are not running on an elastic beanstalk server or a celery assume that this is a
-    # development/local environment and use a sqlite database
+    # assume that this is a development/local environment and use a sqlite database
     DB_MODE = DB_MODE_SQLITE
 
 
